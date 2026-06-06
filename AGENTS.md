@@ -70,15 +70,21 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## 6. Git Isolation (BE vs Agent)
 
-To prevent agent memory, prompt rules, and configurations from being modified or overwritten when merging from/to `main`, we configure path-specific merge protection and optional sparse checkouts.
+To prevent agent memory, prompt rules, and configurations from being modified or overwritten when merging from/to `main`, we configure path-specific merge protection, automated git hooks, and optional sparse checkouts.
 
-### 1. Merge Protection (Keep Local Agent Files)
-We use the `ours` merge driver specified in [.gitattributes](file:///d:/laragon/www/MindHub/MindHub-Backend/.gitattributes) to ignore changes to agent files during merges.
-* **Enable locally**: You must run this command once in your terminal:
+### 1. Merge Protection & Auto-Exclusion (Shared with Team)
+We use a shared git hook to automatically handle agent file exclusion during merges.
+* **Step 1**: Register the shared hooks directory by running this command once in your terminal:
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+* **Step 2**: Enable the `ours` merge driver (defined in [.gitattributes](file:///d:/laragon/www/MindHub/MindHub-Backend/.gitattributes)):
   ```bash
   git config merge.ours.driver true
   ```
-* This ensures that `.agent/`, `.codegraph/`, `AGENTS.md`, `RULE.md`, and `mcp_config.json` retain their branch-specific versions when merging.
+* **How to merge**: Always merge branches using the `--no-ff` flag to ensure the hook runs:
+  * Merge `Ai-agent` into `main` (auto-excludes agent files): `git merge --no-ff Ai-agent`
+  * Merge `main` into `Ai-agent` (auto-restores agent files): `git merge --no-ff main`
 
 ### 2. Sparse Checkout (BE folder only)
 If you want to only download/checkout the `BE` directory and hide all agent-related files/folders:

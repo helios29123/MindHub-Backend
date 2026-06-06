@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# Danh sách các file/folder cần bảo vệ (không cho lọt vào main và không bị mất ở Ai-agent)
+PROTECTED_PATHS=".agent AGENTS.md RULE.md .gitattributes mcp_config.json"
+
+echo "=== CodeGraph & Agent Pre-Merge Protection Hook ==="
+
+for path in $PROTECTED_PATHS; do
+  # Kiểm tra xem file/thư mục này có tồn tại trong HEAD (nhánh hiện tại trước khi merge) không
+  if git rev-parse --verify HEAD:"$path" >/dev/null 2>&1; then
+    # Nếu có tồn tại ở HEAD, khôi phục lại đúng phiên bản của HEAD
+    echo "Restoring $path to HEAD version..."
+    git restore --source=HEAD --staged --worktree -- "$path"
+  else
+    # Nếu không tồn tại ở HEAD (ví dụ đang ở main, và file này từ Ai-agent merge qua)
+    # Loại bỏ file này khỏi index merge và xóa khỏi thư mục làm việc để không bị commit vào main
+    echo "Excluding $path from merge (does not exist in HEAD)..."
+    git rm -r --cached --ignore-unmatch "$path" >/dev/null 2>&1
+    rm -rf "$path"
+  fi
+done
+
+echo "================================================="
