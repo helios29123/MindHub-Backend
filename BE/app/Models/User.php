@@ -2,31 +2,85 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
+    use Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_INSTRUCTOR = 'instructor';
+    public const ROLE_LEARNER = 'learner';
+
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_INACTIVE = 'inactive';
+    public const STATUS_LOCKED = 'locked';
+
+    protected $table = 'users';
+
+    protected $fillable = [
+        'full_name',
+        'email',
+        'password_hash',
+        'phone',
+        'oauth_account_login',
+        'role',
+        'status',
+        'email_verified_at',
+        'last_login_at',
+        'locked',
+        'locked_reason',
+        'password_reset',
+    ];
+
+    protected $hidden = [
+        'password_hash',
+        'password_reset',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'last_login_at' => 'datetime',
+        'locked' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    public function getAuthPassword(): string
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return (string) $this->password_hash;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function isInactive(): bool
+    {
+        return $this->status === self::STATUS_INACTIVE;
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->status === self::STATUS_LOCKED || $this->locked === true;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isInstructor(): bool
+    {
+        return $this->role === self::ROLE_INSTRUCTOR;
+    }
+
+    public function isLearner(): bool
+    {
+        return $this->role === self::ROLE_LEARNER;
     }
 }
