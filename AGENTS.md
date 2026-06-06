@@ -68,6 +68,30 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **Context Generation**: Run `npx -y @colbymchenry/codegraph context "task description"` to get a structured markdown context of relevant codebase parts.
 - **MCP Server**: CodeGraph runs as an MCP server using `mcp_config.json`. The AI agent can query relationships (callers, callees, routing) automatically.
 
+## 6. Git Isolation (BE vs Agent)
+
+To prevent agent memory, prompt rules, and configurations from being modified or overwritten when merging from/to `main`, we configure path-specific merge protection and optional sparse checkouts.
+
+### 1. Merge Protection (Keep Local Agent Files)
+We use the `ours` merge driver specified in [.gitattributes](file:///d:/laragon/www/MindHub/MindHub-Backend/.gitattributes) to ignore changes to agent files during merges.
+* **Enable locally**: You must run this command once in your terminal:
+  ```bash
+  git config merge.ours.driver true
+  ```
+* This ensures that `.agent/`, `.codegraph/`, `AGENTS.md`, `RULE.md`, and `mcp_config.json` retain their branch-specific versions when merging.
+
+### 2. Sparse Checkout (BE folder only)
+If you want to only download/checkout the `BE` directory and hide all agent-related files/folders:
+* Run the following commands:
+  ```bash
+  git sparse-checkout init --cone
+  git sparse-checkout set BE
+  ```
+* To disable sparse-checkout and restore all files:
+  ```bash
+  git sparse-checkout disable
+  ```
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

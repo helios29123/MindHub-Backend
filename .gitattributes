@@ -1,0 +1,6 @@
+# Protect agent-specific files and configurations from being overwritten or merged
+.agent/** merge=ours
+AGENTS.md merge=ours
+RULE.md merge=ours
+.codegraph/** merge=ours
+mcp_config.json merge=ours
