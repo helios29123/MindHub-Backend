@@ -7,7 +7,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // Nếu bạn đã có các hàm này trong AuthController thì mở ra dùng
 // Route::post('/google-login', [AuthController::class, 'googleLogin']);
-// Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 // Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::middleware('auth:sanctum')->group(function () {

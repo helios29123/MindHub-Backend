@@ -110,32 +110,32 @@ class AuthService
         });
     }
 
-    public function forgotPassword(string $email): array
-    {
-        $user = $this->userRepository->findByEmail($email);
+    public function forgotPassword(array $data): array
+{
+    $user = $this->userRepository->findByEmail($data['email']);
 
-        if (! $user) {
-            return [
-                'reset_token' => null,
-                'expires_at' => null,
-            ];
-        }
-
-        $plainResetToken = Str::random(64);
-        $expiresAt = now()->addMinutes(self::PASSWORD_RESET_EXPIRES_MINUTES);
-
-        $this->userRepository->update($user, [
-            'password_reset' => json_encode([
-                'token_hash' => hash('sha256', $plainResetToken),
-                'expires_at' => $expiresAt->toISOString(),
-            ], JSON_THROW_ON_ERROR),
-        ]);
-
+    if (! $user) {
         return [
-            'reset_token' => config('app.debug') ? $plainResetToken : null,
-            'expires_at' => config('app.debug') ? $expiresAt : null,
+            'reset_token' => null,
+            'expires_at' => null,
         ];
     }
+
+    $plainToken = \Illuminate\Support\Str::random(64);
+    $expiresAt = now()->addMinutes(15);
+
+    $this->userRepository->update($user, [
+        'password_reset' => json_encode([
+            'token_hash' => hash('sha256', $plainToken),
+            'expires_at' => $expiresAt->toISOString(),
+        ]),
+    ]);
+
+    return [
+        'reset_token' => config('app.debug') ? $plainToken : null,
+        'expires_at' => $expiresAt->toISOString(),
+    ];
+}
 
     public function resetPassword(array $resetPasswordData): void
     {
