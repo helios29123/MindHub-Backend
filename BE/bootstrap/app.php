@@ -1,7 +1,14 @@
 <?php
 
 use App\Exceptions\BusinessException;
+<<<<<<< HEAD
 use App\Helpers\ApiResponse;
+=======
+use App\Http\Middleware\AuthenticateSessionToken;
+use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\RoleMiddleware;
+use App\Support\ApiResponse;
+>>>>>>> bfd4e31c6b8879eabcf47db7741a952e41cf8683
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -13,6 +20,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
+<<<<<<< HEAD
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
@@ -25,6 +33,21 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+=======
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'auth.session' => AuthenticateSessionToken::class,
+            'role' => RoleMiddleware::class,
+            'active.user' => EnsureUserIsActive::class,
+        ]);
+    })
+    ->withExceptions(function (Exceptions $exceptions): void {
+>>>>>>> bfd4e31c6b8879eabcf47db7741a952e41cf8683
         $exceptions->render(function (BusinessException $exception, $request) {
             if ($request->is('api/*')) {
                 return ApiResponse::error(
@@ -85,7 +108,11 @@ return Application::configure(basePath: dirname(__DIR__))
             return null;
         });
 
+<<<<<<< HEAD
         $exceptions->render(function (\Throwable $exception, $request) {
+=======
+        $exceptions->render(function (Throwable $exception, $request) {
+>>>>>>> bfd4e31c6b8879eabcf47db7741a952e41cf8683
             if ($request->is('api/*')) {
                 report($exception);
 
@@ -99,4 +126,8 @@ return Application::configure(basePath: dirname(__DIR__))
             return null;
         });
     })
+<<<<<<< HEAD
     ->create();
+=======
+    ->create();
+>>>>>>> bfd4e31c6b8879eabcf47db7741a952e41cf8683
