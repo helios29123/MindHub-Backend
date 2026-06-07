@@ -1,14 +1,12 @@
 <?php
-
 namespace App\Http\Controllers\Api;
-
 use App\Exceptions\BusinessException;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterRequest;
-use App\Http\Resources\AuthResource;
-use App\Http\Resources\UserResource;
-use App\Http\Resources\UserResources;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Resources\Auth\AuthResource;
+use App\Http\Resources\User\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,7 +26,7 @@ class AuthController extends Controller
             return ApiResponse::success(
                 'Đăng ký tài khoản thành công.',
                 [
-                    'user' => new UserResources($user),
+                    'user' => new UserResource($user),
                 ],
                 201
             );
@@ -41,5 +39,21 @@ class AuthController extends Controller
         }
     }
 
+    public function login(LoginRequest $request): JsonResponse
+    {
+        try {
+            $authData = $this->authService->login($request->validated(), $request);
 
+            return ApiResponse::success(
+                'Đăng nhập thành công.',
+                new AuthResource($authData)
+            );
+        } catch (BusinessException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage(),
+                $exception->getErrors(),
+                $exception->getStatusCode()
+            );
+        }
+    }
 }

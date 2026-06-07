@@ -5,12 +5,12 @@ use App\Models\AuthSession;
 
 class SessionRepository
 {
-    public function create(array $sessionData): AuthSession
+    public function create(array $sessionData)
     {
         return AuthSession::create($sessionData);
     }
 
-    public function findActiveById(int $sessionId): ?AuthSession
+    public function findActiveById(int $sessionId)
     {
         return AuthSession::query()
             ->where('id', $sessionId)
@@ -22,7 +22,7 @@ class SessionRepository
             ->first();
     }
 
-    public function update(AuthSession $session, array $sessionData): AuthSession
+    public function update(AuthSession $session, array $sessionData)
     {
         $session->fill($sessionData);
         $session->save();
@@ -30,14 +30,14 @@ class SessionRepository
         return $session->refresh();
     }
 
-    public function revoke(AuthSession $session): AuthSession
+    public function revoke(AuthSession $session)
     {
         return $this->update($session, [
             'revoked_at' => now(),
         ]);
     }
 
-    public function revokeAllByUserId(int $userId): int
+    public function revokeAllByUserId(int $userId)
     {
         return AuthSession::query()
             ->where('user_id', $userId)
@@ -47,7 +47,7 @@ class SessionRepository
             ]);
     }
 
-    public function findByRefreshTokenHash(string $refreshTokenHash): ?AuthSession
+    public function findByRefreshTokenHash(string $refreshTokenHash)
     {
         return AuthSession::query()
             ->where('refresh_token_hash', $refreshTokenHash)

@@ -23,7 +23,7 @@ class AuthService
         private readonly GoogleTokenVerifier $googleTokenVerifier
     ) {
     }
-
+        // AUTH01: Đăng ký
     public function register(array $registerData): User
     {
         if ($this->userRepository->existsByEmail($registerData['email'])) {
@@ -45,7 +45,7 @@ class AuthService
             ]);
         });
     }
-
+    // AUTH03 Đăng nhập
     public function login(array $loginData, Request $request): array
     {
         $user = $this->userRepository->findByEmail($loginData['email']);
