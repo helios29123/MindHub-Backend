@@ -7,9 +7,9 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-final class RoleMiddleware
+final class EnsureUserIsActive
 {
-    public function handle(Request $request, Closure $next, string ...$roles): Response
+    public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
@@ -20,9 +20,9 @@ final class RoleMiddleware
             );
         }
 
-        if (! in_array($user->role, $roles, true)) {
+        if ($user->status !== 'active' || (bool) $user->locked === true) {
             return ApiResponse::error(
-                message: 'Bạn không có quyền thực hiện thao tác này.',
+                message: 'Tài khoản đang bị khóa hoặc chưa hoạt động.',
                 status: 403
             );
         }
