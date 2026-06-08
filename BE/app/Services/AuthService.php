@@ -23,7 +23,8 @@ class AuthService
         private readonly GoogleTokenVerifier $googleTokenVerifier
     ) {
     }
-        // AUTH01: Đăng ký
+
+    // AUTH01: Đăng ký
     public function register(array $registerData): User
     {
         if ($this->userRepository->existsByEmail($registerData['email'])) {
@@ -45,7 +46,8 @@ class AuthService
             ]);
         });
     }
-    // AUTH03 Đăng nhập
+
+    // AUTH03: Đăng nhập
     public function login(array $loginData, Request $request): array
     {
         $user = $this->userRepository->findByEmail($loginData['email']);
@@ -110,9 +112,9 @@ class AuthService
         });
     }
 
-    public function forgotPassword(string $email): array
+    public function forgotPassword(array $data): array
     {
-        $user = $this->userRepository->findByEmail($email);
+        $user = $this->userRepository->findByEmail($data['email']);
 
         if (! $user) {
             return [
@@ -133,7 +135,7 @@ class AuthService
 
         return [
             'reset_token' => config('app.debug') ? $plainResetToken : null,
-            'expires_at' => config('app.debug') ? $expiresAt : null,
+            'expires_at' => config('app.debug') ? $expiresAt->toISOString() : null,
         ];
     }
 
@@ -156,7 +158,9 @@ class AuthService
         }
 
         $tokenHash = $passwordResetData['token_hash'] ?? null;
-        $expiresAt = isset($passwordResetData['expires_at']) ? now()->parse($passwordResetData['expires_at']) : null;
+        $expiresAt = isset($passwordResetData['expires_at'])
+            ? now()->parse($passwordResetData['expires_at'])
+            : null;
 
         if (
             ! is_string($tokenHash) ||
@@ -211,7 +215,10 @@ class AuthService
             'created_at' => now(),
         ]);
 
-        $accessToken = $this->accessTokenService->createAccessToken((int) $user->id, (int) $session->id);
+        $accessToken = $this->accessTokenService->createAccessToken(
+            (int) $user->id,
+            (int) $session->id
+        );
 
         return [
             'user' => $user->refresh(),
