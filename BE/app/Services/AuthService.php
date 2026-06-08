@@ -23,7 +23,8 @@ class AuthService
         private readonly GoogleTokenVerifier $googleTokenVerifier
     ) {
     }
-        // AUTH01: Đăng ký
+
+    // AUTH01: Đăng ký
     public function register(array $registerData): User
     {
         if ($this->userRepository->existsByEmail($registerData['email'])) {
@@ -45,7 +46,8 @@ class AuthService
             ]);
         });
     }
-    // AUTH03 Đăng nhập
+
+    // AUTH03: Đăng nhập
     public function login(array $loginData, Request $request): array
     {
         $user = $this->userRepository->findByEmail($loginData['email']);
@@ -111,31 +113,31 @@ class AuthService
     }
 
     public function forgotPassword(array $data): array
-{
-    $user = $this->userRepository->findByEmail($data['email']);
+    {
+        $user = $this->userRepository->findByEmail($data['email']);
 
-    if (! $user) {
+        if (! $user) {
+            return [
+                'reset_token' => null,
+                'expires_at' => null,
+            ];
+        }
+
+        $plainResetToken = Str::random(64);
+        $expiresAt = now()->addMinutes(self::PASSWORD_RESET_EXPIRES_MINUTES);
+
+        $this->userRepository->update($user, [
+            'password_reset' => json_encode([
+                'token_hash' => hash('sha256', $plainResetToken),
+                'expires_at' => $expiresAt->toISOString(),
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
         return [
-            'reset_token' => null,
-            'expires_at' => null,
+            'reset_token' => config('app.debug') ? $plainResetToken : null,
+            'expires_at' => config('app.debug') ? $expiresAt->toISOString() : null,
         ];
     }
-
-    $plainToken = \Illuminate\Support\Str::random(64);
-    $expiresAt = now()->addMinutes(15);
-
-    $this->userRepository->update($user, [
-        'password_reset' => json_encode([
-            'token_hash' => hash('sha256', $plainToken),
-            'expires_at' => $expiresAt->toISOString(),
-        ]),
-    ]);
-
-    return [
-        'reset_token' => config('app.debug') ? $plainToken : null,
-        'expires_at' => $expiresAt->toISOString(),
-    ];
-}
 
     public function resetPassword(array $resetPasswordData): void
     {
@@ -156,7 +158,9 @@ class AuthService
         }
 
         $tokenHash = $passwordResetData['token_hash'] ?? null;
-        $expiresAt = isset($passwordResetData['expires_at']) ? now()->parse($passwordResetData['expires_at']) : null;
+        $expiresAt = isset($passwordResetData['expires_at'])
+            ? now()->parse($passwordResetData['expires_at'])
+            : null;
 
         if (
             ! is_string($tokenHash) ||
@@ -211,7 +215,10 @@ class AuthService
             'created_at' => now(),
         ]);
 
-        $accessToken = $this->accessTokenService->createAccessToken((int) $user->id, (int) $session->id);
+        $accessToken = $this->accessTokenService->createAccessToken(
+            (int) $user->id,
+            (int) $session->id
+        );
 
         return [
             'user' => $user->refresh(),

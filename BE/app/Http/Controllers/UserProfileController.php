@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\User\MeProfileRequest;
+use App\Http\Requests\User\UpdateMeRequest;
 use App\Http\Resources\User\UserResource;
 use App\Services\User\UserProfileService;
 use App\Support\ApiResponse;
@@ -22,6 +23,19 @@ final class UserProfileController extends Controller
         return ApiResponse::success(
             data: new UserResource($user),
             message: 'Lấy dữ liệu thành công'
+        );
+    }
+
+    public function updateMe(UpdateMeRequest $request): JsonResponse
+    {
+        $user = $this->userProfileService->updateAuthenticatedProfile(
+            authenticatedUser: $request->user(),
+            validatedData: $request->validated()
+        );
+
+        return ApiResponse::success(
+            data: new UserResource($user),
+            message: 'Thao tác thành công'
         );
     }
 }
