@@ -59,7 +59,11 @@ class AuthService
         $this->ensureUserCanLogin($user);
 
         return DB::transaction(function () use ($user, $loginData, $request) {
-            $authPayload = $this->createAuthenticatedSession($user, $loginData['device_name'] ?? null, $request);
+            $authPayload = $this->createAuthenticatedSession(
+                $user,
+                $loginData['device_name'] ?? null,
+                $request
+            );
 
             $this->userRepository->update($user, [
                 'last_login_at' => now(),
@@ -74,7 +78,10 @@ class AuthService
         $googleUser = $this->googleTokenVerifier->verify($googleLoginData['google_token']);
 
         return DB::transaction(function () use ($googleUser, $googleLoginData, $request) {
-            $user = $this->userRepository->findByOAuthProviderId($googleUser['provider'], $googleUser['provider_id']);
+            $user = $this->userRepository->findByOAuthProviderId(
+                $googleUser['provider'],
+                $googleUser['provider_id']
+            );
 
             if (! $user) {
                 $user = $this->userRepository->findByEmail($googleUser['email']);
@@ -108,7 +115,11 @@ class AuthService
                 ]);
             }
 
-            return $this->createAuthenticatedSession($user, $googleLoginData['device_name'] ?? null, $request);
+            return $this->createAuthenticatedSession(
+                $user,
+                $googleLoginData['device_name'] ?? null,
+                $request
+            );
         });
     }
 
