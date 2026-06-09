@@ -7,6 +7,7 @@ use App\Http\Resources\CourseSectionResource;
 use App\Http\Resources\LessonResource;
 use App\Http\Resources\CourseReviewResource;
 use App\Http\Resources\InstructorResource;
+use App\Http\Resources\FaqResource;
 use App\Services\CoursePublicService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -134,5 +135,39 @@ class CoursePublicController extends Controller
         $resource = new InstructorResource($result['instructor']);
 
         return ApiResponse::success($resource, 'Lấy thông tin giảng viên thành công');
+    }
+
+    public function faqs(mixed $id): JsonResponse
+    {
+        $input = array_merge(
+            ['id' => $id],
+            request()->only(['page', 'per_page'])
+        );
+
+        // Validate whitelist query parameters
+        $allowedKeys = ['page', 'per_page'];
+        $extraParams = array_diff(array_keys(request()->query()), $allowedKeys);
+
+        if (!empty($extraParams)) {
+            return ApiResponse::error('Tham số không hợp lệ.', ['query' => 'Chứa tham số không hợp lệ ngoài whitelist.'], 422);
+        }
+
+        $validator = Validator::make($input, [
+            'id' => 'required|integer|min:1',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::error('Tham số không hợp lệ.', $validator->errors()->toArray(), 422);
+        }
+
+        $result = $this->coursePublicService->faqs((int) $id, $validator->validated());
+
+        return ApiResponse::paginated(
+            FaqResource::collection($result['paginator']),
+            $result['paginator'],
+            'Lấy danh sách FAQ thành công'
+        );
     }
 }

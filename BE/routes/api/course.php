@@ -8,4 +8,5 @@ Route::get('/courses/{id}/outline', [CoursePublicController::class, 'outline'])-
 Route::get('/lessons/{id}/preview', [CoursePublicController::class, 'previewLesson'])->where('id', '[0-9]+');
 Route::get('/courses/{id}/reviews', [CoursePublicController::class, 'reviews'])->where('id', '[0-9]+');
 Route::get('/instructors/{id}', [CoursePublicController::class, 'showInstructor'])->where('id', '[0-9]+');
+Route::get('/courses/{id}/faqs', [CoursePublicController::class, 'faqs'])->where('id', '[0-9]+');
 

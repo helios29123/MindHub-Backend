@@ -282,6 +282,32 @@ class CoursePublicService
         ];
     }
 
+    public function faqs(int $id, array $params): array
+    {
+        // 1. Fetch course by ID
+        $course = Course::find($id);
+
+        if (!$course) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        // 2. Check if course is published
+        if ($course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu phù hợp.', 404);
+        }
+
+        // 3. Query faqs (only active)
+        $query = $course->faqs()->where('faqs.status', 'active');
+
+        // Paginate faqs
+        $perPage = (int) ($params['per_page'] ?? 10);
+        $paginator = $query->paginate($perPage);
+
+        return [
+            'paginator' => $paginator,
+        ];
+    }
+
     private function resolveOptionalUser()
     {
         $plainAccessToken = request()->bearerToken();
