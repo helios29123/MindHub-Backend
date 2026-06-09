@@ -166,6 +166,46 @@ class CoursePublicService
         return $lesson;
     }
 
+    public function reviews(int $id, array $params): array
+    {
+        // 1. Fetch course by ID
+        $course = Course::find($id);
+
+        if (!$course) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ($course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu phù hợp.', 404);
+        }
+
+        // 2. Query reviews
+        $query = $course->reviews()->with('order.user');
+
+        // Apply rating filter
+        if (isset($params['rating'])) {
+            $query->where('rating', (int) $params['rating']);
+        }
+
+        // Apply sorting
+        $sort = $params['sort'] ?? 'newest';
+        if ($sort === 'newest') {
+            $query->orderBy('course_reviews.created_at', 'desc');
+        } elseif ($sort === 'highest_rating') {
+            $query->orderBy('rating', 'desc')->orderBy('course_reviews.created_at', 'desc');
+        } elseif ($sort === 'lowest_rating') {
+            $query->orderBy('rating', 'asc')->orderBy('course_reviews.created_at', 'desc');
+        }
+
+        // Paginate reviews
+        $perPage = (int) ($params['per_page'] ?? 10);
+        $paginator = $query->paginate($perPage);
+
+        return [
+            'paginator' => $paginator,
+        ];
+    }
+
     private function resolveOptionalUser()
     {
         $plainAccessToken = request()->bearerToken();
