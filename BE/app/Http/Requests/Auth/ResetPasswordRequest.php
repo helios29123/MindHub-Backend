@@ -1,33 +1,29 @@
 <?php
-
 namespace App\Http\Requests\Auth;
-
 use App\Http\Requests\BaseApiRequest;
-
+use Illuminate\Validation\Rules\Password;
 class ResetPasswordRequest extends BaseApiRequest
 {
-    public function rules(): array
-    {
-        return [
-            'email' => ['required', 'email'],
-            'token' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+    public function rule() {
+        return
+        [
+            'email'=> ['required','email','max:255'],
+            'token'=> ['required','string'],
+            'password'=> ['required','string','confirmed',Password::min(8)]
         ];
     }
-
-    public function messages(): array
+    public function message()
     {
-        return [
+        return
+        [
             'email.required' => 'Email không được để trống.',
             'email.email' => 'Email không đúng định dạng.',
-
-            'token.required' => 'Token không được để trống.',
-            'token.string' => 'Token phải là chuỗi.',
-
-            'password.required' => 'Mật khẩu không được để trống.',
-            'password.string' => 'Mật khẩu phải là chuỗi.',
-            'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
-            'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
+            'email.max' => 'Email không được vượt quá 255 kí tự.',
+            'token.required' => 'Token đặt lại mật khẩu không được để trống.',
+            'token.string' => 'Token đặt lại mật khẩu phải là dạng chuỗi.',
+            'password.required' => 'Mật khẩu mới không được để trống',
+            'password.confirmed' => 'Xác nhận mật khẩu không khớp',
+            'password.min' => 'Mật khẩu mới phải có ít nhất 8 kí tự',
         ];
     }
 }

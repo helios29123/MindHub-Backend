@@ -18,3 +18,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 });
+
+
+Route::middleware(['auth.session', 'role:admin'])->get('/admin/test', function () {
+    return response()->json([
+        'success' => true,
+        'message' => 'Admin access granted',
+        'data' => null,
+    ]);
+});
+
+Route::middleware(['auth.session', 'role:learner'])->get('/learner/test', function () {
+    return response()->json([
+        'success' => true,
+        'message' => 'Learner access granted',
+        'data' => null,
+    ]);
+});
