@@ -5,7 +5,7 @@ use App\Http\Requests\Catalog\CatalogListRequest;
 // use App\Http\Requests\Catalog\CourseSortRequest;
 // use App\Http\Requests\Catalog\SearchSuggestionRequest;
 // use App\Http\Resources\Catalog\CatalogCourseResource;
-// use App\Http\Resources\Catalog\CategoryResource;
+use App\Http\Resources\Catalog\CategoryResource;
 // use App\Http\Resources\Catalog\FeaturedInstructorResource;
 use App\Http\Resources\Catalog\HomeResource;
 // use App\Http\Resources\Catalog\SearchSuggestionResource;
@@ -23,5 +23,11 @@ class CatalogController extends Controller
         $homeData = $this->catalogService->home($request->validated(), $request->user());
 
         return ApiResponse::success(new HomeResource($homeData));
+    }
+     public function categories(CatalogListRequest $request): JsonResponse
+    {
+        $categories = $this->catalogService->categories($request->validated());
+
+        return ApiResponse::paginated(CategoryResource::collection($categories), $categories);
     }
 }

@@ -4,7 +4,7 @@ use App\Http\Controllers\CatalogController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/home', [CatalogController::class, 'home']);
-// Route::get('/categories', [CatalogController::class, 'categories']);
+Route::get('/categories', [CatalogController::class, 'categories']);
 // Route::get('/courses', [CatalogController::class, 'searchCourses']);
 // Route::get('/courses/sort', [CatalogController::class, 'sortCourses']);
 // Route::get('/courses/featured', [CatalogController::class, 'featuredCourses']);
