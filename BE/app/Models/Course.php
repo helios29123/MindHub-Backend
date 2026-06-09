@@ -72,4 +72,22 @@ class Course extends Model
     {
         return $this->hasManyThrough(CourseReview::class, Order::class, 'course_id', 'order_id', 'id', 'id');
     }
+
+    public function sections(): HasMany
+    {
+        return $this->hasMany(CourseSection::class)->orderBy('sort_order');
+    }
+
+    public function faqs(): BelongsToMany
+    {
+        return $this->belongsToMany(Faq::class, 'course_faqs', 'course_id', 'faq_id')
+            ->withPivot('sort_order')
+            ->orderBy('course_faqs.sort_order')
+            ->whereNull('course_faqs.deleted_at');
+    }
+
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
+    }
 }
