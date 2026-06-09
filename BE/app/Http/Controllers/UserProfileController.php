@@ -3,19 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\User\MeProfileRequest;
-use App\Http\Requests\User\UpdateMeRequest;
 use App\Http\Resources\User\UserResource;
 use App\Services\User\UserProfileService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use App\Exceptions\BusinessException;
-use App\Http\Requests\User\ChangePasswordRequest;
 
 final class UserProfileController extends Controller
 {
     public function __construct(
         private readonly UserProfileService $userProfileService
-    ) {}
+    ) {
+    }
 
     public function me(MeProfileRequest $request): JsonResponse
     {
