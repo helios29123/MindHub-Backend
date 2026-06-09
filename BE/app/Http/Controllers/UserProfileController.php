@@ -8,13 +8,14 @@ use App\Http\Resources\User\UserResource;
 use App\Services\User\UserProfileService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use App\Exceptions\BusinessException;
+use App\Http\Requests\User\ChangePasswordRequest;
 
 final class UserProfileController extends Controller
 {
     public function __construct(
         private readonly UserProfileService $userProfileService
-    ) {
-    }
+    ) {}
 
     public function me(MeProfileRequest $request): JsonResponse
     {
@@ -37,5 +38,25 @@ final class UserProfileController extends Controller
             data: new UserResource($user),
             message: 'Thao tác thành công'
         );
+    }
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        try {
+            $this->userProfileService->changePassword(
+                $request->user(),
+                $request->validated()
+            );
+
+            return ApiResponse::success(
+                [],
+                'Đổi mật khẩu thành công.'
+            );
+        } catch (BusinessException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage(),
+                $exception->getErrors(),
+                $exception->getCode() > 0 ? $exception->getCode() : 400
+            );
+        }
     }
 }
