@@ -6,6 +6,7 @@ use App\Http\Resources\CourseResource;
 use App\Http\Resources\CourseSectionResource;
 use App\Http\Resources\LessonResource;
 use App\Http\Resources\CourseReviewResource;
+use App\Http\Resources\InstructorResource;
 use App\Services\CoursePublicService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -115,5 +116,23 @@ class CoursePublicController extends Controller
             $result['paginator'],
             'Lấy danh sách đánh giá thành công'
         );
+    }
+
+    public function showInstructor(mixed $id): JsonResponse
+    {
+        // Validate path parameter
+        $validator = Validator::make(['id' => $id], [
+            'id' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::error('Tham số không hợp lệ.', $validator->errors()->toArray(), 422);
+        }
+
+        $result = $this->coursePublicService->showInstructor((int) $id);
+
+        $resource = new InstructorResource($result['instructor']);
+
+        return ApiResponse::success($resource, 'Lấy thông tin giảng viên thành công');
     }
 }

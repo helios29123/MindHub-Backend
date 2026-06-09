@@ -206,6 +206,82 @@ class CoursePublicService
         ];
     }
 
+    public function showInstructor(int $id): array
+    {
+        // 1. Fetch user by ID
+        $user = \App\Models\User::find($id);
+
+        if (!$user) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        // 2. Check if user is an active instructor
+        if ($user->role !== 'instructor' || $user->status !== 'active') {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu phù hợp.', 404);
+        }
+
+        // 3. Eager load and calculate stats
+        $instructor = \App\Models\User::query()
+            ->select('users.*')
+            ->where('users.id', $id)
+            ->with(['instructorProfile', 'publishedCourses'])
+            ->withCount([
+                'publishedCourses as published_courses_count',
+                'courseEnrollments as total_enrollments_count',
+            ])
+            ->selectSub(function ($query) {
+                $query->from('course_reviews')
+                    ->join('orders', 'orders.id', '=', 'course_reviews.order_id')
+                    ->join('courses', 'courses.id', '=', 'orders.course_id')
+                    ->whereColumn('courses.instructor_id', 'users.id')
+                    ->where('courses.status', 'published')
+                    ->whereNull('course_reviews.deleted_at')
+                    ->select(\Illuminate\Support\Facades\DB::raw('AVG(course_reviews.rating)'));
+            }, 'average_rating')
+            ->first();
+
+        // 4. Resolve optional authenticated user
+        $currentUser = $this->resolveOptionalUser();
+
+        foreach ($instructor->publishedCourses as $course) {
+            $isEnrolled = false;
+            $enrollmentStatus = null;
+            $hasAccess = false;
+            $isInWishlist = false;
+
+            if ($currentUser) {
+                $enrollment = \App\Models\Enrollment::where('user_id', $currentUser->id)
+                    ->where('course_id', $course->id)
+                    ->first();
+
+                if ($enrollment) {
+                    $isEnrolled = true;
+                    $enrollmentStatus = $enrollment->status;
+                    if (in_array($enrollment->status, ['active', 'completed'])) {
+                        $hasAccess = true;
+                    }
+                }
+
+                $isInWishlist = \App\Models\Wishlist::where('user_id', $currentUser->id)
+                    ->where('course_id', $course->id)
+                    ->exists();
+
+                if ((int) $course->instructor_id === (int) $currentUser->id) {
+                    $hasAccess = true;
+                }
+            }
+
+            $course->is_enrolled = $isEnrolled;
+            $course->enrollment_status = $enrollmentStatus;
+            $course->is_in_wishlist = $isInWishlist;
+            $course->has_access = $hasAccess;
+        }
+
+        return [
+            'instructor' => $instructor,
+        ];
+    }
+
     private function resolveOptionalUser()
     {
         $plainAccessToken = request()->bearerToken();
