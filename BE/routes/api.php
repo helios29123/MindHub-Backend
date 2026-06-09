@@ -1,8 +1,5 @@
 <?php
-
-use Illuminate\Support\Facades\Route;
-
-Route::prefix('auth')->group(base_path('routes/api/auth.php'));
+require __DIR__ . '/api/auth.php';
 
 require __DIR__ . '/api/user.php';
 

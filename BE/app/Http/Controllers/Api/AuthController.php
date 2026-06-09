@@ -6,19 +6,20 @@ use App\Exceptions\BusinessException;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\Auth\AuthResource;
 use App\Http\Resources\User\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
     public function __construct(
         private readonly AuthService $authService
-    ) {
-    }
+    ) {}
 
     public function register(RegisterRequest $request): JsonResponse
     {
@@ -76,4 +77,18 @@ class AuthController extends Controller
             );
         }
     }
+    public function resetPassword(ResetPasswordRequest $request) {
+         try {
+            $this->authService->resetPassword($request->validated());
+
+            return ApiResponse::success('Đặt lại mật khẩu thành công.');
+        } catch (BusinessException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage(),
+                $exception->getErrors(),
+                $exception->getStatusCode()
+            );
+        }
+    }
+
 }
