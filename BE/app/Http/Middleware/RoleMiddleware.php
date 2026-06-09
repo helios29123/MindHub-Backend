@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\ApiResponse;
+use App\Helpers\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,17 +13,19 @@ final class RoleMiddleware
     {
         $user = $request->user();
 
-        if ($user === null) {
+        if (! $user) {
             return ApiResponse::error(
-                message: 'Unauthenticated.',
-                status: 401
+                'Unauthenticated.',
+                [],
+                401
             );
         }
 
         if (! in_array($user->role, $roles, true)) {
             return ApiResponse::error(
-                message: 'Bạn không có quyền thực hiện thao tác này.',
-                status: 403
+                'Bạn không có quyền thực hiện thao tác này.',
+                [],
+                403
             );
         }
 

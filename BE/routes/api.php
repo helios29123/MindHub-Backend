@@ -1,9 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
-Route::prefix('auth')->group(base_path('routes/api/auth.php'));
-
+require __DIR__ . '/api/auth.php';
 require __DIR__ . '/api/user.php';
 
 // Sau này làm module nào thì mở thêm dòng tương ứng

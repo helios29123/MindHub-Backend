@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\Auth\AuthResource;
 use App\Http\Resources\User\UserResource;
 use App\Services\AuthService;
@@ -76,6 +77,25 @@ class AuthController extends Controller
             );
         }
     }
+
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        try {
+            $this->authService->resetPassword($request->validated());
+
+            return ApiResponse::success(
+                'Đặt lại mật khẩu thành công.',
+                []
+            );
+        } catch (BusinessException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage(),
+                $exception->getErrors(),
+                $exception->getStatusCode()
+            );
+        }
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $token = $request->user()?->currentAccessToken();
