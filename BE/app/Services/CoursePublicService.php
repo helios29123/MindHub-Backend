@@ -92,6 +92,52 @@ class CoursePublicService
         ];
     }
 
+    public function outline(int $id): array
+    {
+        // 1. Fetch the course by ID
+        $course = Course::where('id', $id)
+            ->where('status', 'published')
+            ->first();
+
+        if (!$course) {
+            throw new ModelNotFoundException("Không tìm thấy dữ liệu.");
+        }
+
+        // 2. Resolve optional authenticated user from Bearer token
+        $user = $this->resolveOptionalUser();
+
+        // 3. Eager load sections and lessons with status and ordering constraints
+        $course->load([
+            'sections' => function ($query) {
+                $query->where('status', 'published')->orderBy('sort_order');
+            },
+            'sections.lessons' => function ($query) {
+                $query->where('status', 'published')->orderBy('sort_order');
+            }
+        ]);
+
+        // 4. Calculate if the user has full access to the outline lessons
+        $hasAccess = false;
+        if ($user) {
+            $enrollment = Enrollment::where('user_id', $user->id)
+                ->where('course_id', $course->id)
+                ->first();
+
+            if ($enrollment && in_array($enrollment->status, ['active', 'completed'])) {
+                $hasAccess = true;
+            }
+
+            if ((int) $course->instructor_id === (int) $user->id) {
+                $hasAccess = true;
+            }
+        }
+
+        return [
+            'sections' => $course->sections,
+            'has_access' => $hasAccess,
+        ];
+    }
+
     private function resolveOptionalUser()
     {
         $plainAccessToken = request()->bearerToken();
