@@ -1,7 +1,13 @@
 <?php
 namespace App\Models;
 
+use App\Models\Course;
+use App\Models\Enrollment;
+use App\Models\InstructorProfile;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -90,5 +96,37 @@ class User extends Authenticatable
     public function isLearner(): bool
     {
         return $this->role === self::ROLE_LEARNER;
+    }
+
+    public function instructorProfile(): HasOne
+    {
+        return $this->hasOne(InstructorProfile::class, 'user_id');
+    }
+
+    public function courses(): HasMany
+    {
+        return $this->hasMany(Course::class, 'instructor_id');
+    }
+
+    public function publishedCourses(): HasMany
+    {
+        return $this->hasMany(Course::class, 'instructor_id')
+            ->where('status', 'published')
+            ->whereNull('deleted_at');
+    }
+
+    public function courseEnrollments(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Enrollment::class,
+            Course::class,
+            'instructor_id',
+            'course_id',
+            'id',
+            'id'
+        )
+            ->where('courses.status', 'published')
+            ->whereNull('courses.deleted_at')
+            ->whereIn('enrollments.status', ['active', 'completed']);
     }
 }
