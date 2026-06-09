@@ -11,8 +11,8 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 
-// Nếu AuthController chưa có resetPassword thì đừng mở
-// Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
