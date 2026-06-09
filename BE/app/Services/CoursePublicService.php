@@ -138,6 +138,34 @@ class CoursePublicService
         ];
     }
 
+    public function previewLesson(int $id): \App\Models\Lesson
+    {
+        // 1. Fetch lesson by ID (not soft-deleted)
+        $lesson = \App\Models\Lesson::with('course')->find($id);
+
+        if (!$lesson) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        // 2. Check if course is published
+        $course = $lesson->course;
+        if (!$course || $course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu phù hợp.', 404);
+        }
+
+        // 3. Check if lesson status is hidden
+        if ($lesson->status === 'hidden') {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu phù hợp.', 404);
+        }
+
+        // 4. Check if lesson is previewable and published
+        if (!$lesson->is_preview || $lesson->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Bài học này không được xem trước.', 403);
+        }
+
+        return $lesson;
+    }
+
     private function resolveOptionalUser()
     {
         $plainAccessToken = request()->bearerToken();

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\CourseResource;
 use App\Http\Resources\CourseSectionResource;
+use App\Http\Resources\LessonResource;
 use App\Services\CoursePublicService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -59,5 +60,23 @@ class CoursePublicController extends Controller
         });
 
         return ApiResponse::success($resource, 'Lấy lộ trình khóa học thành công');
+    }
+
+    public function previewLesson(mixed $id): JsonResponse
+    {
+        // Validate path parameter
+        $validator = Validator::make(['id' => $id], [
+            'id' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::error('Tham số không hợp lệ.', $validator->errors()->toArray(), 422);
+        }
+
+        $lesson = $this->coursePublicService->previewLesson((int) $id);
+
+        $resource = new LessonResource($lesson);
+
+        return ApiResponse::success($resource, 'Lấy bài học preview thành công');
     }
 }
