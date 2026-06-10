@@ -6,7 +6,7 @@ use App\Http\Requests\Catalog\CourseSearchRequest;
 // use App\Http\Requests\Catalog\SearchSuggestionRequest;
 use App\Http\Resources\Catalog\CatalogCourseResource;
 use app\Http\Resources\Catalog\CategoryResource;
-// use App\Http\Resources\Catalog\FeaturedInstructorResource;
+use App\Http\Resources\Catalog\FeaturedInstructorResource;
 use App\Http\Resources\Catalog\HomeResource;
 // use App\Http\Resources\Catalog\SearchSuggestionResource;
 use App\Services\Catalog\CatalogService;
@@ -54,5 +54,12 @@ public function featuredCourses(CatalogListRequest $request): JsonResponse
         $courses = $this->catalogService->latestCourses($request->validated(), $request->user());
 
         return ApiResponse::paginated(CatalogCourseResource::collection($courses), $courses);
+    }
+
+    public function featuredInstructors(CatalogListRequest $request): JsonResponse
+    {
+        $instructors = $this->catalogService->featuredInstructors($request->validated());
+
+        return ApiResponse::paginated(FeaturedInstructorResource::collection($instructors), $instructors);
     }
 }
