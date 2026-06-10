@@ -10,6 +10,7 @@ require __DIR__ . '/api/instructor.php';
 require __DIR__ . '/api/quiz.php';
 require __DIR__ . '/api/interaction.php';
 require __DIR__ . '/api/admin.php';
+require __DIR__ . '/api/marketing.php';
 // require __DIR__ . '/api/wishlist.php';
 // require __DIR__ . '/api/payment.php';
 // require __DIR__ . '/api/learning.php';
