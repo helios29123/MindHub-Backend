@@ -55,5 +55,4 @@ public function featuredCourses(CatalogListRequest $request): JsonResponse
 
         return ApiResponse::paginated(CatalogCourseResource::collection($courses), $courses);
     }
-
 }
