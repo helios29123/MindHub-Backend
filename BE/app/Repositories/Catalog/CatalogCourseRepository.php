@@ -3,6 +3,9 @@
 namespace App\Repositories\Catalog;
 
 use App\Models\Course;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class CatalogCourseRepository
 {
@@ -13,9 +16,9 @@ class CatalogCourseRepository
         $query = $this->publicCourseQuery();
 
         if (!empty($filters['search'])) {
-            $search = $filters['search'];
+            $search = trim((string) $filters['search']);
 
-            $query->where(function ($courseQuery) use ($search) {
+            $query->where(function (Builder $courseQuery) use ($search) {
                 $courseQuery->where('courses.title', 'like', "%{$search}%")
                     ->orWhere('courses.short_description', 'like', "%{$search}%")
                     ->orWhere('courses.description', 'like', "%{$search}%");
@@ -25,7 +28,7 @@ class CatalogCourseRepository
         if (!empty($filters['category_id'])) {
             $categoryId = (int) $filters['category_id'];
 
-            $query->whereHas('categories', function ($categoryQuery) use ($categoryId) {
+            $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryId) {
                 $categoryQuery->where('categories.id', $categoryId)
                     ->where('categories.status', 'active')
                     ->whereNull('categories.deleted_at');
@@ -62,11 +65,11 @@ class CatalogCourseRepository
         $perPage = (int) ($filters['per_page'] ?? 10);
 
         $query = $this->publicCourseQuery()
-            ->where('courses.is_featured', true);
-
-        $query->orderByDesc('enrollments_count')
+            ->where('courses.is_featured', true)
+            ->orderByDesc('enrollments_count')
             ->orderByDesc('average_rating')
-            ->orderByDesc('courses.published_at');
+            ->orderByDesc('courses.published_at')
+            ->orderByDesc('courses.id');
 
         return $query->paginate($perPage);
     }
@@ -82,6 +85,60 @@ class CatalogCourseRepository
         return $query->paginate($perPage);
     }
 
+    public function suggestions(string $keyword, int $limit = 10): Collection
+    {
+        $keyword = trim($keyword);
+        $limit = min(max($limit, 1), 20);
+
+        if ($keyword === '') {
+            return collect();
+        }
+
+        $courseLimit = (int) ceil($limit / 2);
+        $categoryLimit = $limit - $courseLimit;
+
+        $courses = DB::table('courses')
+            ->select([
+                'id',
+                DB::raw('title as text'),
+                'slug',
+                DB::raw("'course' as type"),
+            ])
+            ->where('status', 'published')
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($keyword) {
+                $query->where('title', 'like', "%{$keyword}%")
+                    ->orWhere('short_description', 'like', "%{$keyword}%");
+            })
+            ->orderByDesc('is_featured')
+            ->orderByDesc('published_at')
+            ->limit($courseLimit)
+            ->get();
+
+        $categories = DB::table('categories')
+            ->select([
+                'id',
+                DB::raw('name as text'),
+                'slug',
+                DB::raw("'category' as type"),
+            ])
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($keyword) {
+                $query->where('name', 'like', "%{$keyword}%")
+                    ->orWhere('slug', 'like', "%{$keyword}%");
+            })
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->limit($categoryLimit)
+            ->get();
+
+        return $courses
+            ->merge($categories)
+            ->take($limit)
+            ->values();
+    }
+
     private function publicCourseQuery()
     {
         return Course::query()
@@ -92,16 +149,6 @@ class CatalogCourseRepository
             ->where('courses.status', 'published')
             ->whereNull('courses.deleted_at')
             ->select('courses.*')
-
-            /**
-             * Tính điểm đánh giá trung bình.
-             *
-             * DB của bạn:
-             * courses.id -> orders.course_id
-             * orders.id -> course_reviews.order_id
-             *
-             * Không join trực tiếp course_reviews.course_id vì bảng course_reviews không có course_id.
-             */
             ->selectSub(function ($query) {
                 $query->from('orders')
                     ->join('course_reviews', 'course_reviews.order_id', '=', 'orders.id')
@@ -109,10 +156,6 @@ class CatalogCourseRepository
                     ->whereNull('course_reviews.deleted_at')
                     ->selectRaw('COALESCE(AVG(course_reviews.rating), 0)');
             }, 'average_rating')
-
-            /**
-             * Đếm số lượng review.
-             */
             ->selectSub(function ($query) {
                 $query->from('orders')
                     ->join('course_reviews', 'course_reviews.order_id', '=', 'orders.id')
@@ -120,10 +163,6 @@ class CatalogCourseRepository
                     ->whereNull('course_reviews.deleted_at')
                     ->selectRaw('COUNT(course_reviews.id)');
             }, 'reviews_count')
-
-            /**
-             * Đếm số lượt học viên đã enroll.
-             */
             ->selectSub(function ($query) {
                 $query->from('enrollments')
                     ->whereColumn('enrollments.course_id', 'courses.id')

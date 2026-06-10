@@ -6,6 +6,7 @@ use App\Repositories\Catalog\BannerRepository;
 use App\Repositories\Catalog\CatalogCourseRepository;
 use App\Repositories\Catalog\CategoryRepository;
 use App\Repositories\Catalog\FeaturedInstructorRepository;
+use Illuminate\Support\Collection;
 
 class CatalogService
 {
@@ -66,5 +67,12 @@ class CatalogService
 
         return $this->featuredInstructorRepository->paginateFeatured($perPage);
     }
-   
+
+    public function suggestions(array $filters): Collection
+    {
+        $keyword = trim((string) ($filters['q'] ?? ''));
+        $limit = min((int) ($filters['limit'] ?? 10), 20);
+
+        return $this->courseRepository->suggestions($keyword, $limit);
+    }
 }
