@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Login Test - MindHub</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <h2>Test Google Login MindHub</h2>
+
+    <div id="g_id_onload"
+         data-client_id="1014575880179-5vi6ls48psmaon9hqapicpj38ms6q8du.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse">
+    </div>
+
+    <div class="g_id_signin"
+         data-type="standard"
+         data-size="large"
+         data-theme="outline"
+         data-text="sign_in_with"
+         data-shape="rectangular"
+         data-logo_alignment="left">
+    </div>
+
+    <h3>ID Token:</h3>
+    <textarea id="token" style="width: 100%; height: 220px;"></textarea>
+
+    <script>
+        function handleCredentialResponse(response) {
+            document.getElementById('token').value = response.credential;
+            console.log('Google ID Token:', response.credential);
+        }
+    </script>
+</body>
+</html>
