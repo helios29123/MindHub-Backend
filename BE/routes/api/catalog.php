@@ -9,5 +9,5 @@ Route::get('/courses', [CatalogController::class, 'searchCourses']);
 Route::get('/courses/sort', [CatalogController::class, 'sortCourses']);
 Route::get('/courses/featured', [CatalogController::class, 'featuredCourses']);
 Route::get('/courses/latest', [CatalogController::class, 'latestCourses']);
-// Route::get('/instructors/featured', [CatalogController::class, 'featuredInstructors']);
+Route::get('/instructors/featured', [CatalogController::class, 'featuredInstructors']);
 // Route::get('/search/suggestions', [CatalogController::class, 'suggestions']);
