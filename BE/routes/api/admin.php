@@ -12,4 +12,8 @@ Route::middleware(['auth.session', 'role:admin'])
         Route::match(['get', 'post'], '/campaigns', [\App\Http\Controllers\MarketingController::class, 'banners']);
         Route::match(['get', 'put', 'patch', 'delete'], '/campaigns/{id}', [\App\Http\Controllers\MarketingController::class, 'banners'])
             ->where('id', '[0-9]+');
+
+        Route::match(['get', 'post'], '/banners', [\App\Http\Controllers\AdminController::class, 'banners']);
+        Route::match(['get', 'put', 'patch', 'delete'], '/banners/{id}', [\App\Http\Controllers\AdminController::class, 'banners'])
+            ->where('id', '[0-9]+');
     });
