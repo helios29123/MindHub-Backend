@@ -7,6 +7,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Http\Requests\Auth\ResendVerifyEmailRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\Auth\AuthResource;
@@ -22,25 +23,18 @@ class AuthController extends Controller
     ) {}
 
     public function register(RegisterRequest $request): JsonResponse
-    {
-        try {
-            $user = $this->authService->register($request->validated());
+{
+    $result = $this->authService->register($request->validated());
 
-            return ApiResponse::success(
-                'Đăng ký tài khoản thành công.',
-                [
-                    'user' => new UserResource($user),
-                ],
-                201
-            );
-        } catch (BusinessException $exception) {
-            return ApiResponse::error(
-                $exception->getMessage(),
-                $exception->getErrors(),
-                $exception->getStatusCode()
-            );
-        }
-    }
+    return ApiResponse::success(
+        'Đăng ký tài khoản thành công. Vui lòng xác thực email.',
+        [
+            'user' => new UserResource($result['user']),
+            'verify_url' => $result['verify_url'] ?? null,
+        ],
+        201
+    );
+}
 
     public function login(LoginRequest $request): JsonResponse
     {
@@ -90,5 +84,35 @@ class AuthController extends Controller
             );
         }
     }
+    public function verifyEmail(Request $request, int $id, string $hash): JsonResponse
+{
+    if (! $request->hasValidSignature()) {
+        return ApiResponse::error(
+            'Link xác thực email không hợp lệ hoặc đã hết hạn.',
+            [],
+            403
+        );
+    }
+
+    $user = $this->authService->verifyEmail($id, $hash);
+
+    return ApiResponse::success(
+        'Xác thực email thành công.',
+        [
+            'user' => new UserResource($user),
+        ]
+    );
+}
+
+public function resendVerifyEmail(ResendVerifyEmailRequest $request): JsonResponse
+{
+    $result = $this->authService->resendVerifyEmail($request->validated());
+
+    return ApiResponse::success(
+        'Nếu email tồn tại và chưa xác thực, link xác thực đã được tạo.',
+        $result
+    );
+}
+
 
 }
