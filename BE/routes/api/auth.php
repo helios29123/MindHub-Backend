@@ -1,25 +1,27 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use Illuminate\Support\Facades\Route;
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::prefix('auth')->group(function () {
+    Route::post('register', [AuthController::class, 'register']);
 
-// Nếu đã code xong googleLogin thì mới mở route này
-// Route::post('/google-login', [AuthController::class, 'googleLogin']);
+    Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+        ->name('auth.verify-email');
 
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('verify-email/resend', [AuthController::class, 'resendVerifyEmail']);
 
+    Route::post('login', [AuthController::class, 'login']);
 
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('google', [AuthController::class, 'googleLogin']);
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+
+    Route::post('reset-password', [AuthController::class, 'resetPassword']);
+
+    Route::post('logout', [AuthController::class, 'logout'])
+        ->middleware('auth.session');
 });
-
-
 Route::middleware(['auth.session', 'role:admin'])->get('/admin/test', function () {
     return response()->json([
         'success' => true,

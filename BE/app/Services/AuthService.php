@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\BusinessException;
+use App\Mail\VerifyEmailMail;
 use App\Models\AuthSession;
 use App\Models\User;
 use App\Repositories\SessionRepository;
@@ -10,11 +11,14 @@ use App\Repositories\UserRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class AuthService
 {
     private const PASSWORD_RESET_EXPIRES_MINUTES = 15;
+    private const VERIFY_EMAIL_EXPIRES_MINUTES = 60;
 
     public function __construct(
         private readonly UserRepository $userRepository,
@@ -24,8 +28,11 @@ class AuthService
     ) {
     }
 
-    // AUTH01: Đăng ký
-    public function register(array $registerData): User
+    /**
+     * AUTH01: Đăng ký tài khoản
+     * Sau khi đăng ký sẽ tạo link xác thực email.
+     */
+    public function register(array $registerData): array
     {
         if ($this->userRepository->existsByEmail($registerData['email'])) {
             throw new BusinessException('Email đã được sử dụng.', 409, [
@@ -34,7 +41,7 @@ class AuthService
         }
 
         return DB::transaction(function () use ($registerData) {
-            return $this->userRepository->create([
+            $user = $this->userRepository->create([
                 'full_name' => $registerData['full_name'],
                 'email' => $registerData['email'],
                 'phone' => $registerData['phone'] ?? null,
@@ -42,17 +49,109 @@ class AuthService
                 'oauth_account_login' => null,
                 'role' => User::ROLE_LEARNER,
                 'status' => User::STATUS_ACTIVE,
+                'locked' => false,
+                'locked_reason' => null,
                 'email_verified_at' => null,
             ]);
+
+            $verifyUrl = $this->sendVerifyEmail($user);
+
+            return [
+                'user' => $user->refresh(),
+                'verify_url' => config('app.debug') ? $verifyUrl : null,
+            ];
         });
     }
 
-    // AUTH03: Đăng nhập
+    /**
+     * AUTH02: Tạo link xác thực email.
+     */
+    public function createEmailVerificationUrl(User $user): string
+    {
+        return URL::temporarySignedRoute(
+            'auth.verify-email',
+            now()->addMinutes(self::VERIFY_EMAIL_EXPIRES_MINUTES),
+            [
+                'id' => $user->id,
+                'hash' => sha1($user->email),
+            ]
+        );
+    }
+
+    /**
+     * AUTH02: Gửi mail xác thực email.
+     */
+    public function sendVerifyEmail(User $user): string
+    {
+        $verifyUrl = $this->createEmailVerificationUrl($user);
+
+        Mail::to($user->email)->send(
+            new VerifyEmailMail($user, $verifyUrl)
+        );
+
+        return $verifyUrl;
+    }
+
+    /**
+     * AUTH02: Xác thực email khi user bấm link.
+     */
+    public function verifyEmail(int $userId, string $hash): User
+    {
+        $user = $this->userRepository->findById($userId);
+
+        if (! $user) {
+            throw new BusinessException('Không tìm thấy người dùng.', 404);
+        }
+
+        if (! hash_equals(sha1($user->email), $hash)) {
+            throw new BusinessException('Link xác thực email không hợp lệ.', 403);
+        }
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+
+        return $user->refresh();
+    }
+
+    /**
+     * AUTH02: Gửi lại link xác thực email.
+     */
+    public function resendVerifyEmail(array $data): array
+    {
+        $user = $this->userRepository->findByEmail($data['email']);
+
+        if (! $user) {
+            return [
+                'verify_url' => null,
+            ];
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            throw new BusinessException('Email đã được xác thực trước đó.', 400, [
+                'email' => ['Email đã được xác thực trước đó.'],
+            ]);
+        }
+
+        $verifyUrl = $this->sendVerifyEmail($user);
+
+        return [
+            'verify_url' => config('app.debug') ? $verifyUrl : null,
+        ];
+    }
+
+    /**
+     * AUTH03: Đăng nhập bằng email/password.
+     */
     public function login(array $loginData, Request $request): array
     {
         $user = $this->userRepository->findByEmail($loginData['email']);
 
-        if (! $user || ! $user->password_hash || ! Hash::check($loginData['password'], (string) $user->password_hash)) {
+        if (
+            ! $user ||
+            ! $user->password_hash ||
+            ! Hash::check($loginData['password'], (string) $user->password_hash)
+        ) {
             throw new BusinessException('Email hoặc mật khẩu không đúng.', 401);
         }
 
@@ -73,14 +172,20 @@ class AuthService
         });
     }
 
+    /**
+     * AUTH04: Đăng nhập Google.
+     */
     public function googleLogin(array $googleLoginData, Request $request): array
     {
         $googleUser = $this->googleTokenVerifier->verify($googleLoginData['google_token']);
 
         return DB::transaction(function () use ($googleUser, $googleLoginData, $request) {
+            $provider = $googleUser['provider'] ?? 'google';
+            $providerId = $googleUser['provider_id'];
+
             $user = $this->userRepository->findByOAuthProviderId(
-                $googleUser['provider'],
-                $googleUser['provider_id']
+                $provider,
+                $providerId
             );
 
             if (! $user) {
@@ -92,8 +197,8 @@ class AuthService
 
                 $user = $this->userRepository->update($user, [
                     'oauth_account_login' => json_encode([
-                        'provider' => $googleUser['provider'],
-                        'provider_id' => $googleUser['provider_id'],
+                        'provider' => $provider,
+                        'provider_id' => $providerId,
                     ], JSON_THROW_ON_ERROR),
                     'email_verified_at' => $user->email_verified_at ?? now(),
                     'last_login_at' => now(),
@@ -105,11 +210,13 @@ class AuthService
                     'password_hash' => null,
                     'phone' => null,
                     'oauth_account_login' => json_encode([
-                        'provider' => $googleUser['provider'],
-                        'provider_id' => $googleUser['provider_id'],
+                        'provider' => $provider,
+                        'provider_id' => $providerId,
                     ], JSON_THROW_ON_ERROR),
                     'role' => User::ROLE_LEARNER,
                     'status' => User::STATUS_ACTIVE,
+                    'locked' => false,
+                    'locked_reason' => null,
                     'email_verified_at' => now(),
                     'last_login_at' => now(),
                 ]);
@@ -123,6 +230,9 @@ class AuthService
         });
     }
 
+    /**
+     * AUTH05: Quên mật khẩu.
+     */
     public function forgotPassword(array $data): array
     {
         $user = $this->userRepository->findByEmail($data['email']);
@@ -150,8 +260,23 @@ class AuthService
         ];
     }
 
+    /**
+     * AUTH06: Đặt lại mật khẩu.
+     */
     public function resetPassword(array $resetPasswordData): void
     {
+        if (empty($resetPasswordData['email'])) {
+            throw new BusinessException('Email không được để trống.', 422, [
+                'email' => ['Email không được để trống.'],
+            ]);
+        }
+
+        if (empty($resetPasswordData['token'])) {
+            throw new BusinessException('Token không được để trống.', 422, [
+                'token' => ['Token không được để trống.'],
+            ]);
+        }
+
         $user = $this->userRepository->findByEmail($resetPasswordData['email']);
 
         if (! $user || ! $user->password_reset) {
@@ -194,23 +319,27 @@ class AuthService
         });
     }
 
+    /**
+     * AUTH07: Đăng xuất.
+     */
     public function logout(AuthSession $session): void
     {
         $this->sessionRepository->revoke($session);
     }
 
-    public function verifyEmailBlocked(): void
-    {
-        throw new BusinessException('Chức năng chưa sẵn sàng triển khai trong Sprint 1.', 501);
-    }
-
+    /**
+     * Kiểm tra user có được phép đăng nhập không.
+     */
     private function ensureUserCanLogin(User $user): void
     {
-        if (! $user->isActive()) {
+        if (! $user->isActive() || $user->isLocked()) {
             throw new BusinessException('Tài khoản không được phép đăng nhập.', 403);
         }
     }
 
+    /**
+     * Tạo access_token, refresh_token và session.
+     */
     private function createAuthenticatedSession(User $user, ?string $deviceName, Request $request): array
     {
         $refreshToken = $this->accessTokenService->createRefreshToken();
@@ -232,6 +361,7 @@ class AuthService
         );
 
         return [
+            'token_type' => 'Bearer',
             'user' => $user->refresh(),
             'access_token' => $accessToken['token'],
             'refresh_token' => $refreshToken['token'],
