@@ -9,6 +9,8 @@ class CatalogCourseResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $averageRating = $this->getAttribute('average_rating');
+
         return [
             'id' => $this->id,
             'title' => $this->title,
@@ -22,14 +24,21 @@ class CatalogCourseResource extends JsonResource
             'language' => $this->language,
             'is_featured' => (bool) $this->is_featured,
             'total_duration_seconds' => (int) $this->total_duration_seconds,
-            'published_at' => optional($this->published_at)->toISOString(),
-            'average_rating' => $this->reviews_avg_rating !== null ? round((float) $this->reviews_avg_rating, 1) : null,
-            'enrollments_count' => (int) ($this->enrollments_count ?? 0),
-            'is_enrolled' => (bool) ($this->learner_enrolled ?? false),
-            'instructor' => $this->whenLoaded('instructor', fn () => [
-                'id' => $this->instructor->id,
-                'full_name' => $this->instructor->full_name,
-            ]),
+            'published_at' => $this->published_at,
+
+            'average_rating' => round((float) ($averageRating ?? 0), 1),
+            'reviews_count' => (int) ($this->getAttribute('reviews_count') ?? 0),
+            'enrollments_count' => (int) ($this->getAttribute('enrollments_count') ?? 0),
+
+            'is_enrolled' => (bool) ($this->getAttribute('is_enrolled') ?? false),
+
+            'instructor' => $this->whenLoaded('instructor', function () {
+                return [
+                    'id' => $this->instructor?->id,
+                    'full_name' => $this->instructor?->full_name,
+                ];
+            }),
+
             'categories' => CategoryResource::collection($this->whenLoaded('categories')),
         ];
     }

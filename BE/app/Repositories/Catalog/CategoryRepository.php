@@ -3,29 +3,27 @@
 namespace App\Repositories\Catalog;
 
 use App\Models\Category;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 
 class CategoryRepository
 {
-    public function paginateActive(int $perPage): LengthAwarePaginator
+    public function getActiveForHome()
     {
         return Category::query()
-            ->with(['parent:id,name,slug'])
             ->where('status', 'active')
+            ->whereNull('deleted_at')
             ->orderBy('sort_order')
-            ->orderBy('name')
-            ->paginate($perPage);
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get();
     }
 
-    public function activeForHome(int $limit): Collection
+    public function paginateActive(int $perPage = 10)
     {
         return Category::query()
             ->where('status', 'active')
-            ->whereNull('parent_id')
+            ->whereNull('deleted_at')
             ->orderBy('sort_order')
-            ->orderBy('name')
-            ->limit($limit)
-            ->get();
+            ->orderByDesc('id')
+            ->paginate($perPage);
     }
 }
