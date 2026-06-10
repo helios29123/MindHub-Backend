@@ -63,3 +63,26 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## 5. Sử dụng CodeGraph & Ghi nhớ Agent Memory (ai-memory)
+
+Để tối ưu hóa hiệu năng làm việc và tránh các lỗi sai phổ biến của LLM:
+
+### A. Sử dụng CodeGraph để đọc Codebase
+- **Đọc hiểu trước khi code**: Trước khi tiến hành chỉnh sửa hoặc thêm mới mã nguồn, bắt buộc sử dụng các công cụ của `codegraph` (`codegraph_search`, `codegraph_context`, `codegraph_callers`, v.v.) để tìm hiểu cấu trúc lớp (classes), phương thức (methods), các import và luồng gọi của các hàm liên quan.
+- **Không tự giả định**: Tận dụng tối đa công cụ CodeGraph để kiểm chứng sự tồn tại và kiểu dữ liệu của các phương thức/thuộc tính trong codebase thay vì tự suy đoán.
+- **Cập nhật index**: Sau khi pull code hoặc thay đổi cấu trúc tệp đáng kể, cần cập nhật index bằng cách chạy lệnh:
+  ```powershell
+  codegraph index [path_to_project]
+  ```
+
+### B. Ghi nhớ Agent Memory (`ai-memory`)
+- **Ghi nhận lịch sử làm việc**: Sau khi hoàn thành một nhiệm vụ, một API mới hoặc một đợt phát triển tính năng, Agent phải ghi lại nhật ký vào thư mục `.agent/ai-memory/`.
+- **Định dạng đặt tên tệp**: Đặt tên tệp theo định dạng `YYYY-MM-DD-FEATURE-ID.md` (Ví dụ: `2026-06-09-COURSE-04.md`).
+- **Nội dung cấu trúc của file Memory**:
+  1. **Tóm tắt nhiệm vụ**: Mô tả ngắn gọn nhiệm vụ, các API endpoints hoặc yêu cầu chức năng.
+  2. **Quyết định kỹ thuật & Thiết kế**: Lý do lựa chọn giải pháp kỹ thuật, thiết kế DB, tối ưu hóa (eager loading, hasManyThrough), cơ chế validation, kiểm soát lỗi.
+  3. **Các file đã chỉnh sửa & tạo mới**: Liệt kê các tệp đã tạo hoặc chỉnh sửa dưới dạng markdown links.
+  4. **Trạng thái & Việc còn dở**: Xác nhận hoàn thành hoặc lưu ý những phần việc chưa làm xong để các Agent tiếp theo tiếp quản.
