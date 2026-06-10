@@ -66,4 +66,5 @@ class CatalogService
 
         return $this->featuredInstructorRepository->paginateFeatured($perPage);
     }
+   
 }

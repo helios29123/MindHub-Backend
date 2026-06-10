@@ -35,9 +35,25 @@ class CatalogController extends Controller
         return ApiResponse::paginated(CatalogCourseResource::collection($courses), $courses);
     }
     public function sortCourses(CourseSortRequest $request): JsonResponse
+{
+    $courses = $this->catalogService->searchCourses($request->validated());
+
+    return ApiResponse::paginated(
+        CatalogCourseResource::collection($courses),
+        $courses
+    );
+}
+public function featuredCourses(CatalogListRequest $request): JsonResponse
     {
-        $courses = $this->catalogService->sortCourses($request->validated(), $request->user());
+        $courses = $this->catalogService->featuredCourses($request->validated(), $request->user());
 
         return ApiResponse::paginated(CatalogCourseResource::collection($courses), $courses);
     }
+    public function latestCourses(CatalogListRequest $request): JsonResponse
+    {
+        $courses = $this->catalogService->latestCourses($request->validated(), $request->user());
+
+        return ApiResponse::paginated(CatalogCourseResource::collection($courses), $courses);
+    }
+
 }

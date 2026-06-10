@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\BusinessException;
+use App\Http\Requests\User\ChangePasswordRequest;
 use App\Http\Requests\User\MeProfileRequest;
+use App\Http\Requests\User\UpdateMeRequest;
 use App\Http\Resources\User\UserResource;
 use App\Services\User\UserProfileService;
 use App\Support\ApiResponse;
@@ -17,7 +20,9 @@ final class UserProfileController extends Controller
 
     public function me(MeProfileRequest $request): JsonResponse
     {
-        $user = $this->userProfileService->getAuthenticatedProfile($request->user());
+        $user = $this->userProfileService->getAuthenticatedProfile(
+            $request->user()
+        );
 
         return ApiResponse::success(
             data: new UserResource($user),
@@ -37,6 +42,7 @@ final class UserProfileController extends Controller
             message: 'Thao tác thành công'
         );
     }
+
     public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
         try {
@@ -46,14 +52,14 @@ final class UserProfileController extends Controller
             );
 
             return ApiResponse::success(
-                [],
-                'Đổi mật khẩu thành công.'
+                data: [],
+                message: 'Đổi mật khẩu thành công.'
             );
         } catch (BusinessException $exception) {
             return ApiResponse::error(
-                $exception->getMessage(),
-                $exception->getErrors(),
-                $exception->getCode() > 0 ? $exception->getCode() : 400
+                message: $exception->getMessage(),
+                errors: $exception->getErrors(),
+                status: $exception->getCode() > 0 ? $exception->getCode() : 400
             );
         }
     }
