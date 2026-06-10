@@ -1,11 +1,11 @@
 <?php
 namespace App\Http\Controllers;
 use App\Http\Requests\Catalog\CatalogListRequest;
-// use App\Http\Requests\Catalog\CourseSortRequest;
+use App\Http\Requests\Catalog\CourseSortRequest;
 use App\Http\Requests\Catalog\CourseSearchRequest;
 // use App\Http\Requests\Catalog\SearchSuggestionRequest;
 use App\Http\Resources\Catalog\CatalogCourseResource;
-use App\Http\Resources\Catalog\CategoryResource;
+use app\Http\Resources\Catalog\CategoryResource;
 // use App\Http\Resources\Catalog\FeaturedInstructorResource;
 use App\Http\Resources\Catalog\HomeResource;
 // use App\Http\Resources\Catalog\SearchSuggestionResource;
@@ -32,6 +32,11 @@ class CatalogController extends Controller
     public function searchCourses(CourseSearchRequest $request): JsonResponse
     {
         $courses = $this->catalogService->searchCourses($request->validated(), $request->user());
+        return ApiResponse::paginated(CatalogCourseResource::collection($courses), $courses);
+    }
+    public function sortCourses(CourseSortRequest $request): JsonResponse
+    {
+        $courses = $this->catalogService->sortCourses($request->validated(), $request->user());
 
         return ApiResponse::paginated(CatalogCourseResource::collection($courses), $courses);
     }

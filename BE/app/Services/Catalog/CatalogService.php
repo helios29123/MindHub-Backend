@@ -1,18 +1,14 @@
 <?php
+
 namespace App\Services\Catalog;
-use App\Models\User;
+
 use App\Repositories\Catalog\BannerRepository;
 use App\Repositories\Catalog\CatalogCourseRepository;
 use App\Repositories\Catalog\CategoryRepository;
 use App\Repositories\Catalog\FeaturedInstructorRepository;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 
 class CatalogService
 {
-    private const DEFAULT_PER_PAGE = 10;
-    private const HOME_LIMIT = 8;
-
     public function __construct(
         private readonly BannerRepository $bannerRepository,
         private readonly CategoryRepository $categoryRepository,
@@ -21,59 +17,53 @@ class CatalogService
     ) {
     }
 
-    public function home(array $filters, ?User $currentUser = null): array
+    public function home(array $filters): array
     {
-        $limit = min((int) ($filters['per_page'] ?? self::HOME_LIMIT), 20);
-
         return [
-            'banners' => $this->bannerRepository->activeHomeBanners(),
-            'categories' => $this->categoryRepository->activeForHome($limit),
-            'featured_courses' => $this->courseRepository->featured($limit, $currentUser),
-            'latest_courses' => $this->courseRepository->latest($limit, $currentUser),
-            'featured_instructors' => $this->featuredInstructorRepository->featured($limit),
+            'banners' => $this->bannerRepository->getActiveHomeBanners(),
+
+            'categories' => $this->categoryRepository->getActiveForHome(),
+
+            'featured_courses' => $this->courseRepository->featured([
+                'page' => 1,
+                'per_page' => 8,
+            ]),
+
+            'latest_courses' => $this->courseRepository->latest([
+                'page' => 1,
+                'per_page' => 8,
+            ]),
+
+            'featured_instructors' => $this->featuredInstructorRepository->paginateFeatured(8),
         ];
     }
 
-    public function categories(array $filters): LengthAwarePaginator
+    public function categories(array $filters)
     {
-        return $this->categoryRepository->paginateActive($this->perPage($filters));
+        $perPage = (int) ($filters['per_page'] ?? 10);
+
+        return $this->categoryRepository->paginateActive($perPage);
     }
 
-    public function searchCourses(array $filters, ?User $currentUser = null): LengthAwarePaginator
+    public function searchCourses(array $filters)
     {
-        return $this->courseRepository->paginatePublic($filters, $this->perPage($filters), $currentUser);
+        return $this->courseRepository->search($filters);
     }
 
-    public function sortCourses(array $filters, ?User $currentUser = null): LengthAwarePaginator
+    public function featuredCourses(array $filters)
     {
-        return $this->courseRepository->paginatePublic($filters, $this->perPage($filters), $currentUser);
+        return $this->courseRepository->featured($filters);
     }
 
-    public function featuredCourses(array $filters, ?User $currentUser = null): LengthAwarePaginator
+    public function latestCourses(array $filters)
     {
-        return $this->courseRepository->paginateFeatured($this->perPage($filters), $currentUser);
+        return $this->courseRepository->latest($filters);
     }
 
-    public function latestCourses(array $filters, ?User $currentUser = null): LengthAwarePaginator
+    public function featuredInstructors(array $filters)
     {
-        return $this->courseRepository->paginateLatest($this->perPage($filters), $currentUser);
-    }
+        $perPage = (int) ($filters['per_page'] ?? 10);
 
-    public function featuredInstructors(array $filters): LengthAwarePaginator
-    {
-        return $this->featuredInstructorRepository->paginateFeatured($this->perPage($filters));
-    }
-
-    public function suggestions(array $filters): Collection
-    {
-        return $this->courseRepository->suggestions(
-            trim((string) ($filters['q'] ?? '')),
-            min((int) ($filters['limit'] ?? 10), 20)
-        );
-    }
-
-    private function perPage(array $filters): int
-    {
-        return min((int) ($filters['per_page'] ?? self::DEFAULT_PER_PAGE), 50);
+        return $this->featuredInstructorRepository->paginateFeatured($perPage);
     }
 }
