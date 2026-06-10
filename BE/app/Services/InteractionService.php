@@ -112,4 +112,47 @@ class InteractionService
 
         return $comment->load('user');
     }
+
+    public function replyToComment(int $commentId, array $data, User $user): Comment
+    {
+        // 1. Tìm comment gốc visible và lesson/course liên quan.
+        $parentComment = Comment::where('id', $commentId)
+            ->where('status', 'visible')
+            ->first();
+
+        if (!$parentComment) {
+            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        $lesson = Lesson::with('course')->find($parentComment->lesson_id);
+        if (!$lesson) {
+            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        $course = $lesson->course;
+        if (!$course || $course->status !== 'published') {
+            throw new BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        if ($lesson->status !== 'published') {
+            throw new BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        // 2. Kiểm tra instructor hiện tại là có phải là giảng viên của khóa học không
+        if ((int) $course->instructor_id !== (int) $user->id) {
+            throw new BusinessException('Bạn không được trả lời Q&A của khóa học này.', 403);
+        }
+
+        // 3. Tạo bình luận phản hồi
+        $reply = Comment::create([
+            'parent_id' => $parentComment->id,
+            'user_id' => $user->id,
+            'order_id' => null,
+            'lesson_id' => $parentComment->lesson_id,
+            'content' => $data['content'],
+            'status' => 'visible',
+        ]);
+
+        return $reply->load('user');
+    }
 }

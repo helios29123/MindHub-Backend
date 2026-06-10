@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Interaction\StoreCommentRequest;
+use App\Http\Requests\Interaction\ReplyCommentRequest;
 use App\Http\Resources\CommentResource;
 use App\Services\InteractionService;
 use App\Support\ApiResponse;
@@ -80,5 +81,26 @@ class InteractionController extends Controller
         }
 
         return ApiResponse::error('Phương thức không được hỗ trợ.', [], 405);
+    }
+
+    public function replyComment(ReplyCommentRequest $request, mixed $id): JsonResponse
+    {
+        // 1. Validate path parameter
+        $validator = Validator::make(['id' => $id], [
+            'id' => 'required|integer|min:1'
+        ]);
+        if ($validator->fails()) {
+            return ApiResponse::error('Dữ liệu không hợp lệ.', $validator->errors()->toArray(), 422);
+        }
+
+        // 2. Delegate logic to Service
+        $reply = $this->interactionService->replyToComment((int) $id, $request->validated(), $request->user());
+
+        // 3. Return response with 201 Created
+        return ApiResponse::success(
+            new CommentResource($reply),
+            'Thao tác thành công',
+            201
+        );
     }
 }
