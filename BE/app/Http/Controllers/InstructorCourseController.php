@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Exceptions\BusinessException;
+
 use App\Http\Requests\Instructor\SubmitForReviewRequest;
 use App\Http\Requests\Instructor\ManageLessonsRequest;
 use App\Http\Requests\Instructor\StoreCourseRequest;
@@ -9,6 +11,7 @@ use App\Http\Requests\Instructor\UpdateLessonRequest;
 use App\Http\Requests\Instructor\UploadLessonVideoRequest;
 use App\Http\Resources\Instructor\InstructorCourseResource;
 use App\Http\Resources\Instructor\LessonResource;
+use App\Http\Resources\Instructor\ReviewNoteResource;
 use App\Services\Instructor\InstructorCourseService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -113,6 +116,21 @@ final class InstructorCourseController extends Controller
             new InstructorCourseResource($course),
             'Thao tác thành công',
             201
+        );
+    }
+
+    public function reviewNotes(string $id): JsonResponse
+    {
+        if (! ctype_digit($id) || (int) $id < 1) {
+            throw new BusinessException('Tham số không hợp lệ.', 422);
+        }
+        $course = $this->instructorCourseService->getRejectedReviewNotes(
+            request()->user(),
+            (int) $id
+        );
+        return ApiResponse::success(
+            new ReviewNoteResource($course),
+            'Lấy dữ liệu thành công'
         );
     }
 }

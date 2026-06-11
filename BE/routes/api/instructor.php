@@ -14,3 +14,4 @@ Route::middleware(['auth.session', 'role:instructor'])
     });
 
 Route::middleware(['auth.session', 'active.user', 'role:instructor'])->post('/instructor/courses/{id}/submit', [\App\Http\Controllers\InstructorCourseController::class, 'submitForReview'])->whereNumber('id');
+Route::middleware(['auth.session', 'active.user', 'role:instructor'])->get('/instructor/courses/{id}/review-notes', [\App\Http\Controllers\InstructorCourseController::class, 'reviewNotes']);
