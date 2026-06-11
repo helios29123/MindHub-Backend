@@ -1,5 +1,7 @@
 <?php
 namespace App\Services\Instructor;
+
+use App\Exceptions\BusinessException;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\Lesson;
@@ -154,7 +156,52 @@ final class InstructorCourseService
                 ->load(['course', 'section', 'assets']);
         });
     }
-    private function findOwnedLessonOrFail(User $instructor, int $lessonId): Lesson
+    public function submitForReview(User $instructor, int $courseId): Course
+    {
+        return DB::transaction(function () use ($instructor, $courseId): Course {
+            $course = $this->instructorCourseRepository->findByIdWithReviewRelations($courseId);
+            if (! $course) {
+                throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
+            }
+            if ((int) $course->instructor_id !== (int) $instructor->id) {
+                throw new BusinessException('Bạn không có quyền thao tác tài nguyên này.', 403);
+            }
+            if (! $this->courseCanBeSubmitted($course)) {
+                throw new BusinessException('Khóa học chưa đủ điều kiện gửi duyệt.', 400);
+            }
+            return $this->instructorCourseRepository->markAsPendingReview($course);
+        });
+    }
+    private function courseCanBeSubmitted(Course $course): bool
+    {
+        if (! in_array($course->status, ['draft', 'rejected'], true)) {
+            return false;
+        }
+        foreach ([
+            'title',
+            'slug',
+            'short_description',
+            'description',
+            'level',
+            'language',
+            'requirements',
+            'outcomes',
+        ] as $requiredField) {
+            if (trim((string) $course->{$requiredField}) === '') {
+                return false;
+            }
+        }
+        if ($course->categories->isEmpty()) {
+            return false;
+        }
+        if ($course->sections->isEmpty()) {
+            return false;
+        }
+        $lessonCount = $course->sections->sum(
+            fn (CourseSection $section): int => $section->lessons->count()
+        );
+        return $lessonCount > 0;
+    }    private function findOwnedLessonOrFail(User $instructor, int $lessonId): Lesson
     {
         $lesson = $this->instructorLessonRepository->findByIdWithCourse($lessonId);
         if (!$lesson) {
