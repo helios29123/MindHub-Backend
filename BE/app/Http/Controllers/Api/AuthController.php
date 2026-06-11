@@ -6,8 +6,10 @@ use App\Exceptions\BusinessException;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\GoogleLoginRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\ResendVerifyEmailRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\Auth\AuthResource;
 use App\Http\Resources\User\UserResource;
@@ -24,12 +26,13 @@ class AuthController extends Controller
     public function register(RegisterRequest $request): JsonResponse
     {
         try {
-            $user = $this->authService->register($request->validated());
+            $result = $this->authService->register($request->validated());
 
             return ApiResponse::success(
-                'Đăng ký tài khoản thành công.',
+                'Đăng ký tài khoản thành công. Vui lòng xác thực email.',
                 [
-                    'user' => new UserResource($user),
+                    'user' => new UserResource($result['user']),
+                    'verify_url' => $result['verify_url'] ?? null,
                 ],
                 201
             );
@@ -86,6 +89,73 @@ class AuthController extends Controller
             return ApiResponse::success(
                 'Đặt lại mật khẩu thành công.',
                 []
+            );
+        } catch (BusinessException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage(),
+                $exception->getErrors(),
+                $exception->getStatusCode()
+            );
+        }
+    }
+
+    public function verifyEmail(Request $request, int $id, string $hash): JsonResponse
+    {
+        try {
+            if (! $request->hasValidSignature()) {
+                return ApiResponse::error(
+                    'Link xác thực email không hợp lệ hoặc đã hết hạn.',
+                    [],
+                    403
+                );
+            }
+
+            $user = $this->authService->verifyEmail($id, $hash);
+
+            return ApiResponse::success(
+                'Xác thực email thành công.',
+                [
+                    'user' => new UserResource($user),
+                ]
+            );
+        } catch (BusinessException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage(),
+                $exception->getErrors(),
+                $exception->getStatusCode()
+            );
+        }
+    }
+
+    public function resendVerifyEmail(ResendVerifyEmailRequest $request): JsonResponse
+    {
+        try {
+            $result = $this->authService->resendVerifyEmail($request->validated());
+
+            return ApiResponse::success(
+                'Nếu email tồn tại và chưa xác thực, link xác thực đã được tạo.',
+                $result
+            );
+        } catch (BusinessException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage(),
+                $exception->getErrors(),
+                $exception->getStatusCode()
+            );
+        }
+    }
+
+    public function googleLogin(GoogleLoginRequest $request): JsonResponse
+    {
+        try {
+            $authResult = $this->authService->googleLogin(
+                $request->validated(),
+                $request
+            );
+
+            return ApiResponse::success(
+                'Đăng nhập Google thành công.',
+                new AuthResource($authResult)
             );
         } catch (BusinessException $exception) {
             return ApiResponse::error(

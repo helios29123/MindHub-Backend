@@ -2,18 +2,20 @@
 
 namespace App\Support;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 final class ApiResponse
 {
     public static function success(
-        mixed $data = null,
+        mixed $data = [],
         string $message = 'Lấy dữ liệu thành công',
         int $status = 200,
-        array $meta = []
+        ?array $meta = null
     ): JsonResponse {
-        if ($data instanceof JsonResource) {
+        if ($data instanceof JsonResource || $data instanceof AnonymousResourceCollection) {
             $data = $data->resolve(request());
         }
 
@@ -23,11 +25,24 @@ final class ApiResponse
             'data' => $data,
         ];
 
-        if ($meta !== []) {
+        if ($meta !== null) {
             $response['meta'] = $meta;
         }
 
         return response()->json($response, $status);
+    }
+
+    public static function paginated(
+        AnonymousResourceCollection $resourceCollection,
+        LengthAwarePaginator $paginator,
+        string $message = 'Lấy dữ liệu thành công'
+    ): JsonResponse {
+        return self::success(
+            data: $resourceCollection->resolve(request()),
+            message: $message,
+            status: 200,
+            meta: PaginationMeta::fromPaginator($paginator)
+        );
     }
 
     public static function error(
