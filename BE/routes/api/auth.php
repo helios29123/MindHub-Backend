@@ -22,6 +22,7 @@ Route::prefix('auth')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])
         ->middleware('auth.session');
 });
+
 Route::middleware(['auth.session', 'role:admin'])->get('/admin/test', function () {
     return response()->json([
         'success' => true,

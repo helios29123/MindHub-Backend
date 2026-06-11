@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Repositories\SessionRepository;
 use App\Repositories\UserRepository;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -29,7 +30,7 @@ class AuthService
     }
 
     /**
-     * AUTH01: Đăng ký tài khoản
+     * AUTH01: Đăng ký tài khoản.
      * Sau khi đăng ký sẽ tạo link xác thực email.
      */
     public function register(array $registerData): array
@@ -265,18 +266,6 @@ class AuthService
      */
     public function resetPassword(array $resetPasswordData): void
     {
-        if (empty($resetPasswordData['email'])) {
-            throw new BusinessException('Email không được để trống.', 422, [
-                'email' => ['Email không được để trống.'],
-            ]);
-        }
-
-        if (empty($resetPasswordData['token'])) {
-            throw new BusinessException('Token không được để trống.', 422, [
-                'token' => ['Token không được để trống.'],
-            ]);
-        }
-
         $user = $this->userRepository->findByEmail($resetPasswordData['email']);
 
         if (! $user || ! $user->password_reset) {
@@ -295,7 +284,7 @@ class AuthService
 
         $tokenHash = $passwordResetData['token_hash'] ?? null;
         $expiresAt = isset($passwordResetData['expires_at'])
-            ? now()->parse($passwordResetData['expires_at'])
+            ? Carbon::parse($passwordResetData['expires_at'])
             : null;
 
         if (
