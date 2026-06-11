@@ -172,7 +172,20 @@ final class InstructorCourseService
             return $this->instructorCourseRepository->markAsPendingReview($course);
         });
     }
-    private function courseCanBeSubmitted(Course $course): bool
+    public function getRejectedReviewNotes(User $instructor, int $courseId): Course
+    {
+        $course = $this->instructorCourseRepository->findByIdWithReviewRelations($courseId);
+        if (! $course) {
+            throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
+        }
+        if ((int) $course->instructor_id !== (int) $instructor->id) {
+            throw new BusinessException('Bạn không có quyền thao tác tài nguyên này.', 403);
+        }
+        if ($course->status !== 'rejected') {
+            throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
+        }
+        return $course;
+    }    private function courseCanBeSubmitted(Course $course): bool
     {
         if (! in_array($course->status, ['draft', 'rejected'], true)) {
             return false;
