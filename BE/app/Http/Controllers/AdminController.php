@@ -12,112 +12,146 @@ use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
 {
-    public function __construct(
-        private readonly AdminService $adminService
-    ) {
-    }
+    public function __construct(private readonly AdminService $adminService) {}
 
     public function banners(Request $request, mixed $id = null): JsonResponse
     {
         // 1. Validate path parameter ID if present
         if ($id !== null) {
-            $pathValidator = Validator::make(['id' => $id], [
-                'id' => 'required|integer|min:1',
-            ]);
+            $pathValidator = Validator::make(
+                ["id" => $id],
+                [
+                    "id" => "required|integer|min:1",
+                ],
+            );
 
             if ($pathValidator->fails()) {
-                return ApiResponse::error('Dữ liệu không hợp lệ.', $pathValidator->errors()->toArray(), 422);
+                return ApiResponse::error(
+                    "Dữ liệu không hợp lệ.",
+                    $pathValidator->errors()->toArray(),
+                    422,
+                );
             }
             $id = (int) $id;
         }
 
         // 2. Handle GET for single item details
-        if ($request->isMethod('get') && $id !== null) {
+        if ($request->isMethod("get") && $id !== null) {
             $banner = $this->adminService->getBanner($id);
             return ApiResponse::success(
                 new BannerResource($banner),
-                'Thao tác thành công',
-                200
+                "Thao tác thành công",
+                200,
             );
         }
 
         // 3. Handle GET for listing paginated
-        if ($request->isMethod('get')) {
+        if ($request->isMethod("get")) {
             $queryValidator = Validator::make($request->query(), [
-                'page' => 'nullable|integer|min:1',
-                'per_page' => 'nullable|integer|min:1|max:100',
+                "page" => "nullable|integer|min:1",
+                "per_page" => "nullable|integer|min:1|max:100",
             ]);
 
             if ($queryValidator->fails()) {
-                return ApiResponse::error('Dữ liệu không hợp lệ.', $queryValidator->errors()->toArray(), 422);
+                return ApiResponse::error(
+                    "Dữ liệu không hợp lệ.",
+                    $queryValidator->errors()->toArray(),
+                    422,
+                );
             }
 
-            $banners = $this->adminService->getBanners($queryValidator->validated());
+            $banners = $this->adminService->getBanners(
+                $queryValidator->validated(),
+            );
             return ApiResponse::paginated(
                 BannerResource::collection($banners),
                 $banners,
-                'Thao tác thành công'
+                "Thao tác thành công",
             );
         }
 
         // 4. Handle POST for creating
-        if ($request->isMethod('post')) {
+        if ($request->isMethod("post")) {
             $bannerRequest = app(BannerRequest::class);
-            $validator = Validator::make($request->all(), $bannerRequest->rules(), $bannerRequest->messages());
+            $validator = Validator::make(
+                $request->all(),
+                $bannerRequest->rules(),
+                $bannerRequest->messages(),
+            );
 
             if ($validator->fails()) {
                 $errors = $validator->errors();
-                $message = 'Dữ liệu không hợp lệ.';
-                if ($errors->has('status')) {
-                    $message = 'Trạng thái banner không hợp lệ.';
-                } elseif ($errors->has('end_at')) {
-                    $message = 'Thời gian banner không hợp lệ.';
+                $message = "Dữ liệu không hợp lệ.";
+                if ($errors->has("status")) {
+                    $message = "Trạng thái banner không hợp lệ.";
+                } elseif ($errors->has("end_at")) {
+                    $message = "Thời gian banner không hợp lệ.";
                 }
                 return ApiResponse::error($message, $errors->toArray(), 422);
             }
 
-            $banner = $this->adminService->createBanner($validator->validated());
+            $banner = $this->adminService->createBanner(
+                $validator->validated(),
+            );
             return ApiResponse::success(
-                json_encode(['id' => $banner->id, 'status' => 'updated']),
-                'Thao tác thành công',
-                200
+                json_encode(["id" => $banner->id, "status" => "updated"]),
+                "Thao tác thành công",
+                200,
             );
         }
 
         // 5. Handle PUT/PATCH for updating
-        if ($request->isMethod('put') || $request->isMethod('patch')) {
+        if ($request->isMethod("put") || $request->isMethod("patch")) {
             $bannerRequest = app(BannerRequest::class);
-            $validator = Validator::make($request->all(), $bannerRequest->rules(), $bannerRequest->messages());
+            $validator = Validator::make(
+                $request->all(),
+                $bannerRequest->rules(),
+                $bannerRequest->messages(),
+            );
 
             if ($validator->fails()) {
                 $errors = $validator->errors();
-                $message = 'Dữ liệu không hợp lệ.';
-                if ($errors->has('status')) {
-                    $message = 'Trạng thái banner không hợp lệ.';
-                } elseif ($errors->has('end_at')) {
-                    $message = 'Thời gian banner không hợp lệ.';
+                $message = "Dữ liệu không hợp lệ.";
+                if ($errors->has("status")) {
+                    $message = "Trạng thái banner không hợp lệ.";
+                } elseif ($errors->has("end_at")) {
+                    $message = "Thời gian banner không hợp lệ.";
                 }
                 return ApiResponse::error($message, $errors->toArray(), 422);
             }
 
-            $banner = $this->adminService->updateBanner($id, $validator->validated());
+            $banner = $this->adminService->updateBanner(
+                $id,
+                $validator->validated(),
+            );
             return ApiResponse::success(
-                json_encode(['id' => $banner->id, 'status' => 'updated']),
-                'Thao tác thành công',
-                200
+                json_encode(["id" => $banner->id, "status" => "updated"]),
+                "Thao tác thành công",
+                200,
             );
         }
 
         // 6. Handle DELETE for destroying
-        if ($request->isMethod('delete') && $id !== null) {
+        if ($request->isMethod("delete") && $id !== null) {
             $this->adminService->deleteBanner($id);
-            return ApiResponse::success(
-                null,
-                'Thao tác thành công',
-                200
-            );
+            return ApiResponse::success(null, "Thao tác thành công", 200);
         }
 
-        return ApiResponse::error('Phương thức không được hỗ trợ.', [], 405);
+        return ApiResponse::error("Phương thức không được hỗ trợ.", [], 405);
+    }
+
+    public function roles(Request $request, mixed $id = null): JsonResponse
+    {
+        return ApiResponse::error(
+            "Chức năng quản lý role và phân quyền chưa sẵn sàng triển khai trong Sprint 1.",
+            [
+                "reason" => [
+                    "ERD/schema hiện tại chưa có bảng roles, permissions, role_permissions hoặc user_roles.",
+                    "Schema hiện tại chỉ hỗ trợ role tĩnh trong users.role: admin, instructor, learner.",
+                    "Không được tự thêm bảng/cột/status ngoài ERD đã chốt.",
+                ],
+            ],
+            501,
+        );
     }
 }
