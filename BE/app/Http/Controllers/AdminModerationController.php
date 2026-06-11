@@ -2,11 +2,15 @@
 namespace App\Http\Controllers;
 use App\Http\Requests\Moderation\ModerateItemRequest;
 use App\Http\Requests\Moderation\PendingCourseQueryRequest;
+use App\Http\Requests\Moderation\RejectcourseRequest;
 use App\Http\Resources\ApiResource;
+use App\Http\Resources\Moderation\CourseRejectResource;
 use App\Http\Resources\Moderation\PendingCourseResource;
 use App\Services\Moderation\CourseModerationService;
 use App\Services\ModerationService;
 use App\Support\ApiResponse;
+use DomainException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 class AdminModerationController extends Controller
@@ -29,6 +33,29 @@ class AdminModerationController extends Controller
                 'total' => $courses->total(),
             ]
         );
+    }
+    public function rejectCourse(RejectcourseRequest $request, mixed $id): JsonResponse
+    {
+        try {
+            $validated = $request->validated();
+            $course = $this->courseModerationService->rejectCourse(
+                (int) $validated['id'],
+                (string) $validated['admin_reject_reason']
+            );
+            return ApiResponse::success(
+                new CourseRejectResource($course),
+                'Thao tác thành công',
+                200
+            );
+        } catch (ModelNotFoundException) {
+            return ApiResponse::error('Không tìm thấy dữ liệu.', [], 404);
+        } catch (DomainException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage() ?: 'Trạng thái khóa học không hợp lệ để xử lý.',
+                [],
+                400
+            );
+        }
     }
     public function moderateItem(ModerateItemRequest $request, mixed $id): JsonResponse
     {
