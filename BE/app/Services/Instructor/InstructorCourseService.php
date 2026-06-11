@@ -5,6 +5,7 @@ use App\Exceptions\BusinessException;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\Lesson;
+use App\Models\LessonAsset;
 use App\Models\User;
 use App\Repositories\Instructor\InstructorCourseRepository;
 use App\Repositories\Instructor\InstructorLessonRepository;
@@ -156,7 +157,24 @@ final class InstructorCourseService
                 ->load(['course', 'section', 'assets']);
         });
     }
-    public function submitForReview(User $instructor, int $courseId): Course
+    public function uploadLessonAsset(User $instructor, int $lessonId, array $validatedData, UploadedFile $file): LessonAsset
+    {
+        return DB::transaction(function () use ($instructor, $lessonId, $validatedData, $file): LessonAsset {
+            $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
+            $uploadedFile = $this->fileUpload->uploadLessonAsset($file, $lesson->id);
+            $title = $validatedData['title']
+                ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            return LessonAsset::create([
+                'lesson_id' => $lesson->id,
+                'title' => $title,
+                'file_url' => $uploadedFile['file_url'],
+                'file_name' => $uploadedFile['file_name'],
+                'file_type' => $uploadedFile['file_type'],
+                'file_size' => $uploadedFile['file_size'],
+                'note' => $validatedData['note'] ?? null,
+            ]);
+        });
+    }    public function submitForReview(User $instructor, int $courseId): Course
     {
         return DB::transaction(function () use ($instructor, $courseId): Course {
             $course = $this->instructorCourseRepository->findByIdWithReviewRelations($courseId);

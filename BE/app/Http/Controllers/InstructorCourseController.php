@@ -9,8 +9,10 @@ use App\Http\Requests\Instructor\StoreCourseRequest;
 use App\Http\Requests\Instructor\StoreLessonRequest;
 use App\Http\Requests\Instructor\UpdateLessonRequest;
 use App\Http\Requests\Instructor\UploadLessonVideoRequest;
+use App\Http\Requests\Instructor\UploadLessonAssetRequest;
 use App\Http\Resources\Instructor\InstructorCourseResource;
 use App\Http\Resources\Instructor\LessonResource;
+use App\Http\Resources\Instructor\LessonAssetResource;
 use App\Http\Resources\Instructor\ReviewNoteResource;
 use App\Services\Instructor\InstructorCourseService;
 use App\Support\ApiResponse;
@@ -106,7 +108,20 @@ final class InstructorCourseController extends Controller
         );
     }
 
-    public function submitForReview(SubmitForReviewRequest $request, int $id): JsonResponse
+    public function uploadAsset(UploadLessonAssetRequest $request, int $id): JsonResponse
+    {
+        $asset = $this->instructorCourseService->uploadLessonAsset(
+            $request->user(),
+            $id,
+            $request->validated(),
+            $request->file('file')
+        );
+        return ApiResponse::success(
+            new LessonAssetResource($asset),
+            'Thao tác thành công',
+            201
+        );
+    }    public function submitForReview(SubmitForReviewRequest $request, int $id): JsonResponse
     {
         $course = $this->instructorCourseService->submitForReview(
             $request->user(),
