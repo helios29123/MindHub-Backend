@@ -8,6 +8,7 @@ Route::middleware(['auth.session', 'role:instructor'])
         Route::get('/lessons', [InstructorCourseController::class, 'indexLessons']);
         Route::post('/lessons', [InstructorCourseController::class, 'storeLesson']);
         Route::get('/lessons/{id}', [InstructorCourseController::class, 'showLesson'])->whereNumber('id');
+        Route::patch('/lessons/{id}/preview', [InstructorCourseController::class, 'togglePreview'])->whereNumber('id');
         Route::match(['put', 'patch'], '/lessons/{id}', [InstructorCourseController::class, 'updateLesson'])->whereNumber('id');
         Route::delete('/lessons/{id}', [InstructorCourseController::class, 'destroyLesson'])->whereNumber('id');
         Route::post('/lessons/{id}/video', [InstructorCourseController::class, 'uploadVideo'])->whereNumber('id');
