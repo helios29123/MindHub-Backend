@@ -1,9 +1,11 @@
 <?php
 namespace App\Http\Controllers;
+use App\Http\Requests\Moderation\ApproveCourseRequest;
 use App\Http\Requests\Moderation\ModerateItemRequest;
 use App\Http\Requests\Moderation\PendingCourseQueryRequest;
 use App\Http\Requests\Moderation\RejectcourseRequest;
 use App\Http\Resources\ApiResource;
+use App\Http\Resources\Moderation\CourseApprovalResource;
 use App\Http\Resources\Moderation\CourseRejectResource;
 use App\Http\Resources\Moderation\PendingCourseResource;
 use App\Services\Moderation\CourseModerationService;
@@ -33,6 +35,28 @@ class AdminModerationController extends Controller
                 'total' => $courses->total(),
             ]
         );
+    }
+    public function approveCourse(ApproveCourseRequest $request, mixed $id): JsonResponse
+    {
+        try {
+            $validated = $request->validated();
+            $course = $this->courseModerationService->approveCourse(
+                (int) $validated['id']
+            );
+            return ApiResponse::success(
+                new CourseApprovalResource($course),
+                'Thao tác thành công',
+                200
+            );
+        } catch (ModelNotFoundException) {
+            return ApiResponse::error('Không tìm thấy dữ liệu.', [], 404);
+        } catch (DomainException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage() ?: 'Trạng thái khóa học không hợp lệ để xử lý.',
+                [],
+                400
+            );
+        }
     }
     public function rejectCourse(RejectcourseRequest $request, mixed $id): JsonResponse
     {

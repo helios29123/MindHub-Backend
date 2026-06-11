@@ -7,6 +7,8 @@ Route::middleware(['auth.session', 'role:admin'])
     ->prefix('admin')
     ->group(function (): void {
         Route::get('/course-reviews', [AdminModerationController::class, 'pendingCourses']);
+        Route::patch('/courses/{id}/approve', [AdminModerationController::class, 'approveCourse'])
+            ->where('id', '[0-9]+');
         Route::patch('/courses/{id}/reject', [AdminModerationController::class, 'rejectCourse'])
             ->where('id', '[0-9]+');
         Route::patch('/moderation/items/{id}', [AdminModerationController::class, 'moderateItem'])
