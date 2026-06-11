@@ -143,6 +143,20 @@ final class InstructorCourseService
             $this->instructorLessonRepository->delete($lesson);
         });
     }
+    public function toggleLessonPreview(User $instructor, int $lessonId, bool $isPreview): Lesson
+    {
+        return DB::transaction(function () use ($instructor, $lessonId, $isPreview): Lesson {
+            $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
+            if ($isPreview && $lesson->status === 'hidden') {
+                throw new BusinessException('Bài học đang ẩn không thể bật preview miễn phí.', 400);
+            }
+            return $this->instructorLessonRepository
+                ->update($lesson, [
+                    'is_preview' => $isPreview,
+                ])
+                ->load(['course', 'section', 'assets']);
+        });
+    }
     public function uploadLessonVideo(User $instructor, int $lessonId, array $validatedData, UploadedFile $video): Lesson
     {
         return DB::transaction(function () use ($instructor, $lessonId, $validatedData, $video): Lesson {
@@ -174,7 +188,9 @@ final class InstructorCourseService
                 'note' => $validatedData['note'] ?? null,
             ]);
         });
-    }    public function submitForReview(User $instructor, int $courseId): Course
+    }
+
+    public function submitForReview(User $instructor, int $courseId): Course
     {
         return DB::transaction(function () use ($instructor, $courseId): Course {
             $course = $this->instructorCourseRepository->findByIdWithReviewRelations($courseId);
@@ -203,7 +219,9 @@ final class InstructorCourseService
             throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
         }
         return $course;
-    }    private function courseCanBeSubmitted(Course $course): bool
+    }
+
+    private function courseCanBeSubmitted(Course $course): bool
     {
         if (! in_array($course->status, ['draft', 'rejected'], true)) {
             return false;
@@ -232,7 +250,9 @@ final class InstructorCourseService
             fn (CourseSection $section): int => $section->lessons->count()
         );
         return $lessonCount > 0;
-    }    private function findOwnedLessonOrFail(User $instructor, int $lessonId): Lesson
+    }
+
+    private function findOwnedLessonOrFail(User $instructor, int $lessonId): Lesson
     {
         $lesson = $this->instructorLessonRepository->findByIdWithCourse($lessonId);
         if (!$lesson) {

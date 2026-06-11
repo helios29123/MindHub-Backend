@@ -7,6 +7,7 @@ use App\Http\Requests\Instructor\SubmitForReviewRequest;
 use App\Http\Requests\Instructor\ManageLessonsRequest;
 use App\Http\Requests\Instructor\StoreCourseRequest;
 use App\Http\Requests\Instructor\StoreLessonRequest;
+use App\Http\Requests\Instructor\TogglePreviewRequest;
 use App\Http\Requests\Instructor\UpdateLessonRequest;
 use App\Http\Requests\Instructor\UploadLessonVideoRequest;
 use App\Http\Requests\Instructor\UploadLessonAssetRequest;
@@ -82,6 +83,19 @@ final class InstructorCourseController extends Controller
             'Cập nhật bài học thành công.'
         );
     }
+    public function togglePreview(TogglePreviewRequest $request, int $id): JsonResponse
+    {
+        $validatedData = $request->validated();
+        $lesson = $this->instructorCourseService->toggleLessonPreview(
+            $request->user(),
+            $id,
+            (bool) $validatedData['is_preview']
+        );
+        return ApiResponse::success(
+            new LessonResource($lesson),
+            'Thao tác thành công'
+        );
+    }
     public function destroyLesson(int $id): JsonResponse
     {
         $this->instructorCourseService->deleteLesson(
@@ -121,7 +135,9 @@ final class InstructorCourseController extends Controller
             'Thao tác thành công',
             201
         );
-    }    public function submitForReview(SubmitForReviewRequest $request, int $id): JsonResponse
+    }
+
+    public function submitForReview(SubmitForReviewRequest $request, int $id): JsonResponse
     {
         $course = $this->instructorCourseService->submitForReview(
             $request->user(),
