@@ -21,5 +21,20 @@ final class InstructorCourseRepository
         return Course::query()
             ->with(['categories'])
             ->findOrFail($courseId);
+    }    public function findByIdWithReviewRelations(int $courseId): ?Course
+    {
+        return Course::query()
+            ->with(['categories', 'sections.lessons'])
+            ->find($courseId);
+    }
+    public function markAsPendingReview(Course $course): Course
+    {
+        $course->forceFill([
+            'status' => 'pending_review',
+            'admin_reject_reason' => null,
+        ])->save();
+        return $this->findByIdWithReviewRelations((int) $course->id)
+            ?? $course->fresh(['categories', 'sections.lessons'])
+            ?? $course;
     }
 }

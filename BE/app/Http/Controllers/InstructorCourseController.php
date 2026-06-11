@@ -1,5 +1,7 @@
 <?php
 namespace App\Http\Controllers;
+
+use App\Http\Requests\Instructor\SubmitForReviewRequest;
 use App\Http\Requests\Instructor\ManageLessonsRequest;
 use App\Http\Requests\Instructor\StoreCourseRequest;
 use App\Http\Requests\Instructor\StoreLessonRequest;
@@ -97,6 +99,19 @@ final class InstructorCourseController extends Controller
         return ApiResponse::success(
             new LessonResource($lesson),
             'Upload video bài học thành công.',
+            201
+        );
+    }
+
+    public function submitForReview(SubmitForReviewRequest $request, int $id): JsonResponse
+    {
+        $course = $this->instructorCourseService->submitForReview(
+            $request->user(),
+            $id
+        );
+        return ApiResponse::success(
+            new InstructorCourseResource($course),
+            'Thao tác thành công',
             201
         );
     }

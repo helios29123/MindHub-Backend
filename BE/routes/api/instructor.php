@@ -12,3 +12,5 @@ Route::middleware(['auth.session', 'role:instructor'])
         Route::delete('/lessons/{id}', [InstructorCourseController::class, 'destroyLesson'])->whereNumber('id');
         Route::post('/lessons/{id}/video', [InstructorCourseController::class, 'uploadVideo'])->whereNumber('id');
     });
+
+Route::middleware(['auth.session', 'active.user', 'role:instructor'])->post('/instructor/courses/{id}/submit', [\App\Http\Controllers\InstructorCourseController::class, 'submitForReview'])->whereNumber('id');
