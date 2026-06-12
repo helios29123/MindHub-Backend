@@ -4,6 +4,7 @@ use App\Exceptions\BusinessException;
 use App\Models\User;
 use App\Models\Wishlist;
 use App\Repositories\Wishlist\WishlistRepository;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 final class WishlistService
@@ -11,6 +12,13 @@ final class WishlistService
     public function __construct(
         private readonly WishlistRepository $wishlistRepository
     ) {
+    }
+    public function getUserWishlist(User $user, int $perPage = 10): LengthAwarePaginator
+    {
+        return $this->wishlistRepository->paginatePublishedCoursesByUser(
+            (int) $user->id,
+            $perPage
+        );
     }
     public function addCourseToWishlist(User $user, int $courseId): Wishlist
     {
