@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -255,9 +256,11 @@ class AuthService
             ], JSON_THROW_ON_ERROR),
         ]);
 
+        Log::info("Reset password token for {$user->email}: {$plainResetToken}");
+
         return [
-            'reset_token' => config('app.debug') ? $plainResetToken : null,
-            'expires_at' => config('app.debug') ? $expiresAt->toISOString() : null,
+            'reset_token' => null,
+            'expires_at' => $expiresAt->toISOString(),
         ];
     }
 

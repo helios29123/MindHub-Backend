@@ -168,10 +168,10 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $token = $request->user()?->currentAccessToken();
+        $session = $request->attributes->get('auth_session');
 
-        if ($token !== null) {
-            $token->delete();
+        if ($session !== null) {
+            $this->authService->logout($session);
         }
 
         return ApiResponse::success(

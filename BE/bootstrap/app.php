@@ -83,7 +83,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return ApiResponse::error(
                     $exception->getMessage(),
                     method_exists($exception, 'getErrors') ? $exception->getErrors() : [],
-                    $exception->getCode() ?: 400
+                    $exception->getStatusCode()
                 );
             }
 
