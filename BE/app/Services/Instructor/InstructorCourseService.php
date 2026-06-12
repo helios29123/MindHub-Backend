@@ -5,6 +5,7 @@ use App\Exceptions\BusinessException;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\Lesson;
+use App\Models\LessonAsset;
 use App\Models\User;
 use App\Repositories\Instructor\InstructorCourseRepository;
 use App\Repositories\Instructor\InstructorLessonRepository;
@@ -142,6 +143,20 @@ final class InstructorCourseService
             $this->instructorLessonRepository->delete($lesson);
         });
     }
+    public function toggleLessonPreview(User $instructor, int $lessonId, bool $isPreview): Lesson
+    {
+        return DB::transaction(function () use ($instructor, $lessonId, $isPreview): Lesson {
+            $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
+            if ($isPreview && $lesson->status === 'hidden') {
+                throw new BusinessException('Bài học đang ẩn không thể bật preview miễn phí.', 400);
+            }
+            return $this->instructorLessonRepository
+                ->update($lesson, [
+                    'is_preview' => $isPreview,
+                ])
+                ->load(['course', 'section', 'assets']);
+        });
+    }
     public function uploadLessonVideo(User $instructor, int $lessonId, array $validatedData, UploadedFile $video): Lesson
     {
         return DB::transaction(function () use ($instructor, $lessonId, $validatedData, $video): Lesson {
@@ -156,6 +171,25 @@ final class InstructorCourseService
                 ->load(['course', 'section', 'assets']);
         });
     }
+    public function uploadLessonAsset(User $instructor, int $lessonId, array $validatedData, UploadedFile $file): LessonAsset
+    {
+        return DB::transaction(function () use ($instructor, $lessonId, $validatedData, $file): LessonAsset {
+            $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
+            $uploadedFile = $this->fileUpload->uploadLessonAsset($file, $lesson->id);
+            $title = $validatedData['title']
+                ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            return LessonAsset::create([
+                'lesson_id' => $lesson->id,
+                'title' => $title,
+                'file_url' => $uploadedFile['file_url'],
+                'file_name' => $uploadedFile['file_name'],
+                'file_type' => $uploadedFile['file_type'],
+                'file_size' => $uploadedFile['file_size'],
+                'note' => $validatedData['note'] ?? null,
+            ]);
+        });
+    }
+
     public function submitForReview(User $instructor, int $courseId): Course
     {
         return DB::transaction(function () use ($instructor, $courseId): Course {
@@ -172,6 +206,21 @@ final class InstructorCourseService
             return $this->instructorCourseRepository->markAsPendingReview($course);
         });
     }
+    public function getRejectedReviewNotes(User $instructor, int $courseId): Course
+    {
+        $course = $this->instructorCourseRepository->findByIdWithReviewRelations($courseId);
+        if (! $course) {
+            throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
+        }
+        if ((int) $course->instructor_id !== (int) $instructor->id) {
+            throw new BusinessException('Bạn không có quyền thao tác tài nguyên này.', 403);
+        }
+        if ($course->status !== 'rejected') {
+            throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
+        }
+        return $course;
+    }
+
     private function courseCanBeSubmitted(Course $course): bool
     {
         if (! in_array($course->status, ['draft', 'rejected'], true)) {
@@ -201,7 +250,9 @@ final class InstructorCourseService
             fn (CourseSection $section): int => $section->lessons->count()
         );
         return $lessonCount > 0;
-    }    private function findOwnedLessonOrFail(User $instructor, int $lessonId): Lesson
+    }
+
+    private function findOwnedLessonOrFail(User $instructor, int $lessonId): Lesson
     {
         $lesson = $this->instructorLessonRepository->findByIdWithCourse($lessonId);
         if (!$lesson) {

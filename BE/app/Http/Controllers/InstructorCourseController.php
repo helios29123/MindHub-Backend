@@ -1,14 +1,20 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Exceptions\BusinessException;
+
 use App\Http\Requests\Instructor\SubmitForReviewRequest;
 use App\Http\Requests\Instructor\ManageLessonsRequest;
 use App\Http\Requests\Instructor\StoreCourseRequest;
 use App\Http\Requests\Instructor\StoreLessonRequest;
+use App\Http\Requests\Instructor\TogglePreviewRequest;
 use App\Http\Requests\Instructor\UpdateLessonRequest;
 use App\Http\Requests\Instructor\UploadLessonVideoRequest;
+use App\Http\Requests\Instructor\UploadLessonAssetRequest;
 use App\Http\Resources\Instructor\InstructorCourseResource;
 use App\Http\Resources\Instructor\LessonResource;
+use App\Http\Resources\Instructor\LessonAssetResource;
+use App\Http\Resources\Instructor\ReviewNoteResource;
 use App\Services\Instructor\InstructorCourseService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -77,6 +83,19 @@ final class InstructorCourseController extends Controller
             'Cập nhật bài học thành công.'
         );
     }
+    public function togglePreview(TogglePreviewRequest $request, int $id): JsonResponse
+    {
+        $validatedData = $request->validated();
+        $lesson = $this->instructorCourseService->toggleLessonPreview(
+            $request->user(),
+            $id,
+            (bool) $validatedData['is_preview']
+        );
+        return ApiResponse::success(
+            new LessonResource($lesson),
+            'Thao tác thành công'
+        );
+    }
     public function destroyLesson(int $id): JsonResponse
     {
         $this->instructorCourseService->deleteLesson(
@@ -103,6 +122,21 @@ final class InstructorCourseController extends Controller
         );
     }
 
+    public function uploadAsset(UploadLessonAssetRequest $request, int $id): JsonResponse
+    {
+        $asset = $this->instructorCourseService->uploadLessonAsset(
+            $request->user(),
+            $id,
+            $request->validated(),
+            $request->file('file')
+        );
+        return ApiResponse::success(
+            new LessonAssetResource($asset),
+            'Thao tác thành công',
+            201
+        );
+    }
+
     public function submitForReview(SubmitForReviewRequest $request, int $id): JsonResponse
     {
         $course = $this->instructorCourseService->submitForReview(
@@ -113,6 +147,21 @@ final class InstructorCourseController extends Controller
             new InstructorCourseResource($course),
             'Thao tác thành công',
             201
+        );
+    }
+
+    public function reviewNotes(string $id): JsonResponse
+    {
+        if (! ctype_digit($id) || (int) $id < 1) {
+            throw new BusinessException('Tham số không hợp lệ.', 422);
+        }
+        $course = $this->instructorCourseService->getRejectedReviewNotes(
+            request()->user(),
+            (int) $id
+        );
+        return ApiResponse::success(
+            new ReviewNoteResource($course),
+            'Lấy dữ liệu thành công'
         );
     }
 }

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -29,20 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (BusinessException $exception, $request) {
-            if ($request->is('api/*')) {
-                return ApiResponse::error(
-                    $exception->getMessage(),
-                    $exception->getErrors(),
-                    $exception->getStatusCode()
-                );
-            }
-
-            return null;
-        });
-
-        $exceptions->render(function (ValidationException $exception, $request) {
-            if ($request->is('api/*')) {
+        $exceptions->render(function (ValidationException $exception, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return ApiResponse::error(
                     'Dữ liệu không hợp lệ.',
                     $exception->errors(),
@@ -53,10 +42,10 @@ return Application::configure(basePath: dirname(__DIR__))
             return null;
         });
 
-        $exceptions->render(function (AuthenticationException $exception, $request) {
-            if ($request->is('api/*')) {
+        $exceptions->render(function (AuthenticationException $exception, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return ApiResponse::error(
-                    'Unauthenticated.',
+                    'Vui lòng đăng nhập.',
                     [],
                     401
                 );
@@ -65,8 +54,8 @@ return Application::configure(basePath: dirname(__DIR__))
             return null;
         });
 
-        $exceptions->render(function (AccessDeniedHttpException $exception, $request) {
-            if ($request->is('api/*')) {
+        $exceptions->render(function (AccessDeniedHttpException $exception, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return ApiResponse::error(
                     'Bạn không có quyền thực hiện thao tác này.',
                     [],
@@ -77,8 +66,8 @@ return Application::configure(basePath: dirname(__DIR__))
             return null;
         });
 
-        $exceptions->render(function (ModelNotFoundException|NotFoundHttpException $exception, $request) {
-            if ($request->is('api/*')) {
+        $exceptions->render(function (ModelNotFoundException|NotFoundHttpException $exception, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return ApiResponse::error(
                     'Không tìm thấy dữ liệu.',
                     [],
@@ -89,10 +78,20 @@ return Application::configure(basePath: dirname(__DIR__))
             return null;
         });
 
-        $exceptions->render(function (Throwable $exception, $request) {
-            if ($request->is('api/*')) {
-                report($exception);
+        $exceptions->render(function (BusinessException $exception, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return ApiResponse::error(
+                    $exception->getMessage(),
+                    method_exists($exception, 'getErrors') ? $exception->getErrors() : [],
+                    $exception->getCode() ?: 400
+                );
+            }
 
+            return null;
+        });
+
+        $exceptions->render(function (Throwable $exception, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return ApiResponse::error(
                     'Có lỗi xảy ra, vui lòng thử lại sau.',
                     [],
