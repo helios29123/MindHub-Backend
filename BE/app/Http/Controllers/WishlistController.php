@@ -1,5 +1,6 @@
 <?php
 namespace App\Http\Controllers;
+use App\Http\Requests\Wishlist\DestroyWishlistRequest;
 use App\Http\Requests\Wishlist\StoreWishlistRequest;
 use App\Http\Resources\Wishlist\WishlistResource;
 use App\Services\Wishlist\WishlistService;
@@ -21,6 +22,18 @@ final class WishlistController extends Controller
             new WishlistResource($wishlist),
             'Thêm khóa học vào danh sách yêu thích thành công.',
             201
+        );
+    }
+    public function destroy(DestroyWishlistRequest $request): JsonResponse
+    {
+        $data = $this->wishlistService->removeCourseFromWishlist(
+            $request->user(),
+            $request->validatedCourseId()
+        );
+        return ApiResponse::success(
+            $data,
+            'Đã xóa khóa học khỏi danh sách yêu thích.',
+            200
         );
     }
 }

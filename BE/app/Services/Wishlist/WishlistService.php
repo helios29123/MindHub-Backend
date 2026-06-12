@@ -32,4 +32,31 @@ final class WishlistService
             return $wishlist->load('course');
         });
     }
+    public function removeCourseFromWishlist(User $user, int $courseId): array
+    {
+        return DB::transaction(function () use ($user, $courseId): array {
+            $course = $this->wishlistRepository->findCourse($courseId);
+            if ($course === null) {
+                throw new BusinessException(
+                    'Không tìm thấy khóa học trong danh sách yêu thích.',
+                    404
+                );
+            }
+            $wishlist = $this->wishlistRepository->findByUserAndCourse(
+                (int) $user->id,
+                (int) $course->id
+            );
+            if ($wishlist === null) {
+                throw new BusinessException(
+                    'Không tìm thấy khóa học trong danh sách yêu thích.',
+                    404
+                );
+            }
+            $this->wishlistRepository->delete($wishlist);
+            return [
+                'course_id' => (int) $course->id,
+                'is_wishlisted' => false,
+            ];
+        });
+    }
 }
