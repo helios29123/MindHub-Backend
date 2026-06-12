@@ -2,8 +2,41 @@
 namespace App\Repositories\Wishlist;
 use App\Models\Course;
 use App\Models\Wishlist;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 final class WishlistRepository
 {
+    public function paginatePublishedCoursesByUser(int $userId, int $perPage = 10): LengthAwarePaginator
+    {
+        return Wishlist::query()
+            ->with([
+                'course' => function ($query): void {
+                    $query
+                        ->select([
+                            'id',
+                            'title',
+                            'slug',
+                            'thumbnail_url',
+                            'price',
+                            'sale_price',
+                            'level',
+                            'language',
+                            'status',
+                            'deleted_at',
+                        ])
+                        ->where('status', 'published')
+                        ->whereNull('deleted_at');
+                },
+            ])
+            ->where('user_id', $userId)
+            ->whereHas('course', function ($query): void {
+                $query
+                    ->where('status', 'published')
+                    ->whereNull('deleted_at');
+            })
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+    }
     public function findCourse(int $courseId): ?Course
     {
         return Course::query()

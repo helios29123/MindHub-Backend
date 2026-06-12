@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 use App\Http\Requests\Wishlist\DestroyWishlistRequest;
 use App\Http\Requests\Wishlist\StoreWishlistRequest;
+use App\Http\Requests\Wishlist\WishlistQueryRequest;
 use App\Http\Resources\Wishlist\WishlistResource;
 use App\Services\Wishlist\WishlistService;
 use App\Support\ApiResponse;
@@ -11,6 +12,23 @@ final class WishlistController extends Controller
     public function __construct(
         private readonly WishlistService $wishlistService
     ) {
+    }
+    public function index(WishlistQueryRequest $request): JsonResponse
+    {
+        $wishlists = $this->wishlistService->getUserWishlist(
+            $request->user(),
+            $request->perPage()
+        );
+        return ApiResponse::success(
+            WishlistResource::collection($wishlists->getCollection()),
+            'Lấy danh sách khóa học yêu thích thành công.',
+            200,
+            [
+                'page' => $wishlists->currentPage(),
+                'per_page' => $wishlists->perPage(),
+                'total' => $wishlists->total(),
+            ]
+        );
     }
     public function store(StoreWishlistRequest $request): JsonResponse
     {
