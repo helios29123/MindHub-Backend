@@ -14,4 +14,5 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
     Route::patch('/learn/lessons/{id}/progress', [LearningController::class, 'saveVideoProgress'])->whereNumber('id');
     Route::get('/learn/resume', [LearningController::class, 'resume']);
     Route::patch('/learn/lessons/{id}/complete', [LearningController::class, 'completeLesson'])->whereNumber('id');
+    Route::get('/learn/courses/{id}/progress', [LearningController::class, 'courseProgress'])->whereNumber('id');
 });

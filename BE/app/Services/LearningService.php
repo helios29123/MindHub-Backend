@@ -488,4 +488,80 @@ class LearningService
             'current_second' => $currentSecond,
         ];
     }
+
+    /**
+     * Get the progress details (total, completed, percent) of a course for a user.
+     *
+     * @param User $user
+     * @param int $courseId
+     * @return array
+     * @throws \App\Exceptions\BusinessException
+     */
+    public function getCourseProgress(User $user, int $courseId): array
+    {
+        $course = \App\Models\Course::find($courseId);
+
+        if (!$course) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ($course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        $enrollment = Enrollment::where('user_id', $user->id)
+            ->where('course_id', $courseId)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->first();
+
+        if (!$enrollment) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        $publishedLessonIds = \App\Models\Lesson::where('course_id', $courseId)
+            ->where('status', 'published')
+            ->whereHas('section', function ($q) {
+                $q->where('status', 'published');
+            })
+            ->pluck('id');
+
+        $totalLessons = $publishedLessonIds->count();
+
+        $completedLessons = \App\Models\LessonProgress::where('user_id', $user->id)
+            ->whereIn('lesson_id', $publishedLessonIds)
+            ->where('status', 'completed')
+            ->count();
+
+        $progressPercent = 0.00;
+        if ($totalLessons > 0) {
+            $progressPercent = round(($completedLessons / $totalLessons) * 100, 2);
+        }
+
+        // Keep enrollment completion status synchronized
+        if ($totalLessons > 0 && $completedLessons === $totalLessons) {
+            $enrollment->update([
+                'status' => Enrollment::STATUS_COMPLETED,
+                'completed_at' => $enrollment->completed_at ?? now(),
+            ]);
+        } else {
+            if ($enrollment->status === Enrollment::STATUS_COMPLETED) {
+                $enrollment->update([
+                    'status' => Enrollment::STATUS_ACTIVE,
+                    'completed_at' => null,
+                ]);
+            }
+        }
+
+        // Update enrollment progress_percent cache column in DB
+        $enrollment->update([
+            'progress_percent' => $progressPercent,
+        ]);
+
+        return [
+            'course_id' => $courseId,
+            'total_lessons' => $totalLessons,
+            'completed_lessons' => $completedLessons,
+            'progress_percent' => (float) $progressPercent,
+        ];
+    }
 }

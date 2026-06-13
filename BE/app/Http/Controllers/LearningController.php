@@ -13,6 +13,7 @@ use App\Http\Requests\Learning\CourseOutlineRequest;
 use App\Http\Resources\Learning\LearningOutlineSectionResource;
 use App\Http\Requests\Learning\SaveVideoProgressRequest;
 use App\Http\Requests\Learning\CompleteLessonRequest;
+use App\Http\Requests\Learning\CourseProgressRequest;
 
 final class LearningController extends Controller
 {
@@ -231,5 +232,21 @@ final class LearningController extends Controller
                 'current_second' => (int) $details['current_second'],
             ]
         ], 'Thao tác thành công');
+    }
+
+    /**
+     * Get learning progress percentage for a course.
+     *
+     * @param CourseProgressRequest $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function courseProgress(CourseProgressRequest $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        $progress = $this->learningService->getCourseProgress($user, $id);
+
+        return ApiResponse::success($progress, 'Thao tác thành công');
     }
 }
