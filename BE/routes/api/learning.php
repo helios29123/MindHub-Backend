@@ -5,4 +5,5 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function (): void {
     Route::get('/me/courses', [LearningController::class, 'myCourses']);
+    Route::get('/learn/lessons/{id}', [LearningController::class, 'showLesson'])->whereNumber('id');
 });
