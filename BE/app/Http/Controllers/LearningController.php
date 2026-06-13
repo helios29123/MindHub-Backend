@@ -68,4 +68,50 @@ final class LearningController extends Controller
             ]
         ], 'Thao tác thành công');
     }
+
+    /**
+     * Check if the authenticated user has access to a specific lesson.
+     *
+     * @param int $id
+     * @return JsonResponse
+     * @throws \App\Exceptions\BusinessException
+     */
+    public function canAccessLesson(int $id): JsonResponse
+    {
+        $lesson = \App\Models\Lesson::find($id);
+        if (!$lesson) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        $course = $lesson->course;
+        if (!$course) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ($lesson->status !== 'published' || $course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        $user = request()->user();
+        
+        if ($lesson->is_preview) {
+            return ApiResponse::success([
+                'can_access' => true,
+            ], 'Thao tác thành công');
+        }
+
+        if (!$user) {
+            return ApiResponse::error('Unauthenticated.', [], 401);
+        }
+
+        $hasAccess = $user->can('canAccessLesson', $lesson);
+
+        if (!$hasAccess) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        return ApiResponse::success([
+            'can_access' => true,
+        ], 'Thao tác thành công');
+    }
 }

@@ -211,3 +211,80 @@ test('video lesson progress returns the saved current_second from video_progress
         ['current_second' => 600]
     );
 });
+
+test('unauthenticated user cannot check lesson access', function () {
+    $response = $this->getJson('/api/learn/lessons/1/check-access');
+
+    $response->assertStatus(401)
+        ->assertJson([
+            'success' => false,
+            'message' => 'Unauthenticated.',
+        ]);
+});
+
+test('learner with enrollment has access to non-preview lesson', function () {
+    $headers = getAuthHeadersForUser('learner1@mindhub.test');
+
+    $response = $this->getJson('/api/learn/lessons/3/check-access', $headers); // non-preview, course 1
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+            'message' => 'Thao tác thành công',
+            'data' => [
+                'can_access' => true,
+            ],
+        ]);
+});
+
+test('learner with no enrollment does not have access to non-preview lesson', function () {
+    $headers = getAuthHeadersForUser('learner2@mindhub.test'); // no enrollment in course 1
+
+    $response = $this->getJson('/api/learn/lessons/3/check-access', $headers);
+
+    $response->assertStatus(403)
+        ->assertJson([
+            'success' => false,
+            'message' => 'Bạn chưa có quyền truy cập nội dung này.',
+        ]);
+});
+
+test('preview lesson is accessible even without enrollment', function () {
+    // learner2 has no enrollment in course 1, but lesson 1 is preview
+    $headers = getAuthHeadersForUser('learner2@mindhub.test');
+
+    $response = $this->getJson('/api/learn/lessons/1/check-access', $headers);
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+            'message' => 'Thao tác thành công',
+            'data' => [
+                'can_access' => true,
+            ],
+        ]);
+});
+
+test('checking access for non-existent lesson returns 404', function () {
+    $headers = getAuthHeadersForUser('learner1@mindhub.test');
+
+    $response = $this->getJson('/api/learn/lessons/999/check-access', $headers);
+
+    $response->assertStatus(404)
+        ->assertJson([
+            'success' => false,
+            'message' => 'Không tìm thấy dữ liệu.',
+        ]);
+});
+
+test('checking access for non-published lesson returns 403', function () {
+    $headers = getAuthHeadersForUser('learner1@mindhub.test');
+
+    $response = $this->getJson('/api/learn/lessons/5/check-access', $headers); // hidden
+
+    $response->assertStatus(403)
+        ->assertJson([
+            'success' => false,
+            'message' => 'Nội dung chưa khả dụng.',
+        ]);
+});
