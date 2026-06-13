@@ -18,6 +18,7 @@ use App\Http\Requests\Learning\LearningLogsRequest;
 use App\Http\Resources\Learning\LearningLogResource;
 use App\Http\Requests\Learning\DownloadAssetRequest;
 use App\Http\Resources\Learning\AssetDownloadResource;
+use App\Http\Requests\Learning\NextLessonRequest;
 
 final class LearningController extends Controller
 {
@@ -291,6 +292,25 @@ final class LearningController extends Controller
 
         return ApiResponse::success(
             new AssetDownloadResource($asset),
+            'Thao tác thành công'
+        );
+    }
+
+    /**
+     * Suggest the next lesson in the course structure.
+     *
+     * @param NextLessonRequest $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function nextLesson(NextLessonRequest $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        $nextLesson = $this->learningService->nextLesson($user, $id);
+
+        return ApiResponse::success(
+            $nextLesson ? new LearningLessonResource($nextLesson) : null,
             'Thao tác thành công'
         );
     }

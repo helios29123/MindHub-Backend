@@ -656,4 +656,67 @@ class LearningService
 
         return $asset;
     }
+
+    /**
+     * Suggest the next lesson in the course structure.
+     *
+     * @param User $user
+     * @param int $lessonId
+     * @return \App\Models\Lesson|null
+     * @throws \App\Exceptions\BusinessException
+     */
+    public function nextLesson(User $user, int $lessonId): ?\App\Models\Lesson
+    {
+        $lesson = \App\Models\Lesson::find($lessonId);
+
+        if (!$lesson) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        $course = $lesson->course;
+        if (!$course) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ($lesson->status !== 'published' || $course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        $section = $lesson->section;
+        if (!$section || $section->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        $enrollment = Enrollment::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->first();
+
+        if (!$enrollment) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        // Query all published lessons in the course, ordered sequentially
+        $lessons = \App\Models\Lesson::where('lessons.course_id', $course->id)
+            ->where('lessons.status', 'published')
+            ->whereHas('section', function ($q) {
+                $q->where('status', 'published');
+            })
+            ->join('course_sections', 'lessons.course_section_id', '=', 'course_sections.id')
+            ->orderBy('course_sections.sort_order', 'asc')
+            ->orderBy('course_sections.id', 'asc')
+            ->orderBy('lessons.sort_order', 'asc')
+            ->orderBy('lessons.id', 'asc')
+            ->select('lessons.*')
+            ->get();
+
+        $currentIndex = $lessons->search(fn($l) => $l->id === $lessonId);
+
+        if ($currentIndex !== false && $currentIndex < $lessons->count() - 1) {
+            return $lessons[$currentIndex + 1];
+        }
+
+        return null;
+    }
 }
+
