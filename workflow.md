@@ -33,6 +33,14 @@ Tài liệu này ghi nhận quy trình làm việc (Git Workflow, Code Conventio
 - Tuyệt đối không tự tạo bảng trung gian hay thêm trường ngoài schema khi chưa được phê duyệt.
 - Ưu tiên tính toán động dữ liệu từ các bảng hiện có thay vì sinh thêm bảng lưu cache/report mới.
 
+### 1.4. Quy trình sử dụng CodeGraph để đọc Codebase
+Để tránh việc tự giả định cấu trúc code, tất cả AI Agent và nhà phát triển bắt buộc sử dụng CodeGraph khi tiếp cận mã nguồn:
+- **Đọc hiểu trước khi code**: Sử dụng các công cụ tìm kiếm của `codegraph` (`codegraph_search`, `codegraph_context`, `codegraph_callers`, v.v.) để tìm hiểu cấu trúc lớp (classes), phương thức (methods) và luồng gọi trước khi sửa đổi codebase.
+- **Cập nhật index CodeGraph**: Sau khi pull code hoặc thay đổi cấu trúc tệp lớn, cần đồng bộ lại index CodeGraph bằng cách chạy lệnh:
+  ```powershell
+  codegraph index [path_to_project]
+  ```
+
 ---
 
 ## 2. Hướng dẫn khởi động dự án (Project Startup Guide)
