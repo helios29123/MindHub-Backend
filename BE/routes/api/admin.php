@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth.session', 'role:admin'])
     ->prefix('admin')
     ->group(function (): void {
+        Route::get('/orders', [AdminController::class, 'orders']);
         Route::get('/course-reviews', [AdminModerationController::class, 'pendingCourses']);
         Route::patch('/courses/{id}/approve', [AdminModerationController::class, 'approveCourse'])
             ->where('id', '[0-9]+');
