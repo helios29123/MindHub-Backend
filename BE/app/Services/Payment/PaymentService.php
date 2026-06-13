@@ -31,7 +31,7 @@ class PaymentService
             );
 
             if (!$order) {
-                throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y ﾄ柁｡n hﾃng.', 404);
+                throw new BusinessException('Không tìm thấy đơn hàng.', 404);
             }
 
             if ($order->status !== Order::STATUS_PENDING) {

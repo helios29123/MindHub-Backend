@@ -26,27 +26,27 @@ class CouponApplyService
             );
 
             if (!$order) {
-                throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y ﾄ柁｡n hﾃng.', 404);
+                throw new BusinessException('Không tìm thấy đơn hàng.', 404);
             }
 
             if (
                 $order->status !== Order::STATUS_PENDING ||
                 $order->payment_status !== Order::PAYMENT_UNPAID
             ) {
-                throw new BusinessException('Ch盻・cﾃｳ th盻・ﾃ｡p coupon cho ﾄ柁｡n hﾃng ﾄ疎ng ch盻・thanh toﾃ｡n.', 400);
+                throw new BusinessException('Chỉ có thể áp coupon cho đơn hàng đang chờ thanh toán.', 400);
             }
 
             $coupon = $this->couponRepository->findByCode($couponData['coupon_code']);
 
             if (!$coupon || !$coupon->isActiveNow()) {
-                throw new BusinessException('Mﾃ｣ gi蘯｣m giﾃ｡ khﾃｴng h盻｣p l盻・', 400);
+                throw new BusinessException('Mã giảm giá không hợp lệ.', 400);
             }
 
             if (
                 $coupon->course_id !== null &&
                 (int) $coupon->course_id !== (int) $order->course_id
             ) {
-                throw new BusinessException('Mﾃ｣ gi蘯｣m giﾃ｡ khﾃｴng ﾃ｡p d盻･ng cho khﾃｳa h盻皇 nﾃy.', 400);
+                throw new BusinessException('Mã giảm giá không áp dụng cho khóa học này.', 400);
             }
 
             $discountAmount = $this->calculateDiscountAmount($coupon, (float) $order->price_snapshot);
