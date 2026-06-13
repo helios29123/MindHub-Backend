@@ -7,10 +7,10 @@ namespace App\Http\Controllers;
 // use App\Http\Requests\Payment\PaymentWebhookRequest;
 // use App\Http\Requests\Payment\ShowOrderRequest;
 use App\Http\Requests\Payment\StoreOrderRequest;
-// use App\Http\Requests\Payment\StorePaymentRequest;
+use App\Http\Requests\Payment\StorePaymentRequest;
 use App\Http\Resources\Payment\CouponApplyResource;
 use App\Http\Resources\Payment\OrderResource;
-// use App\Http\Resources\Payment\PaymentResource;
+use App\Http\Resources\Payment\PaymentResource;
 use App\Services\Payment\CouponApplyService;
 use App\Services\Payment\OrderService;
 use App\Services\Payment\PaymentService;
@@ -54,19 +54,19 @@ class PaymentController extends Controller
         ]);
     }
 
-    // public function storePayment(StorePaymentRequest $request): JsonResponse
-    // {
-    //     $order = $this->paymentService->storePayment(
-    //         $request->validated(),
-    //         $request->user()->id
-    //     );
+    public function storePayment(StorePaymentRequest $request): JsonResponse
+    {
+        $order = $this->paymentService->storePayment(
+            $request->validated(),
+            $request->user()->id
+        );
 
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Ghi nhận thanh toán thành công.',
-    //         'data' => new PaymentResource($order),
-    //     ]);
-    // }
+        return response()->json([
+            'success' => true,
+            'message' => 'Ghi nhận thanh toán thành công.',
+            'data' => new PaymentResource($order),
+        ]);
+    }
 
     // public function webhook(PaymentWebhookRequest $request): JsonResponse
     // {
