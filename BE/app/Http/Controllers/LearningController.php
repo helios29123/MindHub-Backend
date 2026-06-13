@@ -16,6 +16,8 @@ use App\Http\Requests\Learning\CompleteLessonRequest;
 use App\Http\Requests\Learning\CourseProgressRequest;
 use App\Http\Requests\Learning\LearningLogsRequest;
 use App\Http\Resources\Learning\LearningLogResource;
+use App\Http\Requests\Learning\DownloadAssetRequest;
+use App\Http\Resources\Learning\AssetDownloadResource;
 
 final class LearningController extends Controller
 {
@@ -270,6 +272,25 @@ final class LearningController extends Controller
         return ApiResponse::paginated(
             LearningLogResource::collection($logs),
             $logs,
+            'Thao tác thành công'
+        );
+    }
+
+    /**
+     * Get details of a lesson asset for download.
+     *
+     * @param DownloadAssetRequest $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function downloadAsset(DownloadAssetRequest $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        $asset = $this->learningService->downloadAsset($user, $id);
+
+        return ApiResponse::success(
+            new AssetDownloadResource($asset),
             'Thao tác thành công'
         );
     }

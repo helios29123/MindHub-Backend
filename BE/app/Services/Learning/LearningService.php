@@ -614,4 +614,46 @@ class LearningService
 
         return $paginatedLogs;
     }
+
+    /**
+     * Get details of a lesson asset for download.
+     *
+     * @param User $user
+     * @param int $assetId
+     * @return \App\Models\LessonAsset
+     * @throws \App\Exceptions\BusinessException
+     */
+    public function downloadAsset(User $user, int $assetId): \App\Models\LessonAsset
+    {
+        $asset = \App\Models\LessonAsset::find($assetId);
+
+        if (!$asset) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        $lesson = $asset->lesson;
+        if (!$lesson) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        $course = $lesson->course;
+        if (!$course) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ($lesson->status !== 'published' || $course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        $enrollment = Enrollment::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->first();
+
+        if (!$enrollment) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        return $asset;
+    }
 }
