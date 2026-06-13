@@ -13,22 +13,26 @@ class Category extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'parent_id',
-        'name',
-        'slug',
-        'description',
-        'sort_order',
-        'status',
+        "parent_id",
+        "name",
+        "slug",
+        "description",
+        "sort_order",
+        "status",
     ];
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(Category::class, 'parent_id');
+        return $this->belongsTo(Category::class, "parent_id");
     }
 
     public function courses(): BelongsToMany
     {
-        return $this->belongsToMany(Course::class, 'course_categories', 'category_id', 'course_id')
-            ->withPivot('created_at');
+        return $this->belongsToMany(
+            Course::class,
+            "course_categories",
+            "category_id",
+            "course_id",
+        )->withPivot("created_at");
     }
 }
