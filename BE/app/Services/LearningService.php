@@ -160,4 +160,114 @@ class LearningService
             'progresses' => $progresses,
         ];
     }
+
+    /**
+     * Save the learner's progress for a video lesson.
+     *
+     * @param User $user
+     * @param int $lessonId
+     * @param array $data
+     * @return array
+     * @throws \App\Exceptions\BusinessException
+     */
+    public function saveVideoProgress(User $user, int $lessonId, array $data): array
+    {
+        $lesson = \App\Models\Lesson::find($lessonId);
+
+        if (!$lesson) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ($lesson->lesson_type !== 'video') {
+            throw new \App\Exceptions\BusinessException('Bài học không phải dạng video.', 422);
+        }
+
+        $course = $lesson->course;
+        if (!$course) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ($lesson->status !== 'published' || $course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        $enrollment = Enrollment::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->first();
+
+        if (!$enrollment) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        $currentSecond = (int) $data['current_second'];
+        $durationSecond = isset($data['duration_second']) ? (int) $data['duration_second'] : null;
+        $isCompletedInput = !empty($data['is_completed']);
+
+        // Validate current_second
+        if ($lesson->video_duration_seconds !== null && $currentSecond > $lesson->video_duration_seconds) {
+            throw new \App\Exceptions\BusinessException('Tiến độ video không hợp lệ.', 422);
+        }
+
+        if ($durationSecond !== null && $currentSecond > $durationSecond) {
+            throw new \App\Exceptions\BusinessException('Tiến độ video không hợp lệ.', 422);
+        }
+
+        // Upsert video progress
+        \App\Models\VideoProgress::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'lesson_id' => $lessonId,
+            ],
+            [
+                'current_second' => $currentSecond,
+            ]
+        );
+
+        // Determine if lesson is completed
+        $isCompleted = $isCompletedInput
+            || ($lesson->video_duration_seconds !== null && $currentSecond >= $lesson->video_duration_seconds)
+            || ($durationSecond !== null && $currentSecond >= $durationSecond);
+
+        // Get/Create lesson progress
+        $progress = \App\Models\LessonProgress::firstOrCreate(
+            [
+                'user_id' => $user->id,
+                'lesson_id' => $lessonId,
+            ],
+            [
+                'status' => 'in_progress',
+                'started_at' => now(),
+                'last_accessed_at' => now(),
+                'learning_duration_seconds' => 0,
+            ]
+        );
+
+        $updates = [
+            'last_accessed_at' => now(),
+        ];
+
+        if ($isCompleted) {
+            $updates['status'] = 'completed';
+            if (!$progress->completed_at) {
+                $updates['completed_at'] = now();
+            }
+        } else {
+            if ($progress->status !== 'completed') {
+                $updates['status'] = 'in_progress';
+                if (!$progress->started_at) {
+                    $updates['started_at'] = now();
+                }
+            }
+        }
+
+        $progress->update($updates);
+
+        return [
+            'course' => $course,
+            'lesson' => $lesson,
+            'progress' => $progress,
+            'current_second' => $currentSecond,
+        ];
+    }
 }

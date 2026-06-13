@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use App\Http\Resources\Learning\LearningLessonResource;
 use App\Http\Requests\Learning\CourseOutlineRequest;
 use App\Http\Resources\Learning\LearningOutlineSectionResource;
+use App\Http\Requests\Learning\SaveVideoProgressRequest;
 
 final class LearningController extends Controller
 {
@@ -136,5 +137,36 @@ final class LearningController extends Controller
         });
 
         return ApiResponse::success($resource, 'Lấy lộ trình khóa học thành công');
+    }
+
+    /**
+     * Save/update learning progress for a video lesson.
+     *
+     * @param SaveVideoProgressRequest $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function saveVideoProgress(SaveVideoProgressRequest $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        $details = $this->learningService->saveVideoProgress($user, $id, $request->validated());
+
+        return ApiResponse::success([
+            'course' => [
+                'id' => $details['course']->id,
+                'title' => $details['course']->title,
+                'slug' => $details['course']->slug,
+            ],
+            'lesson' => new LearningLessonResource($details['lesson']),
+            'progress' => [
+                'status' => $details['progress']->status,
+                'started_at' => $details['progress']->started_at ? $details['progress']->started_at->toISOString() : null,
+                'completed_at' => $details['progress']->completed_at ? $details['progress']->completed_at->toISOString() : null,
+                'learning_duration_seconds' => (int) $details['progress']->learning_duration_seconds,
+                'last_accessed_at' => $details['progress']->last_accessed_at ? $details['progress']->last_accessed_at->toISOString() : null,
+                'current_second' => (int) $details['current_second'],
+            ]
+        ], 'Thao tác thành công');
     }
 }
