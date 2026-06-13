@@ -6,18 +6,20 @@ use App\Models\QuizAttempt;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
-function getAuthHeadersForUser(string $email): array
-{
-    $response = test()->postJson('/api/auth/login', [
-        'email' => $email,
-        'password' => '12345678',
-        'device_name' => 'testing'
-    ]);
-    
-    $token = $response->json('data.access_token');
-    return [
-        'Authorization' => "Bearer $token",
-    ];
+if (!function_exists('getAuthHeadersForUser')) {
+    function getAuthHeadersForUser(string $email): array
+    {
+        $response = test()->postJson('/api/auth/login', [
+            'email' => $email,
+            'password' => '12345678',
+            'device_name' => 'testing'
+        ]);
+        
+        $token = $response->json('data.access_token');
+        return [
+            'Authorization' => "Bearer $token",
+        ];
+    }
 }
 
 afterEach(function () {
