@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 
 // use App\Http\Requests\Payment\MyOrderQueryRequest;
-// use App\Http\Requests\Payment\PaymentWebhookRequest;
+use App\Http\Requests\Payment\PaymentWebhookRequest;
 // use App\Http\Requests\Payment\ShowOrderRequest;
 use App\Http\Requests\Payment\StoreOrderRequest;
 use App\Http\Requests\Payment\StorePaymentRequest;
@@ -68,16 +68,21 @@ class PaymentController extends Controller
         ]);
     }
 
-    // public function webhook(PaymentWebhookRequest $request): JsonResponse
-    // {
-    //     $order = $this->paymentService->handleWebhook($request->validated());
+    public function webhook(PaymentWebhookRequest $request): JsonResponse
+{
+    $order = $this->paymentService->handleWebhook($request->validated());
 
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Cập nhật trạng thái thanh toán thành công.',
-    //         'data' => new PaymentResource($order),
-    //     ]);
-    // }
+    $message = $order->payment_status === 'paid'
+        && $order->wasRecentlyCreated === false
+        ? 'Đơn hàng đã được xử lý trước đó.'
+        : 'Cập nhật trạng thái thanh toán thành công.';
+
+    return response()->json([
+        'success' => true,
+        'message' => $message,
+        'data' => new PaymentResource($order),
+    ]);
+}
 
     // public function showOrder(ShowOrderRequest $request, int $id): JsonResponse
     // {
