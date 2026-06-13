@@ -22,7 +22,23 @@ final class FileUpload
         return asset('storage/' . $path);
     }
 
-    public function deletePublicFileByUrl(?string $fileUrl): void
+    public function uploadLessonAsset(UploadedFile $file, int $lessonId): array
+    {
+        $originalName = $file->getClientOriginalName();
+        $extension = strtolower((string) $file->getClientOriginalExtension());
+        $storedFileName = Str::uuid()->toString() . ($extension !== '' ? '.' . $extension : '');
+        $path = $file->storeAs(
+            'lessons/assets/' . $lessonId,
+            $storedFileName,
+            'public'
+        );
+        return [
+            'file_url' => asset('storage/' . $path),
+            'file_name' => $originalName,
+            'file_type' => $extension !== '' ? $extension : (string) $file->getClientMimeType(),
+            'file_size' => $file->getSize(),
+        ];
+    }    public function deletePublicFileByUrl(?string $fileUrl): void
     {
         if (!$fileUrl) {
             return;

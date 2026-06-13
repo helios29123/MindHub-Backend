@@ -33,6 +33,7 @@ final class UserProfileRepository
             ->whereKey($id)
             ->update($allowedData);
     }
+
     public function findPasswordCredentialById(int $id): User
     {
         return User::query()

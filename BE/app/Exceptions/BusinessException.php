@@ -11,7 +11,7 @@ class BusinessException extends Exception
         private readonly int $statusCode = 400,
         private readonly array $errors = []
     ) {
-        parent::__construct($message);
+        parent::__construct($message, $statusCode);
     }
 
     public function getStatusCode(): int

@@ -7,12 +7,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ApiResponse
+final class ApiResponse
 {
-    public static function success(mixed $data = [], string $message = 'Lấy dữ liệu thành công', int $status = 200, ?array $meta = null): JsonResponse
-    {
+    public static function success(
+        mixed $data = [],
+        string $message = 'Lấy dữ liệu thành công',
+        int $status = 200,
+        ?array $meta = null
+    ): JsonResponse {
         if ($data instanceof JsonResource || $data instanceof AnonymousResourceCollection) {
-            $data = $data->resolve();
+            $data = $data->resolve(request());
         }
 
         $response = [
@@ -28,18 +32,24 @@ class ApiResponse
         return response()->json($response, $status);
     }
 
-    public static function paginated(AnonymousResourceCollection $resourceCollection, LengthAwarePaginator $paginator, string $message = 'Lấy dữ liệu thành công'): JsonResponse
-    {
+    public static function paginated(
+        AnonymousResourceCollection $resourceCollection,
+        LengthAwarePaginator $paginator,
+        string $message = 'Lấy dữ liệu thành công'
+    ): JsonResponse {
         return self::success(
-            $resourceCollection->resolve(),
-            $message,
-            200,
-            PaginationMeta::fromPaginator($paginator)
+            data: $resourceCollection->resolve(request()),
+            message: $message,
+            status: 200,
+            meta: PaginationMeta::fromPaginator($paginator)
         );
     }
 
-    public static function error(string $message, array $errors = [], int $status = 400): JsonResponse
-    {
+    public static function error(
+        string $message = 'Có lỗi xảy ra',
+        array $errors = [],
+        int $status = 400
+    ): JsonResponse {
         return response()->json([
             'success' => false,
             'message' => $message,

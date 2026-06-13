@@ -1,6 +1,7 @@
 <?php
-
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminModerationController;
+use App\Http\Controllers\MarketingController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 
