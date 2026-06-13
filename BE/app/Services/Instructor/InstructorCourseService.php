@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
 final class InstructorCourseService
 {
     public function __construct(
@@ -529,6 +530,177 @@ final class InstructorCourseService
             $data["total_duration_seconds"],
             $data["published_at"],
             $data["admin_reject_reason"],
+            $data["deleted_at"],
+            $data["created_at"],
+            $data["updated_at"],
+        );
+    }
+
+    public function getSections(
+        array $queryParams,
+        int $instructorId,
+    ): LengthAwarePaginator {
+        $perPage = min((int) ($queryParams["per_page"] ?? 10), 100);
+
+        $query = CourseSection::query()
+            ->with("course:id,instructor_id,title,slug,status")
+            ->whereHas("course", function ($builder) use ($instructorId): void {
+                $builder->where("instructor_id", $instructorId);
+            });
+
+        if (!empty($queryParams["course_id"])) {
+            $this->ensureCourseBelongsToInstructor(
+                (int) $queryParams["course_id"],
+                $instructorId,
+            );
+
+            $query->where("course_id", (int) $queryParams["course_id"]);
+        }
+
+        if (!empty($queryParams["search"])) {
+            $search = trim((string) $queryParams["search"]);
+
+            $query->where(function ($builder) use ($search): void {
+                $builder
+                    ->where("title", "like", "%{$search}%")
+                    ->orWhere("description", "like", "%{$search}%");
+            });
+        }
+
+        if (!empty($queryParams["status"])) {
+            $query->where("status", $queryParams["status"]);
+        }
+
+        $sortBy = $queryParams["sort_by"] ?? "sort_order";
+        $sortDirection = $queryParams["sort_direction"] ?? "asc";
+
+        return $query
+            ->orderBy($sortBy, $sortDirection)
+            ->orderBy("id")
+            ->paginate($perPage)
+            ->appends($queryParams);
+    }
+
+    public function getSection(int $sectionId, int $instructorId): CourseSection
+    {
+        return $this->getOwnedSection($sectionId, $instructorId);
+    }
+
+    public function createSection(array $data, int $instructorId): CourseSection
+    {
+        $course = $this->ensureCourseBelongsToInstructor(
+            (int) $data["course_id"],
+            $instructorId,
+        );
+
+        $data["status"] ??= "draft";
+
+        if (
+            !array_key_exists("sort_order", $data) ||
+            $data["sort_order"] === null
+        ) {
+            $data["sort_order"] = $this->getNextSectionSortOrder(
+                (int) $course->id,
+            );
+        }
+
+        return DB::transaction(function () use ($data): CourseSection {
+            return CourseSection::create($data)->load(
+                "course:id,instructor_id,title,slug,status",
+            );
+        });
+    }
+
+    public function updateSection(
+        int $sectionId,
+        array $data,
+        int $instructorId,
+    ): CourseSection {
+        $section = $this->getOwnedSection($sectionId, $instructorId);
+
+        $this->removeForbiddenSectionFields($data);
+
+        return DB::transaction(function () use (
+            $section,
+            $data,
+        ): CourseSection {
+            $section->update($data);
+
+            return $section
+                ->refresh()
+                ->load("course:id,instructor_id,title,slug,status");
+        });
+    }
+
+    public function deleteSection(int $sectionId, int $instructorId): void
+    {
+        $section = $this->getOwnedSection($sectionId, $instructorId);
+
+        DB::transaction(function () use ($section): void {
+            $section->delete();
+        });
+    }
+
+    private function ensureCourseBelongsToInstructor(
+        int $courseId,
+        int $instructorId,
+    ): Course {
+        $course = Course::query()->find($courseId);
+
+        if (!$course) {
+            throw new BusinessException("Không tìm thấy dữ liệu.", 404);
+        }
+
+        if ((int) $course->instructor_id !== (int) $instructorId) {
+            throw new BusinessException(
+                "Bạn không có quyền thao tác tài nguyên này.",
+                403,
+            );
+        }
+
+        return $course;
+    }
+
+    private function getOwnedSection(
+        int $sectionId,
+        int $instructorId,
+    ): CourseSection {
+        $section = CourseSection::query()
+            ->with("course:id,instructor_id,title,slug,status")
+            ->find($sectionId);
+
+        if (!$section) {
+            throw new BusinessException("Không tìm thấy dữ liệu.", 404);
+        }
+
+        if (!$section->course) {
+            throw new BusinessException("Không tìm thấy dữ liệu.", 404);
+        }
+
+        if ((int) $section->course->instructor_id !== (int) $instructorId) {
+            throw new BusinessException(
+                "Bạn không có quyền thao tác tài nguyên này.",
+                403,
+            );
+        }
+
+        return $section;
+    }
+
+    private function getNextSectionSortOrder(int $courseId): int
+    {
+        $maxSortOrder = CourseSection::query()
+            ->where("course_id", $courseId)
+            ->max("sort_order");
+
+        return ((int) $maxSortOrder) + 1;
+    }
+
+    private function removeForbiddenSectionFields(array &$data): void
+    {
+        unset(
+            $data["id"],
+            $data["course_id"],
             $data["deleted_at"],
             $data["created_at"],
             $data["updated_at"],
