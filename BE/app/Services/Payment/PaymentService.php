@@ -31,21 +31,39 @@ class PaymentService
             );
 
             if (!$order) {
-                throw new BusinessException('Không tìm thấy đơn hàng.', 404);
-            }
-
-            if ($order->status !== Order::STATUS_PENDING) {
-                throw new BusinessException('ﾄ脆｡n hﾃng khﾃｴng cﾃｲn kh蘯｣ d盻･ng ﾄ黛ｻ・thanh toﾃ｡n.', 400);
+                throw new BusinessException('Không tìm thấy đơn hàng hợp lệ.', 404);
             }
 
             if (
-                !empty($paymentData['transaction_code'])
-                && $this->orderRepository->existsTransactionForAnotherOrder(
+                $order->status === Order::STATUS_PAID ||
+                $order->payment_status === Order::PAYMENT_PAID
+            ) {
+                throw new BusinessException('Đơn hàng đã được thanh toán.', 409);
+            }
+
+            if (
+                in_array($order->status, [
+                    Order::STATUS_FAILED,
+                    Order::STATUS_CANCELLED,
+                    Order::STATUS_EXPIRED,
+                ], true) ||
+                $order->payment_status === Order::PAYMENT_FAILED
+            ) {
+                throw new BusinessException('Đơn hàng không còn khả dụng để thanh toán.', 400);
+            }
+
+            if ($order->status !== Order::STATUS_PENDING) {
+                throw new BusinessException('Đơn hàng không còn khả dụng để thanh toán.', 400);
+            }
+
+            if (
+                !empty($paymentData['transaction_code']) &&
+                $this->orderRepository->existsTransactionForAnotherOrder(
                     $paymentData['transaction_code'],
                     $order->id
                 )
             ) {
-                throw new BusinessException('Mﾃ｣ giao d盻議h ﾄ妥｣ t盻渡 t蘯｡i.', 409);
+                throw new BusinessException('Mã giao dịch đã tồn tại.', 409);
             }
 
             $order->update([
@@ -64,17 +82,17 @@ class PaymentService
             $order = $this->orderRepository->findForUpdate($webhookData['order_id']);
 
             if (!$order) {
-                throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y ﾄ柁｡n hﾃng.', 404);
+                throw new BusinessException('Không tìm thấy đơn hàng.', 404);
             }
 
             if (
-                !empty($webhookData['transaction_code'])
-                && $this->orderRepository->existsTransactionForAnotherOrder(
+                !empty($webhookData['transaction_code']) &&
+                $this->orderRepository->existsTransactionForAnotherOrder(
                     $webhookData['transaction_code'],
                     $order->id
                 )
             ) {
-                throw new BusinessException('Mﾃ｣ giao d盻議h ﾄ妥｣ t盻渡 t蘯｡i.', 409);
+                throw new BusinessException('Mã giao dịch đã tồn tại.', 409);
             }
 
             if ($order->payment_status === Order::PAYMENT_PAID) {
@@ -82,7 +100,7 @@ class PaymentService
             }
 
             if (in_array($order->status, [Order::STATUS_CANCELLED, Order::STATUS_EXPIRED], true)) {
-                throw new BusinessException('ﾄ脆｡n hﾃng khﾃｴng cﾃｲn kh蘯｣ d盻･ng ﾄ黛ｻ・c蘯ｭp nh蘯ｭt thanh toﾃ｡n.', 400);
+                throw new BusinessException('Đơn hàng không còn khả dụng để cập nhật thanh toán.', 400);
             }
 
             if ($webhookData['payment_status'] === Order::PAYMENT_FAILED) {
