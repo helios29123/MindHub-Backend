@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 
 // use App\Http\Requests\Payment\MyOrderQueryRequest;
 use App\Http\Requests\Payment\PaymentWebhookRequest;
-// use App\Http\Requests\Payment\ShowOrderRequest;
+use App\Http\Requests\Payment\ShowOrderRequest;
 use App\Http\Requests\Payment\StoreOrderRequest;
 use App\Http\Requests\Payment\StorePaymentRequest;
 use App\Http\Resources\Payment\CouponApplyResource;
@@ -84,19 +84,19 @@ class PaymentController extends Controller
     ]);
 }
 
-    // public function showOrder(ShowOrderRequest $request, int $id): JsonResponse
-    // {
-    //     $order = $this->orderService->showUserOrder(
-    //         $id,
-    //         $request->user()->id
-    //     );
+    public function showOrder(ShowOrderRequest $request, int $id): JsonResponse
+    {
+        $order = $this->orderService->showUserOrder(
+            $id,
+            $request->user()->id
+        );
 
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Lấy trạng thái đơn hàng thành công.',
-    //         'data' => new OrderResource($order),
-    //     ]);
-    // }
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy trạng thái đơn hàng thành công.',
+            'data' => new OrderResource($order),
+        ]);
+    }
 
     // public function myOrders(MyOrderQueryRequest $request): JsonResponse
     // {
