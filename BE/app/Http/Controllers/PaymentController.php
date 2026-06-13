@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Payment\ApplyCouponRequest;
-use App\Http\Requests\Payment\MyOrderQueryRequest;
-use App\Http\Requests\Payment\PaymentWebhookRequest;
-use App\Http\Requests\Payment\ShowOrderRequest;
+
+// use App\Http\Requests\Payment\MyOrderQueryRequest;
+// use App\Http\Requests\Payment\PaymentWebhookRequest;
+// use App\Http\Requests\Payment\ShowOrderRequest;
 use App\Http\Requests\Payment\StoreOrderRequest;
-use App\Http\Requests\Payment\StorePaymentRequest;
+// use App\Http\Requests\Payment\StorePaymentRequest;
 use App\Http\Resources\Payment\CouponApplyResource;
 use App\Http\Resources\Payment\OrderResource;
-use App\Http\Resources\Payment\PaymentResource;
+// use App\Http\Resources\Payment\PaymentResource;
 use App\Services\Payment\CouponApplyService;
 use App\Services\Payment\OrderService;
 use App\Services\Payment\PaymentService;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\Payment\ApplyCouponRequest;
 
 class PaymentController extends Controller
 {
@@ -39,19 +40,19 @@ class PaymentController extends Controller
         ], 201);
     }
 
-    // public function applyCoupon(ApplyCouponRequest $request): JsonResponse
-    // {
-    //     $order = $this->couponApplyService->applyCoupon(
-    //         $request->validated(),
-    //         $request->user()->id
-    //     );
+    public function applyCoupon(ApplyCouponRequest $request): JsonResponse
+    {
+        $order = $this->couponApplyService->applyCoupon(
+            $request->validated(),
+            $request->user()->id
+        );
 
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Áp mã giảm giá thành công.',
-    //         'data' => new CouponApplyResource($order),
-    //     ]);
-    // }
+        return response()->json([
+            'success' => true,
+            'message' => 'Áp mã giảm giá thành công.',
+            'data' => new CouponApplyResource($order),
+        ]);
+    }
 
     // public function storePayment(StorePaymentRequest $request): JsonResponse
     // {
