@@ -2636,6 +2636,733 @@ paths:
         '200':
           description: Cập nhật trạng thái thanh toán thành công.
 
+  /me/courses:
+    get:
+      tags:
+        - Learning
+      summary: "[LEARN-01] Danh sách khóa học đã mua"
+      description: Learner xem danh sách khóa học đã ghi danh/mua, hỗ trợ phân trang.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+      responses:
+        '200':
+          description: Lấy danh sách khóa học đã mua thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy danh sách khóa học đã mua thành công.
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        enrollment_id:
+                          type: integer
+                          example: 1
+                        status:
+                          type: string
+                          example: active
+                        enrolled_at:
+                          type: string
+                          format: date-time
+                          example: "2026-06-10T08:00:00.000000Z"
+                        course:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 1
+                            title:
+                              type: string
+                              example: Khóa học Laravel nâng cao
+                            slug:
+                              type: string
+                              example: khoa-hoc-laravel-nang-cao
+                            thumbnail_url:
+                              type: string
+                              nullable: true
+                  meta:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        example: 1
+                      per_page:
+                        type: integer
+                        example: 15
+                      total:
+                        type: integer
+                        example: 3
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải role learner.
+
+  /learn/lessons/{id}:
+    get:
+      tags:
+        - Learning
+      summary: "[LEARN-02] Xem chi tiết bài học (có ghi log)"
+      description: Learner xem nội dung bài học đã mua. Hệ thống tự động tạo/cập nhật LessonProgress và ghi LearningLog.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      course:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          title:
+                            type: string
+                          slug:
+                            type: string
+                      lesson:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          title:
+                            type: string
+                          slug:
+                            type: string
+                          lesson_type:
+                            type: string
+                            enum: [video, text]
+                          content:
+                            type: string
+                            nullable: true
+                          video_url:
+                            type: string
+                            nullable: true
+                          video_duration_seconds:
+                            type: integer
+                            nullable: true
+                          is_preview:
+                            type: boolean
+                          status:
+                            type: string
+                          sort_order:
+                            type: integer
+                          assets:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                title:
+                                  type: string
+                                file_url:
+                                  type: string
+                                file_name:
+                                  type: string
+                                file_type:
+                                  type: string
+                                file_size:
+                                  type: integer
+                                  nullable: true
+                      progress:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            enum: [not_started, in_progress, completed]
+                          started_at:
+                            type: string
+                            format: date-time
+                            nullable: true
+                          completed_at:
+                            type: string
+                            format: date-time
+                            nullable: true
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh hoặc nội dung chưa khả dụng.
+        '404':
+          description: Không tìm thấy bài học.
+
+  /learn/lessons/{id}/check-access:
+    get:
+      tags:
+        - Learning
+      summary: "[LEARN-03] Kiểm tra quyền truy cập bài học"
+      description: Kiểm tra learner có quyền truy cập bài học hay không (enrollment + status check).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      has_access:
+                        type: boolean
+                        example: true
+                      reason:
+                        type: string
+                        nullable: true
+        '401':
+          description: Chưa đăng nhập.
+        '404':
+          description: Không tìm thấy bài học.
+
+  /learn/courses/{id}/outline:
+    get:
+      tags:
+        - Learning
+      summary: "[LEARN-04] Lấy dàn bài khóa học (có trạng thái tiến độ)"
+      description: Learner xem outline khóa học kèm trạng thái hoàn thành từng bài.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        title:
+                          type: string
+                        sort_order:
+                          type: integer
+                        lessons:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                              title:
+                                type: string
+                              slug:
+                                type: string
+                              lesson_type:
+                                type: string
+                              is_preview:
+                                type: boolean
+                              sort_order:
+                                type: integer
+                              progress_status:
+                                type: string
+                                enum: [not_started, in_progress, completed]
+                                nullable: true
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh hoặc khóa học chưa khả dụng.
+        '404':
+          description: Không tìm thấy khóa học.
+
+  /learn/lessons/{id}/progress:
+    patch:
+      tags:
+        - Learning
+      summary: "[LEARN-05] Lưu tiến độ xem video"
+      description: Learner lưu vị trí xem video hiện tại (giây). Hệ thống cập nhật VideoProgress.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - current_time
+              properties:
+                current_time:
+                  type: integer
+                  minimum: 0
+                  description: Thời gian hiện tại của video tính bằng giây.
+                  example: 120
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      lesson_id:
+                        type: integer
+                        example: 1
+                      current_time:
+                        type: integer
+                        example: 120
+                      updated_at:
+                        type: string
+                        format: date-time
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh hoặc nội dung chưa khả dụng.
+        '404':
+          description: Không tìm thấy bài học.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /learn/resume:
+    get:
+      tags:
+        - Learning
+      summary: "[LEARN-06] Tiếp tục học (Resume)"
+      description: Lấy bài học gần nhất learner đang xem dở để tiếp tục học.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    nullable: true
+                    properties:
+                      lesson_id:
+                        type: integer
+                      course_id:
+                        type: integer
+                      course_title:
+                        type: string
+                      lesson_title:
+                        type: string
+                      lesson_slug:
+                        type: string
+                      last_accessed_at:
+                        type: string
+                        format: date-time
+        '401':
+          description: Chưa đăng nhập.
+
+  /learn/lessons/{id}/complete:
+    patch:
+      tags:
+        - Learning
+      summary: "[LEARN-07] Đánh dấu hoàn thành bài học"
+      description: Learner đánh dấu bài học đã hoàn thành. Hệ thống tự động cập nhật LessonProgress và kiểm tra hoàn thành khóa học.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      lesson_id:
+                        type: integer
+                        example: 1
+                      status:
+                        type: string
+                        example: completed
+                      completed_at:
+                        type: string
+                        format: date-time
+                      course_completed:
+                        type: boolean
+                        example: false
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh hoặc nội dung chưa khả dụng.
+        '404':
+          description: Không tìm thấy bài học.
+
+  /learn/courses/{id}/progress:
+    get:
+      tags:
+        - Learning
+      summary: "[LEARN-08] Tính % tiến độ khóa học"
+      description: Lấy phần trăm tiến độ hoàn thành khóa học của learner (dựa trên số bài đã hoàn thành / tổng bài published).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      course_id:
+                        type: integer
+                        example: 1
+                      total_lessons:
+                        type: integer
+                        example: 10
+                      completed_lessons:
+                        type: integer
+                        example: 3
+                      progress_percent:
+                        type: number
+                        format: float
+                        example: 30.0
+                      enrollment_status:
+                        type: string
+                        example: active
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh hoặc khóa học chưa khả dụng.
+        '404':
+          description: Không tìm thấy khóa học.
+
+  /learning-logs/my:
+    get:
+      tags:
+        - Learning
+      summary: "[LEARN-09] Xem lịch sử học tập"
+      description: Learner xem lịch sử các bài học đã truy cập, hỗ trợ phân trang.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        lesson_id:
+                          type: integer
+                        lesson_title:
+                          type: string
+                        course_id:
+                          type: integer
+                        course_title:
+                          type: string
+                        accessed_at:
+                          type: string
+                          format: date-time
+                  meta:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải role learner.
+
+  /learn/assets/{id}/download:
+    get:
+      tags:
+        - Learning
+      summary: "[LEARN-10] Tải tài liệu kèm bài học"
+      description: Learner tải xuống tài liệu đính kèm bài học (yêu cầu enrollment hợp lệ).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của LessonAsset cần tải
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      title:
+                        type: string
+                        example: Slide bài giảng 1
+                      file_url:
+                        type: string
+                        example: http://example.com/files/slide.pdf
+                      file_name:
+                        type: string
+                        example: slide.pdf
+                      file_type:
+                        type: string
+                        example: application/pdf
+                      file_size:
+                        type: integer
+                        nullable: true
+                        example: 1024000
+                      note:
+                        type: string
+                        nullable: true
+                        example: Tải về đọc thêm
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh hoặc nội dung chưa khả dụng.
+        '404':
+          description: Không tìm thấy tài liệu.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /learn/lessons/{id}/next:
+    get:
+      tags:
+        - Learning
+      summary: "[LEARN-11] Gợi ý bài học tiếp theo"
+      description: Lấy bài học tiếp theo trong cấu trúc khóa học (theo thứ tự section sort_order → lesson sort_order). Trả null nếu là bài cuối.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của bài học hiện tại
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    nullable: true
+                    description: "Trả null nếu là bài cuối cùng trong khóa học."
+                    properties:
+                      id:
+                        type: integer
+                        example: 2
+                      course_id:
+                        type: integer
+                        example: 1
+                      course_section_id:
+                        type: integer
+                        example: 1
+                      title:
+                        type: string
+                        example: Bài 2 - Cài đặt môi trường
+                      slug:
+                        type: string
+                        example: bai-2-cai-dat-moi-truong
+                      lesson_type:
+                        type: string
+                        enum: [video, text]
+                        example: video
+                      is_preview:
+                        type: boolean
+                        example: false
+                      sort_order:
+                        type: integer
+                        example: 2
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh hoặc nội dung chưa khả dụng.
+        '404':
+          description: Không tìm thấy bài học.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
 components:
   securitySchemes:
     BearerAuth:
