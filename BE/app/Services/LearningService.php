@@ -368,4 +368,124 @@ class LearningService
             'current_second' => 0,
         ];
     }
+
+    /**
+     * Mark a lesson as completed or in_progress and update course enrollment status accordingly.
+     *
+     * @param User $user
+     * @param int $lessonId
+     * @param array $data
+     * @return array
+     * @throws \App\Exceptions\BusinessException
+     */
+    public function completeLesson(User $user, int $lessonId, array $data): array
+    {
+        $lesson = \App\Models\Lesson::find($lessonId);
+
+        if (!$lesson) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        $course = $lesson->course;
+        if (!$course) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ($lesson->status !== 'published' || $course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        $enrollment = Enrollment::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->first();
+
+        if (!$enrollment) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        $completed = (bool) $data['completed'];
+
+        $progress = \App\Models\LessonProgress::firstOrCreate(
+            [
+                'user_id' => $user->id,
+                'lesson_id' => $lessonId,
+            ],
+            [
+                'status' => 'in_progress',
+                'started_at' => now(),
+                'last_accessed_at' => now(),
+                'learning_duration_seconds' => 0,
+            ]
+        );
+
+        $updates = [
+            'last_accessed_at' => now(),
+        ];
+
+        if ($completed) {
+            $updates['status'] = 'completed';
+            if (!$progress->completed_at) {
+                $updates['completed_at'] = now();
+            }
+            if (!$progress->started_at) {
+                $updates['started_at'] = now();
+            }
+            if ($progress->learning_duration_seconds == 0 && $lesson->video_duration_seconds !== null) {
+                $updates['learning_duration_seconds'] = $lesson->video_duration_seconds;
+            }
+        } else {
+            if ($progress->status === 'completed') {
+                $updates['status'] = 'in_progress';
+                $updates['completed_at'] = null;
+            }
+        }
+
+        $progress->update($updates);
+
+        // Fetch current second from video progress if any
+        $currentSecond = 0;
+        if ($lesson->lesson_type === 'video') {
+            $videoProgress = \App\Models\VideoProgress::where('user_id', $user->id)
+                ->where('lesson_id', $lessonId)
+                ->first();
+            if ($videoProgress) {
+                $currentSecond = (int) $videoProgress->current_second;
+            }
+        }
+
+        // Calculate course completion
+        $publishedLessonIds = \App\Models\Lesson::where('course_id', $course->id)
+            ->where('status', 'published')
+            ->whereHas('section', function ($q) {
+                $q->where('status', 'published');
+            })
+            ->pluck('id');
+
+        $completedLessonsCount = \App\Models\LessonProgress::where('user_id', $user->id)
+            ->whereIn('lesson_id', $publishedLessonIds)
+            ->where('status', 'completed')
+            ->count();
+
+        if ($publishedLessonIds->isNotEmpty() && $completedLessonsCount === $publishedLessonIds->count()) {
+            $enrollment->update([
+                'status' => Enrollment::STATUS_COMPLETED,
+                'completed_at' => now(),
+            ]);
+        } else {
+            if ($enrollment->status === Enrollment::STATUS_COMPLETED) {
+                $enrollment->update([
+                    'status' => Enrollment::STATUS_ACTIVE,
+                    'completed_at' => null,
+                ]);
+            }
+        }
+
+        return [
+            'course' => $course,
+            'lesson' => $lesson,
+            'progress' => $progress,
+            'current_second' => $currentSecond,
+        ];
+    }
 }
