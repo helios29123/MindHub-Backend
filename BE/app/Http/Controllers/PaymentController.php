@@ -2,8 +2,7 @@
 
 namespace App\Http\Controllers;
 
-
-// use App\Http\Requests\Payment\MyOrderQueryRequest;
+use App\Http\Requests\Payment\ApplyCouponRequest;
 use App\Http\Requests\Payment\PaymentWebhookRequest;
 use App\Http\Requests\Payment\ShowOrderRequest;
 use App\Http\Requests\Payment\StoreOrderRequest;
@@ -11,11 +10,13 @@ use App\Http\Requests\Payment\StorePaymentRequest;
 use App\Http\Resources\Payment\CouponApplyResource;
 use App\Http\Resources\Payment\OrderResource;
 use App\Http\Resources\Payment\PaymentResource;
+use App\Models\Order;
 use App\Services\Payment\CouponApplyService;
 use App\Services\Payment\OrderService;
 use App\Services\Payment\PaymentService;
+use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use App\Http\Requests\Payment\ApplyCouponRequest;
+use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
@@ -33,11 +34,11 @@ class PaymentController extends Controller
             $request->user()->id
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Tạo đơn hàng thành công.',
-            'data' => new OrderResource($order),
-        ], 201);
+        return ApiResponse::success(
+            new OrderResource($order),
+            'Tạo đơn hàng thành công.',
+            201
+        );
     }
 
     public function applyCoupon(ApplyCouponRequest $request): JsonResponse
@@ -47,11 +48,10 @@ class PaymentController extends Controller
             $request->user()->id
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Áp mã giảm giá thành công.',
-            'data' => new CouponApplyResource($order),
-        ]);
+        return ApiResponse::success(
+            new CouponApplyResource($order),
+            'Áp mã giảm giá thành công.'
+        );
     }
 
     public function storePayment(StorePaymentRequest $request): JsonResponse
@@ -61,60 +61,58 @@ class PaymentController extends Controller
             $request->user()->id
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Ghi nhận thanh toán thành công.',
-            'data' => new PaymentResource($order),
-        ]);
+        return ApiResponse::success(
+            new PaymentResource($order),
+            'Ghi nhận thanh toán thành công.'
+        );
     }
 
     public function webhook(PaymentWebhookRequest $request): JsonResponse
-{
-    $order = $this->paymentService->handleWebhook($request->validated());
-
-    $message = $order->payment_status === 'paid'
-        && $order->wasRecentlyCreated === false
-        ? 'Đơn hàng đã được xử lý trước đó.'
-        : 'Cập nhật trạng thái thanh toán thành công.';
-
-    return response()->json([
-        'success' => true,
-        'message' => $message,
-        'data' => new PaymentResource($order),
-    ]);
-}
-
-    public function showOrder(ShowOrderRequest $request, int $id): JsonResponse
     {
-        $order = $this->orderService->showUserOrder(
-            $id,
+        $order = $this->paymentService->handleWebhook($request->validated());
+
+        $message = $order->payment_status === 'paid' && $order->wasRecentlyCreated === false
+            ? 'Đơn hàng đã được xử lý trước đó.'
+            : 'Cập nhật trạng thái thanh toán thành công.';
+
+        return ApiResponse::success(
+            new PaymentResource($order),
+            $message
+        );
+    }
+
+    public function myOrders(Request $request): JsonResponse
+    {
+        $filters = $request->validate([
+            'status' => ['nullable', 'string', 'in:pending,paid,cancelled,failed,expired'],
+            'payment_status' => ['nullable', 'string', 'in:unpaid,processing,paid,failed'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $orders = $this->orderService->getMyOrders(
+            $filters,
             $request->user()->id
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Lấy trạng thái đơn hàng thành công.',
-            'data' => new OrderResource($order),
-        ]);
+        return ApiResponse::paginated(
+            OrderResource::collection($orders),
+            $orders,
+            'Lấy lịch sử đơn hàng thành công.'
+        );
     }
 
-    // public function myOrders(MyOrderQueryRequest $request): JsonResponse
-    // {
-    //     $orders = $this->orderService->getMyOrders(
-    //         $request->validated(),
-    //         $request->user()->id
-    //     );
+    public function showOrder(ShowOrderRequest $request, string $id): JsonResponse
+    {
+        $validated = $request->validated();
 
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Lấy lịch sử đơn hàng và thanh toán thành công.',
-    //         'data' => OrderResource::collection($orders->items()),
-    //         'meta' => [
-    //             'current_page' => $orders->currentPage(),
-    //             'last_page' => $orders->lastPage(),
-    //             'per_page' => $orders->perPage(),
-    //             'total' => $orders->total(),
-    //         ],
-    //     ]);
-    // }
+        $order = $this->orderService->showUserOrder(
+            (int) $validated['id'],
+            $request->user()->id
+        );
+
+        return ApiResponse::success(
+            new OrderResource($order),
+            'Lấy trạng thái đơn hàng thành công.'
+        );
+    }
 }
