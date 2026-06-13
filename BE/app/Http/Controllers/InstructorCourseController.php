@@ -19,6 +19,12 @@ use App\Http\Resources\Instructor\ReviewNoteResource;
 use App\Services\Instructor\InstructorCourseService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\Instructor\SectionQueryRequest;
+use App\Http\Requests\Instructor\StoreSectionRequest;
+use App\Http\Requests\Instructor\UpdateSectionRequest;
+use App\Http\Resources\Instructor\InstructorSectionResource;
+use Illuminate\Http\Request;
+
 final class InstructorCourseController extends Controller
 {
     public function __construct(
@@ -169,17 +175,87 @@ final class InstructorCourseController extends Controller
         );
     }
 
-    public function update(UpdateCourseRequest $request, int $id): JsonResponse{
+    public function update(UpdateCourseRequest $request, int $id): JsonResponse
+    {
         $course = $this->instructorCourseService->updateCourse(
             $id,
             $request->user()->id,
-            $request->validated()
+            $request->validated(),
         );
 
         return ApiResponse::success(
             new InstructorCourseResource($course),
-            'Thao tác thành công',
-            200
+            "Thao tác thành công",
+            200,
         );
+    }
+
+    public function sections(SectionQueryRequest $request): JsonResponse
+    {
+        $sections = $this->instructorCourseService->getSections(
+            $request->validated(),
+            $request->user()->id,
+        );
+
+        return ApiResponse::paginated(
+            InstructorSectionResource::collection($sections),
+            $sections,
+            "Thao tác thành công",
+        );
+    }
+
+    public function showSection(int $id, Request $request): JsonResponse
+    {
+        $section = $this->instructorCourseService->getSection(
+            $id,
+            $request->user()->id,
+        );
+
+        return ApiResponse::success(
+            new InstructorSectionResource($section),
+            "Thao tác thành công",
+            200,
+        );
+    }
+
+    public function storeSection(StoreSectionRequest $request): JsonResponse
+    {
+        $section = $this->instructorCourseService->createSection(
+            $request->validated(),
+            $request->user()->id,
+        );
+
+        return ApiResponse::success(
+            new InstructorSectionResource($section),
+            "Thao tác thành công",
+            201,
+        );
+    }
+
+    public function updateSection(
+        UpdateSectionRequest $request,
+        int $id,
+    ): JsonResponse {
+        $section = $this->instructorCourseService->updateSection(
+            $id,
+            $request->validated(),
+            $request->user()->id,
+        );
+
+        return ApiResponse::success(
+            new InstructorSectionResource($section),
+            "Thao tác thành công",
+            200,
+        );
+    }
+
+    public function deleteSection(Request $request, int $id): JsonResponse
+    {
+        $this->instructorCourseService->deleteSection(
+            $id,
+            $request->user()->id,
+        );
+
+        return ApiResponse::success(null, "Thao tác thành công", 200);
     }
 }

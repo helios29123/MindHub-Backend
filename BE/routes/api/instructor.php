@@ -41,6 +41,34 @@ Route::middleware(["auth.session", "role:instructor"])
             InstructorCourseController::class,
             "update",
         ])->where("id", "[0-9]+");
+        Route::get("/sections", [
+            InstructorCourseController::class,
+            "sections",
+        ]);
+        Route::post("/sections", [
+            InstructorCourseController::class,
+            "storeSection",
+        ]);
+
+        Route::get("/sections/{id}", [
+            InstructorCourseController::class,
+            "showSection",
+        ])->where("id", "[0-9]+");
+
+        Route::put("/sections/{id}", [
+            InstructorCourseController::class,
+            "updateSection",
+        ])->where("id", "[0-9]+");
+
+        Route::patch("/sections/{id}", [
+            InstructorCourseController::class,
+            "updateSection",
+        ])->where("id", "[0-9]+");
+
+        Route::delete("/sections/{id}", [
+            InstructorCourseController::class,
+            "deleteSection",
+        ])->where("id", "[0-9]+");
     });
 
 Route::middleware(["auth.session", "active.user", "role:instructor"])
