@@ -64,11 +64,11 @@ class OrderRepository
             ->where('user_id', $userId)
             ->latest();
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        if (!empty($filters['payment_status'])) {
+        if (! empty($filters['payment_status'])) {
             $query->where('payment_status', $filters['payment_status']);
         }
 

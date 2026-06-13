@@ -18,6 +18,14 @@ class ShowOrderRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'id.required' => 'Mã đơn hàng không hợp lệ.',
+            'id.integer' => 'Mã đơn hàng không hợp lệ.',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge([

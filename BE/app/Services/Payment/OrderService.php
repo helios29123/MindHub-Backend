@@ -24,7 +24,7 @@ class OrderService
         return DB::transaction(function () use ($orderData, $userId) {
             $course = Course::where('id', $orderData['course_id'])->first();
 
-            if (!$course) {
+            if (! $course) {
                 throw new BusinessException('Không tìm thấy khóa học.', 404);
             }
 
@@ -58,7 +58,7 @@ class OrderService
     {
         $order = $this->orderRepository->findUserOrder($orderId, $userId);
 
-        if (!$order) {
+        if (! $order) {
             throw new BusinessException('Không tìm thấy đơn hàng.', 404);
         }
 
