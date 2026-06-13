@@ -25,8 +25,6 @@ class NextLessonRequest extends FormRequest
     {
         return [
             'id' => ['required', 'integer', 'min:1'],
-            'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }
 
@@ -36,11 +34,6 @@ class NextLessonRequest extends FormRequest
             'id.required' => 'Dữ liệu không hợp lệ.',
             'id.integer' => 'Dữ liệu không hợp lệ.',
             'id.min' => 'Dữ liệu không hợp lệ.',
-            'page.integer' => 'Dữ liệu không hợp lệ.',
-            'page.min' => 'Dữ liệu không hợp lệ.',
-            'per_page.integer' => 'Dữ liệu không hợp lệ.',
-            'per_page.min' => 'Dữ liệu không hợp lệ.',
-            'per_page.max' => 'Dữ liệu không hợp lệ.',
         ];
     }
 
