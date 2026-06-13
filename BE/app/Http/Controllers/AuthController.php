@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Exceptions\BusinessException;
 use App\Helpers\ApiResponse;
@@ -13,7 +13,7 @@ use App\Http\Requests\Auth\ResendVerifyEmailRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\Auth\AuthResource;
 use App\Http\Resources\User\UserResource;
-use App\Services\AuthService;
+use App\Services\Auth\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

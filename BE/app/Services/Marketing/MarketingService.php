@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Marketing;
 
 use App\Exceptions\BusinessException;
 use App\Models\Banner;

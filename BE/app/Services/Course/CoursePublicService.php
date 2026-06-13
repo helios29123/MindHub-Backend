@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Course;
 
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Wishlist;
-use App\Repositories\SessionRepository;
-use App\Repositories\UserRepository;
-use App\Services\AccessTokenService;
+use App\Repositories\Auth\SessionRepository;
+use App\Repositories\User\UserRepository;
+use App\Services\Auth\AccessTokenService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class CoursePublicService

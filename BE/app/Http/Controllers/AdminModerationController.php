@@ -9,7 +9,7 @@ use App\Http\Resources\Moderation\CourseApprovalResource;
 use App\Http\Resources\Moderation\CourseRejectResource;
 use App\Http\Resources\Moderation\PendingCourseResource;
 use App\Services\Moderation\CourseModerationService;
-use App\Services\ModerationService;
+use App\Services\Moderation\ModerationService;
 use App\Support\ApiResponse;
 use DomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;

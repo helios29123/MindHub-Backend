@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\CourseResource;
-use App\Http\Resources\CourseSectionResource;
-use App\Http\Resources\LessonResource;
-use App\Http\Resources\CourseReviewResource;
-use App\Http\Resources\InstructorResource;
-use App\Http\Resources\FaqResource;
-use App\Services\CoursePublicService;
+use App\Http\Resources\Course\CourseResource;
+use App\Http\Resources\Course\CourseSectionResource;
+use App\Http\Resources\Instructor\LessonResource;
+use App\Http\Resources\Course\CourseReviewResource;
+use App\Http\Resources\Course\InstructorResource;
+use App\Http\Resources\Support\FaqResource;
+use App\Services\Course\CoursePublicService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;

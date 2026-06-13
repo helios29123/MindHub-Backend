@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Learning\MyCoursesRequest;
 use App\Http\Resources\Learning\MyCourseResource;
-use App\Services\LearningService;
+use App\Services\Learning\LearningService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 

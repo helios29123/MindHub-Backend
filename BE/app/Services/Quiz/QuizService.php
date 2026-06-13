@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Quiz;
 
 use App\Exceptions\BusinessException;
 use App\Models\Quiz;

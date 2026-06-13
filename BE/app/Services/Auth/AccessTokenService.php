@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Auth;
 
 use App\Exceptions\BusinessException;
 use Illuminate\Support\Arr;

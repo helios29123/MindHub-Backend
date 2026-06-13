@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Auth;
 
 use App\Exceptions\BusinessException;
 use App\Mail\VerifyEmailMail;
 use App\Models\AuthSession;
 use App\Models\User;
-use App\Repositories\SessionRepository;
-use App\Repositories\UserRepository;
+use App\Repositories\Auth\SessionRepository;
+use App\Repositories\User\UserRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;

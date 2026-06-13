@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Quiz\StoreQuizAttemptRequest;
-use App\Http\Resources\QuizAttemptResource;
-use App\Services\QuizService;
+use App\Http\Resources\Quiz\QuizAttemptResource;
+use App\Services\Quiz\QuizService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;

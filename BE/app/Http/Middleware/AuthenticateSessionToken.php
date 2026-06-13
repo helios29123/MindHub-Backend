@@ -4,9 +4,9 @@ namespace App\Http\Middleware;
 
 use App\Exceptions\BusinessException;
 use App\Helpers\ApiResponse;
-use App\Repositories\SessionRepository;
-use App\Repositories\UserRepository;
-use App\Services\AccessTokenService;
+use App\Repositories\Auth\SessionRepository;
+use App\Repositories\User\UserRepository;
+use App\Services\Auth\AccessTokenService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
