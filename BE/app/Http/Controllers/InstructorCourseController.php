@@ -258,4 +258,29 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(null, "Thao tác thành công", 200);
     }
+
+    public function profile(Request $request): JsonResponse
+    {
+        $profile = $this->instructorCourseService->getInstructorProfile($request->user()->id);
+
+        return ApiResponse::success(
+            new \App\Http\Resources\Instructor\InstructorProfileResource($profile),
+            "Thao tác thành công",
+            200
+        );
+    }
+
+    public function updateProfile(\App\Http\Requests\Instructor\UpdateInstructorProfileRequest $request): JsonResponse
+    {
+        $profile = $this->instructorCourseService->updateInstructorProfile(
+            $request->user()->id,
+            $request->validated()
+        );
+
+        return ApiResponse::success(
+            new \App\Http\Resources\Instructor\InstructorProfileResource($profile),
+            "Thao tác thành công",
+            200
+        );
+    }
 }

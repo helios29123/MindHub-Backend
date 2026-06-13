@@ -706,4 +706,36 @@ final class InstructorCourseService
             $data["updated_at"],
         );
     }
+
+    public function getInstructorProfile(int $userId): \App\Models\InstructorProfile
+    {
+        $profile = \App\Models\InstructorProfile::query()
+            ->with("user")
+            ->where("user_id", $userId)
+            ->first();
+
+        if (!$profile) {
+            throw new BusinessException("Không tìm thấy dữ liệu.", 404);
+        }
+
+        return $profile;
+    }
+
+    public function updateInstructorProfile(int $userId, array $data): \App\Models\InstructorProfile
+    {
+        $allowedData = [];
+        $fields = ["bio", "expertise", "experience_years", "level"];
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $data)) {
+                $allowedData[$field] = $data[$field];
+            }
+        }
+
+        $profile = \App\Models\InstructorProfile::updateOrCreate(
+            ["user_id" => $userId],
+            $allowedData
+        );
+
+        return $profile->refresh()->load("user");
+    }
 }

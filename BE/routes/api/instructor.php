@@ -41,6 +41,16 @@ Route::middleware(["auth.session", "role:instructor"])
             InstructorCourseController::class,
             "update",
         ])->where("id", "[0-9]+");
+
+        Route::get("/profile", [
+            InstructorCourseController::class,
+            "profile",
+        ]);
+
+        Route::patch("/profile", [
+            InstructorCourseController::class,
+            "updateProfile",
+        ]);
         Route::get("/sections", [
             InstructorCourseController::class,
             "sections",
