@@ -169,4 +169,35 @@ final class LearningController extends Controller
             ]
         ], 'Thao tác thành công');
     }
+
+    /**
+     * Get details of the most recently accessed lesson or the first lesson of the latest purchased course to resume learning.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return JsonResponse
+     */
+    public function resume(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $details = $this->learningService->resumeLearning($user);
+
+        return ApiResponse::success([
+            'course' => [
+                'id' => $details['course']->id,
+                'title' => $details['course']->title,
+                'slug' => $details['course']->slug,
+            ],
+            'lesson' => new LearningLessonResource($details['lesson']),
+            'progress' => $details['progress'] ? [
+                'status' => $details['progress']->status,
+                'started_at' => $details['progress']->started_at ? $details['progress']->started_at->toISOString() : null,
+                'completed_at' => $details['progress']->completed_at ? $details['progress']->completed_at->toISOString() : null,
+                'learning_duration_seconds' => (int) $details['progress']->learning_duration_seconds,
+                'last_accessed_at' => $details['progress']->last_accessed_at ? $details['progress']->last_accessed_at->toISOString() : null,
+                'current_second' => (int) $details['current_second'],
+            ] : null,
+            'current_second' => (int) $details['current_second'],
+        ], 'Thao tác thành công');
+    }
 }

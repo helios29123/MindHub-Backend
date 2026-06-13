@@ -270,4 +270,102 @@ class LearningService
             'current_second' => $currentSecond,
         ];
     }
+
+    /**
+     * Resume learning the most recently accessed lesson or the first lesson of the latest course.
+     *
+     * @param User $user
+     * @return array
+     * @throws \App\Exceptions\BusinessException
+     */
+    public function resumeLearning(User $user): array
+    {
+        $hasEnrollment = Enrollment::where('user_id', $user->id)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->exists();
+
+        if (!$hasEnrollment) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        // Find the most recently accessed lesson progress for a course the user is enrolled in
+        $latestProgress = \App\Models\LessonProgress::where('user_id', $user->id)
+            ->whereHas('lesson', function ($query) use ($user) {
+                $query->where('status', 'published')
+                    ->whereHas('course', function ($q) use ($user) {
+                        $q->where('status', 'published')
+                            ->whereNull('deleted_at')
+                            ->whereHas('enrollments', function ($eq) use ($user) {
+                                $eq->where('user_id', $user->id)
+                                    ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED]);
+                            });
+                    });
+            })
+            ->orderByDesc('last_accessed_at')
+            ->first();
+
+        if ($latestProgress) {
+            $lesson = $latestProgress->lesson;
+            $course = $lesson->course;
+
+            $currentSecond = 0;
+            if ($lesson->lesson_type === 'video') {
+                $videoProgress = \App\Models\VideoProgress::where('user_id', $user->id)
+                    ->where('lesson_id', $lesson->id)
+                    ->first();
+                if ($videoProgress) {
+                    $currentSecond = (int) $videoProgress->current_second;
+                }
+            }
+
+            return [
+                'course' => $course,
+                'lesson' => $lesson,
+                'progress' => $latestProgress,
+                'current_second' => $currentSecond,
+            ];
+        }
+
+        // If no progress, find the latest enrolled course
+        $latestEnrollment = Enrollment::where('user_id', $user->id)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->whereHas('course', function ($q) {
+                $q->where('status', 'published')->whereNull('deleted_at');
+            })
+            ->orderByDesc('enrolled_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$latestEnrollment) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        $course = $latestEnrollment->course;
+
+        // Find the first published lesson in the course (ordered by section and lesson sort_order)
+        $firstSection = $course->sections()
+            ->where('status', 'published')
+            ->orderBy('sort_order')
+            ->first();
+
+        if (!$firstSection) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        $firstLesson = $firstSection->lessons()
+            ->where('status', 'published')
+            ->orderBy('sort_order')
+            ->first();
+
+        if (!$firstLesson) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        return [
+            'course' => $course,
+            'lesson' => $firstLesson,
+            'progress' => null,
+            'current_second' => 0,
+        ];
+    }
 }
