@@ -954,6 +954,134 @@ paths:
         '422':
           description: Dữ liệu không hợp lệ.
 
+  /admin/orders:
+    get:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-06] Quản lý giao dịch/đơn hàng"
+      description: Admin xem danh sách tất cả đơn hàng trên hệ thống, hỗ trợ lọc theo status, payment_status, user_id, course_id, order_code, ngày tạo.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, paid, cancelled, failed, expired]
+          example: paid
+        - name: payment_status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [unpaid, processing, paid, failed]
+          example: paid
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 4
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: order_code
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 50
+          example: ORD-20260612-ABCDEFGH
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-06-01"
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-06-30"
+      responses:
+        '200':
+          description: Lấy danh sách giao dịch và đơn hàng thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy danh sách giao dịch và đơn hàng thành công.
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        order_code:
+                          type: string
+                        user_id:
+                          type: integer
+                        course_id:
+                          type: integer
+                        status:
+                          type: string
+                        payment_status:
+                          type: string
+                        total_amount:
+                          type: number
+                        discount_amount:
+                          type: number
+                          nullable: true
+                        final_amount:
+                          type: number
+                        created_at:
+                          type: string
+                          format: date-time
+                  meta:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập (yêu cầu role admin).
+        '422':
+          description: Bộ lọc không hợp lệ.
+
   /admin/campaigns:
     get:
       tags:
@@ -2635,6 +2763,582 @@ paths:
       responses:
         '200':
           description: Cập nhật trạng thái thanh toán thành công.
+
+  /wishlists:
+    get:
+      tags:
+        - Wishlist
+      summary: "[SHOP-02] Xem danh sách yêu thích"
+      description: Learner xem danh sách khóa học đã thêm vào yêu thích, hỗ trợ phân trang.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+      responses:
+        '200':
+          description: Lấy danh sách khóa học yêu thích thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy danh sách khóa học yêu thích thành công.
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        course_id:
+                          type: integer
+                          example: 1
+                        course:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            title:
+                              type: string
+                            slug:
+                              type: string
+                            thumbnail_url:
+                              type: string
+                              nullable: true
+                            price:
+                              type: number
+                  meta:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+        '401':
+          description: Chưa đăng nhập.
+    post:
+      tags:
+        - Wishlist
+      summary: "[SHOP-01] Thêm khóa học vào yêu thích"
+      description: Learner thêm khóa học vào danh sách yêu thích.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - course_id
+              properties:
+                course_id:
+                  type: integer
+                  example: 1
+      responses:
+        '201':
+          description: Thêm khóa học vào danh sách yêu thích thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thêm khóa học vào danh sách yêu thích thành công.
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      course_id:
+                        type: integer
+        '401':
+          description: Chưa đăng nhập.
+        '409':
+          description: Khóa học đã có trong danh sách yêu thích.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /wishlists/{courseId}:
+    delete:
+      tags:
+        - Wishlist
+      summary: "[SHOP-03] Xóa khóa học khỏi yêu thích"
+      description: Learner xóa khóa học khỏi danh sách yêu thích.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Đã xóa khóa học khỏi danh sách yêu thích.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Đã xóa khóa học khỏi danh sách yêu thích.
+                  data:
+                    type: object
+                    properties:
+                      course_id:
+                        type: integer
+                        example: 1
+        '401':
+          description: Chưa đăng nhập.
+        '404':
+          description: Không tìm thấy khóa học trong danh sách yêu thích.
+
+  /courses/{id}/reviews:
+    post:
+      tags:
+        - Q&A Interactions
+      summary: "[INT-03] Đánh giá khóa học"
+      description: Learner đánh giá khóa học sau khi đã ghi danh và hoàn thành ít nhất một phần.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rating
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  example: 5
+                comment:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+                  example: Khóa học rất hay và bổ ích!
+      responses:
+        '201':
+          description: Cảm ơn bạn đã đánh giá khóa học.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Cảm ơn bạn đã đánh giá khóa học.
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      course_id:
+                        type: integer
+                      user_id:
+                        type: integer
+                      rating:
+                        type: integer
+                      comment:
+                        type: string
+                        nullable: true
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh khóa học hoặc đã đánh giá rồi.
+        '422':
+          description: Dữ liệu đánh giá không hợp lệ.
+
+  /instructor/courses/{id}:
+    patch:
+      tags:
+        - Instructor Management
+      summary: "[INS-03] Cập nhật thông tin khóa học"
+      description: Giảng viên cập nhật thông tin khóa học của mình (title, description, price, categories, v.v.).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 255
+                  example: Lập trình Laravel nâng cao (Updated)
+                short_description:
+                  type: string
+                  maxLength: 500
+                  example: Mô tả ngắn đã cập nhật.
+                description:
+                  type: string
+                  example: Mô tả chi tiết đã cập nhật.
+                thumbnail_url:
+                  type: string
+                  format: uri
+                  example: http://example.com/thumb-new.png
+                intro_video_url:
+                  type: string
+                  format: uri
+                  nullable: true
+                price:
+                  type: number
+                  minimum: 0
+                  example: 599000
+                sale_price:
+                  type: number
+                  minimum: 0
+                  nullable: true
+                  example: 399000
+                level:
+                  type: string
+                  enum: [beginner, intermediate, advanced, all_levels]
+                  example: advanced
+                language:
+                  type: string
+                  maxLength: 50
+                  example: vi
+                requirements:
+                  type: string
+                  example: Kiến thức PHP cơ bản.
+                outcomes:
+                  type: string
+                  example: Làm chủ Laravel framework.
+                category_ids:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 3]
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      title:
+                        type: string
+                      slug:
+                        type: string
+                      status:
+                        type: string
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên sở hữu khóa học này.
+        '404':
+          description: Không tìm thấy khóa học.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /instructor/coupons:
+    get:
+      tags:
+        - Marketing
+      summary: "[MKT-01] Danh sách coupon của giảng viên"
+      description: Giảng viên xem danh sách coupon đã tạo, hỗ trợ lọc theo khóa học và phân trang.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive, expired]
+          example: active
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 15
+      responses:
+        '200':
+          description: Thao tác coupon thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác coupon thành công.
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        code:
+                          type: string
+                        course_id:
+                          type: integer
+                        discount_type:
+                          type: string
+                          enum: [percent, fixed]
+                        discount_value:
+                          type: number
+                        usage_limit:
+                          type: integer
+                          nullable: true
+                        used_count:
+                          type: integer
+                        status:
+                          type: string
+                        start_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        end_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải role instructor.
+    post:
+      tags:
+        - Marketing
+      summary: "[MKT-01] Tạo coupon mới"
+      description: Giảng viên tạo mã giảm giá cho khóa học của mình.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - course_id
+                - discount_type
+                - discount_value
+              properties:
+                code:
+                  type: string
+                  maxLength: 50
+                  example: SUMMER2026
+                course_id:
+                  type: integer
+                  example: 1
+                discount_type:
+                  type: string
+                  enum: [percent, fixed]
+                  example: percent
+                discount_value:
+                  type: number
+                  minimum: 0
+                  example: 30
+                usage_limit:
+                  type: integer
+                  minimum: 1
+                  nullable: true
+                  example: 100
+                start_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  example: "2026-06-13T00:00:00Z"
+                end_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  example: "2026-07-13T23:59:59Z"
+                status:
+                  type: string
+                  enum: [active, inactive]
+                  example: active
+      responses:
+        '201':
+          description: Thao tác coupon thành công.
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên sở hữu khóa học.
+        '409':
+          description: Mã coupon đã tồn tại.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /instructor/coupons/{id}:
+    get:
+      tags:
+        - Marketing
+      summary: "[MKT-01] Xem chi tiết coupon"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Thao tác coupon thành công.
+        '404':
+          description: Không tìm thấy coupon hợp lệ.
+    patch:
+      tags:
+        - Marketing
+      summary: "[MKT-01] Cập nhật coupon"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                discount_type:
+                  type: string
+                  enum: [percent, fixed]
+                discount_value:
+                  type: number
+                usage_limit:
+                  type: integer
+                  nullable: true
+                status:
+                  type: string
+                  enum: [active, inactive]
+                start_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                end_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        '200':
+          description: Thao tác coupon thành công.
+        '403':
+          description: Không phải giảng viên sở hữu khóa học.
+        '404':
+          description: Không tìm thấy coupon hợp lệ.
+        '409':
+          description: Mã coupon đã tồn tại.
+        '422':
+          description: Dữ liệu không hợp lệ.
+    delete:
+      tags:
+        - Marketing
+      summary: "[MKT-01] Xóa coupon"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Thao tác coupon thành công.
+        '403':
+          description: Không phải giảng viên sở hữu khóa học.
+        '404':
+          description: Không tìm thấy coupon hợp lệ.
 
   /me/courses:
     get:
