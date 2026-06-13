@@ -1899,6 +1899,74 @@ paths:
           description: Lấy danh sách đánh giá thành công.
         '422':
           description: Tham số chứa khóa ngoài whitelist hoặc giá trị không hợp lệ.
+    post:
+      tags:
+        - Q&A Interactions
+      summary: "[INT-03] Đánh giá khóa học"
+      description: Learner đánh giá khóa học sau khi đã ghi danh và hoàn thành ít nhất một phần.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rating
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  example: 5
+                comment:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+                  example: Khóa học rất hay và bổ ích!
+      responses:
+        '201':
+          description: Cảm ơn bạn đã đánh giá khóa học.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Cảm ơn bạn đã đánh giá khóa học.
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      course_id:
+                        type: integer
+                      user_id:
+                        type: integer
+                      rating:
+                        type: integer
+                      comment:
+                        type: string
+                        nullable: true
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh khóa học hoặc đã đánh giá rồi.
+        '422':
+          description: Dữ liệu đánh giá không hợp lệ.
 
   /instructors/{id}:
     get:
@@ -2926,75 +2994,6 @@ paths:
         '404':
           description: Không tìm thấy khóa học trong danh sách yêu thích.
 
-  /courses/{id}/reviews:
-    post:
-      tags:
-        - Q&A Interactions
-      summary: "[INT-03] Đánh giá khóa học"
-      description: Learner đánh giá khóa học sau khi đã ghi danh và hoàn thành ít nhất một phần.
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            minimum: 1
-          example: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - rating
-              properties:
-                rating:
-                  type: integer
-                  minimum: 1
-                  maximum: 5
-                  example: 5
-                comment:
-                  type: string
-                  maxLength: 2000
-                  nullable: true
-                  example: Khóa học rất hay và bổ ích!
-      responses:
-        '201':
-          description: Cảm ơn bạn đã đánh giá khóa học.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: Cảm ơn bạn đã đánh giá khóa học.
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      course_id:
-                        type: integer
-                      user_id:
-                        type: integer
-                      rating:
-                        type: integer
-                      comment:
-                        type: string
-                        nullable: true
-        '401':
-          description: Chưa đăng nhập.
-        '403':
-          description: Chưa ghi danh khóa học hoặc đã đánh giá rồi.
-        '422':
-          description: Dữ liệu đánh giá không hợp lệ.
 
   /instructor/courses/{id}:
     patch:
