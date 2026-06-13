@@ -9,6 +9,8 @@ use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
 use App\Http\Resources\Learning\LearningLessonResource;
+use App\Http\Requests\Learning\CourseOutlineRequest;
+use App\Http\Resources\Learning\LearningOutlineSectionResource;
 
 final class LearningController extends Controller
 {
@@ -113,5 +115,26 @@ final class LearningController extends Controller
         return ApiResponse::success([
             'can_access' => true,
         ], 'Thao tác thành công');
+    }
+
+    /**
+     * Get the outline of a purchased course.
+     *
+     * @param CourseOutlineRequest $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function outline(CourseOutlineRequest $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        $result = $this->learningService->getCourseOutline($user, $id);
+
+        $resource = LearningOutlineSectionResource::collection($result['sections']);
+        $resource->collection->each(function ($secResource) use ($result) {
+            $secResource->additional(['progresses' => $result['progresses']]);
+        });
+
+        return ApiResponse::success($resource, 'Lấy lộ trình khóa học thành công');
     }
 }

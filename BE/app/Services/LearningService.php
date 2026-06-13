@@ -109,4 +109,55 @@ class LearningService
             'current_second' => $currentSecond,
         ];
     }
+
+    /**
+     * Get the outline (sections & lessons) of a purchased course along with the user's progress.
+     *
+     * @param User $user
+     * @param int $courseId
+     * @return array
+     * @throws \App\Exceptions\BusinessException
+     */
+    public function getCourseOutline(User $user, int $courseId): array
+    {
+        $course = \App\Models\Course::find($courseId);
+
+        if (!$course) {
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ($course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        $enrollment = Enrollment::where('user_id', $user->id)
+            ->where('course_id', $courseId)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->first();
+
+        if (!$enrollment) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        $course->load([
+            'sections' => function ($query) {
+                $query->where('status', 'published')->orderBy('sort_order');
+            },
+            'sections.lessons' => function ($query) {
+                $query->where('status', 'published')->orderBy('sort_order');
+            }
+        ]);
+
+        $lessonIds = $course->sections->flatMap->lessons->pluck('id');
+
+        $progresses = \App\Models\LessonProgress::where('user_id', $user->id)
+            ->whereIn('lesson_id', $lessonIds)
+            ->get()
+            ->keyBy('lesson_id');
+
+        return [
+            'sections' => $course->sections,
+            'progresses' => $progresses,
+        ];
+    }
 }
