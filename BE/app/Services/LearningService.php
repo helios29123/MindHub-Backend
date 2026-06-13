@@ -564,4 +564,54 @@ class LearningService
             'progress_percent' => (float) $progressPercent,
         ];
     }
+
+    /**
+     * Get the paginated learning logs (timeline) for the authenticated learner.
+     *
+     * @param User $user
+     * @param array $params
+     * @return LengthAwarePaginator
+     */
+    public function getLearningLogs(User $user, array $params): LengthAwarePaginator
+    {
+        $perPage = min((int) ($params['per_page'] ?? 10), 100);
+
+        // Get only course IDs where the user has active or completed enrollments
+        $enrolledCourseIds = Enrollment::where('user_id', $user->id)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->pluck('course_id');
+
+        $query = \App\Models\LessonProgress::with(['lesson.course'])
+            ->where('user_id', $user->id)
+            ->whereHas('lesson', function ($q) use ($enrolledCourseIds) {
+                $q->where('status', 'published')
+                  ->whereIn('course_id', $enrolledCourseIds)
+                  ->whereHas('course', function ($qc) {
+                      $qc->where('status', 'published')
+                         ->whereNull('deleted_at');
+                  });
+            });
+
+        if (!empty($params['status'])) {
+            $query->where('status', $params['status']);
+        }
+
+        $paginatedLogs = $query->orderByDesc('last_accessed_at')
+            ->paginate($perPage);
+
+        // Map video progress current_second for video lessons
+        $lessonIds = $paginatedLogs->pluck('lesson_id')->unique();
+        $videoProgresses = \App\Models\VideoProgress::where('user_id', $user->id)
+            ->whereIn('lesson_id', $lessonIds)
+            ->get()
+            ->keyBy('lesson_id');
+
+        $paginatedLogs->getCollection()->transform(function ($progress) use ($videoProgresses) {
+            $vp = $videoProgresses->get($progress->lesson_id);
+            $progress->current_second = $vp ? (int) $vp->current_second : 0;
+            return $progress;
+        });
+
+        return $paginatedLogs;
+    }
 }

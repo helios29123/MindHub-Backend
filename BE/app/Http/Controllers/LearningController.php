@@ -14,6 +14,8 @@ use App\Http\Resources\Learning\LearningOutlineSectionResource;
 use App\Http\Requests\Learning\SaveVideoProgressRequest;
 use App\Http\Requests\Learning\CompleteLessonRequest;
 use App\Http\Requests\Learning\CourseProgressRequest;
+use App\Http\Requests\Learning\LearningLogsRequest;
+use App\Http\Resources\Learning\LearningLogResource;
 
 final class LearningController extends Controller
 {
@@ -248,5 +250,27 @@ final class LearningController extends Controller
         $progress = $this->learningService->getCourseProgress($user, $id);
 
         return ApiResponse::success($progress, 'Thao tác thành công');
+    }
+
+    /**
+     * Get learning logs (timeline) for the authenticated learner.
+     *
+     * @param LearningLogsRequest $request
+     * @return JsonResponse
+     */
+    public function learningLogs(LearningLogsRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $logs = $this->learningService->getLearningLogs(
+            $user,
+            $request->validated()
+        );
+
+        return ApiResponse::paginated(
+            LearningLogResource::collection($logs),
+            $logs,
+            'Thao tác thành công'
+        );
     }
 }
