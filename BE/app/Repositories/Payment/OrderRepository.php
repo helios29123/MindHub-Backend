@@ -62,7 +62,8 @@ class OrderRepository
     {
         $query = Order::with(['course', 'coupon'])
             ->where('user_id', $userId)
-            ->latest();
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -72,6 +73,9 @@ class OrderRepository
             $query->where('payment_status', $filters['payment_status']);
         }
 
-        return $query->paginate($filters['per_page'] ?? 10);
+        $perPage = (int) ($filters['per_page'] ?? 10);
+        $page = (int) ($filters['page'] ?? 1);
+
+        return $query->paginate($perPage, ['*'], 'page', $page);
     }
 }

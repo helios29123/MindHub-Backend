@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Payment\ApplyCouponRequest;
+use App\Http\Requests\Payment\MyOrderQueryRequest;
 use App\Http\Requests\Payment\PaymentWebhookRequest;
 use App\Http\Requests\Payment\ShowOrderRequest;
 use App\Http\Requests\Payment\StoreOrderRequest;
@@ -10,13 +11,11 @@ use App\Http\Requests\Payment\StorePaymentRequest;
 use App\Http\Resources\Payment\CouponApplyResource;
 use App\Http\Resources\Payment\OrderResource;
 use App\Http\Resources\Payment\PaymentResource;
-use App\Models\Order;
 use App\Services\Payment\CouponApplyService;
 use App\Services\Payment\OrderService;
 use App\Services\Payment\PaymentService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
@@ -81,23 +80,17 @@ class PaymentController extends Controller
         );
     }
 
-    public function myOrders(Request $request): JsonResponse
+    public function myOrders(MyOrderQueryRequest $request): JsonResponse
     {
-        $filters = $request->validate([
-            'status' => ['nullable', 'string', 'in:pending,paid,cancelled,failed,expired'],
-            'payment_status' => ['nullable', 'string', 'in:unpaid,processing,paid,failed'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
-
         $orders = $this->orderService->getMyOrders(
-            $filters,
+            $request->validated(),
             $request->user()->id
         );
 
         return ApiResponse::paginated(
             OrderResource::collection($orders),
             $orders,
-            'Lấy lịch sử đơn hàng thành công.'
+            'Lấy lịch sử đơn hàng và thanh toán thành công.'
         );
     }
 
