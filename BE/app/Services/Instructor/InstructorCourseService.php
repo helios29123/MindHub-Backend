@@ -209,7 +209,7 @@ final class InstructorCourseService
             $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
             if ($isPreview && $lesson->status === "hidden") {
                 throw new BusinessException(
-                    "Bﾃi h盻皇 ﾄ疎ng 蘯ｩn khﾃｴng th盻・b蘯ｭt preview mi盻・ phﾃｭ.",
+                    "B・・｣ｰi h逶ｻ逧・・・鮪ng 陂ｯ・ｩn kh・・ｽｴng th逶ｻ繝ｻb陂ｯ・ｭt preview mi逶ｻ繝ｻ ph・・ｽｭ.",
                     400,
                 );
             }
@@ -288,17 +288,17 @@ final class InstructorCourseService
                 $courseId,
             );
             if (!$course) {
-                throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
+                throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
             }
             if ((int) $course->instructor_id !== (int) $instructor->id) {
                 throw new BusinessException(
-                    "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
+                    "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
                     403,
                 );
             }
             if (!$this->courseCanBeSubmitted($course)) {
                 throw new BusinessException(
-                    "Khﾃｳa h盻皇 chﾆｰa ﾄ黛ｻｧ ﾄ訴盻「 ki盻㌻ g盻ｭi duy盻㏄.",
+                    "Kh・・ｽｳa h逶ｻ逧・ch・・ｽｰa ・・ｻ幢ｽｻ・ｧ ・・ｨｴ逶ｻ縲・ki逶ｻ繻ｻ g逶ｻ・ｭi duy逶ｻ繽・",
                     400,
                 );
             }
@@ -315,16 +315,16 @@ final class InstructorCourseService
             $courseId,
         );
         if (!$course) {
-            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
+            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new BusinessException(
-                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
+                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
                 403,
             );
         }
         if ($course->status !== "rejected") {
-            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
+            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
         }
         return $course;
     }
@@ -371,14 +371,14 @@ final class InstructorCourseService
             $lessonId,
         );
         if (!$lesson) {
-            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
+            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
         }
         if (
             !$lesson->course ||
             (int) $lesson->course->instructor_id !== (int) $instructor->id
         ) {
             throw new AccessDeniedHttpException(
-                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
+                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
             );
         }
         return $lesson->load(["course", "section", "assets"]);
@@ -389,11 +389,11 @@ final class InstructorCourseService
     ): Course {
         $course = $this->instructorLessonRepository->findCourseById($courseId);
         if (!$course) {
-            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
+            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new AccessDeniedHttpException(
-                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
+                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
             );
         }
         return $course;
@@ -404,7 +404,7 @@ final class InstructorCourseService
             $sectionId,
         );
         if (!$section) {
-            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
+            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
         }
         return $section;
     }
@@ -413,7 +413,7 @@ final class InstructorCourseService
         Course $course,
     ): void {
         if ((int) $section->course_id !== (int) $course->id) {
-            throw new HttpException(422, "Tham s盻・khﾃｴng h盻｣p l盻・");
+            throw new HttpException(422, "Tham s逶ｻ繝ｻkh・・ｽｴng h逶ｻ・｣p l逶ｻ繝ｻ");
         }
     }
     private function makeUniqueLessonSlug(
@@ -445,12 +445,12 @@ final class InstructorCourseService
         $course = Course::query()->where("id", $courseId)->first();
 
         if (!$course) {
-            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
+            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
+                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
                 403,
             );
         }
@@ -498,7 +498,7 @@ final class InstructorCourseService
             (float) $effectiveSalePrice > (float) $effectivePrice
         ) {
             throw new BusinessException(
-                "Giﾃ｡ khuy蘯ｿn mﾃ｣i khﾃｴng ﾄ柁ｰ盻｣c l盻嬾 hﾆ｡n giﾃ｡ g盻祖.",
+                "Gi・・ｽ｡ khuy陂ｯ・ｿn m・・ｽ｣i kh・・ｽｴng ・・氈・ｰ逶ｻ・｣c l逶ｻ螫ｾ h・・ｽ｡n gi・・ｽ｡ g逶ｻ逾・",
                 422,
             );
         }
@@ -517,7 +517,7 @@ final class InstructorCourseService
             ->count();
 
         if ($validCategoryCount !== count(array_unique($categoryIds))) {
-            throw new BusinessException("Danh m盻･c khﾃｴng h盻｣p l盻・", 422);
+            throw new BusinessException("Danh m逶ｻ・･c kh・・ｽｴng h逶ｻ・｣p l逶ｻ繝ｻ", 422);
         }
     }
 
@@ -648,12 +648,12 @@ final class InstructorCourseService
         $course = Course::query()->find($courseId);
 
         if (!$course) {
-            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
+            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
+                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
                 403,
             );
         }
@@ -670,16 +670,16 @@ final class InstructorCourseService
             ->find($sectionId);
 
         if (!$section) {
-            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
+            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
         }
 
         if (!$section->course) {
-            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
+            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
         }
 
         if ((int) $section->course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
+                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
                 403,
             );
         }
@@ -715,7 +715,7 @@ final class InstructorCourseService
             ->first();
 
         if (!$profile) {
-            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
+            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
         }
 
         return $profile;
@@ -747,14 +747,190 @@ final class InstructorCourseService
             $courseId = (int) $filters['course_id'];
 
             if (!$repository->courseExists($courseId)) {
-                throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+                throw new \App\Exceptions\BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
             }
 
             if (!$repository->instructorOwnsCourse((int) $instructor->id, $courseId)) {
-                throw new \App\Exceptions\BusinessException('Bạn không có quyền xem dữ liệu khóa học này.', 403);
+                throw new \App\Exceptions\BusinessException('B蘯｡n khﾃｴng cﾃｳ quy盻］ xem d盻ｯ li盻㎡ khﾃｳa h盻皇 nﾃy.', 403);
             }
         }
 
         return $repository->getRevenueReport((int) $instructor->id, $filters);
+    }
+
+    public function paginateInstructorQuizzes(User $instructor, array $filters): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        $repository = app(\App\Repositories\Instructor\InstructorQuizRepository::class);
+
+        if (!empty($filters['course_id'])) {
+            $this->ensureCourseBelongsToInstructor((int) $filters['course_id'], (int) $instructor->id);
+        }
+
+        if (!empty($filters['lesson_id'])) {
+            $lesson = $repository->findLessonWithCourse((int) $filters['lesson_id']);
+
+            if (!$lesson || !$lesson->course) {
+                throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+            }
+
+            if ((int) $lesson->course->instructor_id !== (int) $instructor->id) {
+                throw new BusinessException('Bạn không được thao tác quiz của khóa học này.', 403);
+            }
+        }
+
+        return $repository->paginateOwnedQuizzes((int) $instructor->id, $filters);
+    }
+
+    public function getInstructorQuiz(User $instructor, int $quizId): \App\Models\Quiz
+    {
+        $repository = app(\App\Repositories\Instructor\InstructorQuizRepository::class);
+
+        $quiz = $repository->findOwnedQuiz((int) $instructor->id, $quizId);
+
+        if (!$quiz) {
+            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        return $quiz;
+    }
+
+    public function createInstructorQuiz(User $instructor, array $data): \App\Models\Quiz
+    {
+        return DB::transaction(function () use ($instructor, $data): \App\Models\Quiz {
+            $lesson = $this->getQuizLessonOwnedByInstructor((int) $data['lesson_id'], (int) $instructor->id);
+
+            foreach ($data['questions'] as $question) {
+                $this->assertQuizQuestionHasCorrectOption($question);
+            }
+
+            $quiz = \App\Models\Quiz::query()->create([
+                'course_id' => (int) $lesson->course_id,
+                'lesson_id' => (int) $lesson->id,
+                'title' => $data['title'],
+                'description' => $data['description'] ?? null,
+                'passing_score' => $data['passing_score'] ?? 0,
+                'status' => $data['status'] ?? 'draft',
+            ]);
+
+            $this->syncInstructorQuizQuestions($quiz, $data['questions']);
+
+            return $quiz->refresh()->load([
+                'course:id,instructor_id,title,status',
+                'lesson:id,course_id,title,status',
+                'questions.options',
+            ]);
+        });
+    }
+
+    public function updateInstructorQuiz(User $instructor, int $quizId, array $data): \App\Models\Quiz
+    {
+        return DB::transaction(function () use ($instructor, $quizId, $data): \App\Models\Quiz {
+            $quiz = $this->getInstructorQuiz($instructor, $quizId);
+
+            $updateData = [];
+
+            if (array_key_exists('lesson_id', $data)) {
+                $lesson = $this->getQuizLessonOwnedByInstructor((int) $data['lesson_id'], (int) $instructor->id);
+                $updateData['lesson_id'] = (int) $lesson->id;
+                $updateData['course_id'] = (int) $lesson->course_id;
+            }
+
+            foreach (['title', 'description', 'passing_score', 'status'] as $field) {
+                if (array_key_exists($field, $data)) {
+                    $updateData[$field] = $data[$field];
+                }
+            }
+
+            if ($updateData !== []) {
+                $quiz->update($updateData);
+            }
+
+            if (array_key_exists('questions', $data)) {
+                foreach ($data['questions'] as $question) {
+                    $this->assertQuizQuestionHasCorrectOption($question);
+                }
+
+                $this->syncInstructorQuizQuestions($quiz, $data['questions']);
+            }
+
+            return $quiz->refresh()->load([
+                'course:id,instructor_id,title,status',
+                'lesson:id,course_id,title,status',
+                'questions.options',
+            ]);
+        });
+    }
+
+    public function deleteInstructorQuiz(User $instructor, int $quizId): void
+    {
+        DB::transaction(function () use ($instructor, $quizId): void {
+            $quiz = $this->getInstructorQuiz($instructor, $quizId);
+            $quiz->delete();
+        });
+    }
+
+    private function getQuizLessonOwnedByInstructor(int $lessonId, int $instructorId): \App\Models\Lesson
+    {
+        $repository = app(\App\Repositories\Instructor\InstructorQuizRepository::class);
+
+        $lesson = $repository->findLessonWithCourse($lessonId);
+
+        if (!$lesson || !$lesson->course) {
+            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        if ((int) $lesson->course->instructor_id !== $instructorId) {
+            throw new BusinessException('Bạn không được thao tác quiz của khóa học này.', 403);
+        }
+
+        return $lesson;
+    }
+
+    private function assertQuizQuestionHasCorrectOption(array $question): void
+    {
+        $hasCorrectOption = collect($question['options'] ?? [])
+            ->contains(fn (array $option): bool => (bool) ($option['is_correct'] ?? false));
+
+        if (!$hasCorrectOption) {
+            throw new BusinessException('Mỗi câu hỏi phải có ít nhất một đáp án đúng.', 422);
+        }
+    }
+
+    private function syncInstructorQuizQuestions(\App\Models\Quiz $quiz, array $questions): void
+    {
+        $oldQuestionIds = \App\Models\QuizQuestion::query()
+            ->where('quiz_id', $quiz->id)
+            ->pluck('id')
+            ->all();
+
+        if ($oldQuestionIds !== []) {
+            \App\Models\QuizOption::query()
+                ->whereIn('question_id', $oldQuestionIds)
+                ->delete();
+
+            \App\Models\QuizQuestion::query()
+                ->whereIn('id', $oldQuestionIds)
+                ->delete();
+        }
+
+        foreach (array_values($questions) as $questionIndex => $questionData) {
+            $question = \App\Models\QuizQuestion::query()->create([
+                'quiz_id' => (int) $quiz->id,
+                'question_text' => $questionData['question_text'],
+                'question_type' => $questionData['question_type'],
+                'score' => $questionData['score'],
+                'sort_order' => $questionIndex + 1,
+                'explanation' => $questionData['explanation'] ?? null,
+            ]);
+
+            foreach (array_values($questionData['options']) as $optionIndex => $optionData) {
+                \App\Models\QuizOption::query()->create([
+                    'question_id' => (int) $question->id,
+                    'option_text' => $optionData['option_text'],
+                    'is_correct' => (bool) $optionData['is_correct'],
+                    'sort_order' => $optionIndex + 1,
+                ]);
+            }
+        }
     }
 }
