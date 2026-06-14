@@ -209,7 +209,7 @@ final class InstructorCourseService
             $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
             if ($isPreview && $lesson->status === "hidden") {
                 throw new BusinessException(
-                    "Bài học đang ẩn không thể bật preview miễn phí.",
+                    "Bﾃi h盻皇 ﾄ疎ng 蘯ｩn khﾃｴng th盻・b蘯ｭt preview mi盻・ phﾃｭ.",
                     400,
                 );
             }
@@ -288,17 +288,17 @@ final class InstructorCourseService
                 $courseId,
             );
             if (!$course) {
-                throw new NotFoundHttpException("Không tìm thấy dữ liệu.");
+                throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
             }
             if ((int) $course->instructor_id !== (int) $instructor->id) {
                 throw new BusinessException(
-                    "Bạn không có quyền thao tác tài nguyên này.",
+                    "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
                     403,
                 );
             }
             if (!$this->courseCanBeSubmitted($course)) {
                 throw new BusinessException(
-                    "Khóa học chưa đủ điều kiện gửi duyệt.",
+                    "Khﾃｳa h盻皇 chﾆｰa ﾄ黛ｻｧ ﾄ訴盻「 ki盻㌻ g盻ｭi duy盻㏄.",
                     400,
                 );
             }
@@ -315,16 +315,16 @@ final class InstructorCourseService
             $courseId,
         );
         if (!$course) {
-            throw new NotFoundHttpException("Không tìm thấy dữ liệu.");
+            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new BusinessException(
-                "Bạn không có quyền thao tác tài nguyên này.",
+                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
                 403,
             );
         }
         if ($course->status !== "rejected") {
-            throw new NotFoundHttpException("Không tìm thấy dữ liệu.");
+            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
         }
         return $course;
     }
@@ -371,14 +371,14 @@ final class InstructorCourseService
             $lessonId,
         );
         if (!$lesson) {
-            throw new NotFoundHttpException("Không tìm thấy dữ liệu.");
+            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
         }
         if (
             !$lesson->course ||
             (int) $lesson->course->instructor_id !== (int) $instructor->id
         ) {
             throw new AccessDeniedHttpException(
-                "Bạn không có quyền thao tác tài nguyên này.",
+                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
             );
         }
         return $lesson->load(["course", "section", "assets"]);
@@ -389,11 +389,11 @@ final class InstructorCourseService
     ): Course {
         $course = $this->instructorLessonRepository->findCourseById($courseId);
         if (!$course) {
-            throw new NotFoundHttpException("Không tìm thấy dữ liệu.");
+            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new AccessDeniedHttpException(
-                "Bạn không có quyền thao tác tài nguyên này.",
+                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
             );
         }
         return $course;
@@ -404,7 +404,7 @@ final class InstructorCourseService
             $sectionId,
         );
         if (!$section) {
-            throw new NotFoundHttpException("Không tìm thấy dữ liệu.");
+            throw new NotFoundHttpException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.");
         }
         return $section;
     }
@@ -413,7 +413,7 @@ final class InstructorCourseService
         Course $course,
     ): void {
         if ((int) $section->course_id !== (int) $course->id) {
-            throw new HttpException(422, "Tham số không hợp lệ.");
+            throw new HttpException(422, "Tham s盻・khﾃｴng h盻｣p l盻・");
         }
     }
     private function makeUniqueLessonSlug(
@@ -445,12 +445,12 @@ final class InstructorCourseService
         $course = Course::query()->where("id", $courseId)->first();
 
         if (!$course) {
-            throw new BusinessException("Không tìm thấy dữ liệu.", 404);
+            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "Bạn không có quyền thao tác tài nguyên này.",
+                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
                 403,
             );
         }
@@ -498,7 +498,7 @@ final class InstructorCourseService
             (float) $effectiveSalePrice > (float) $effectivePrice
         ) {
             throw new BusinessException(
-                "Giá khuyến mãi không được lớn hơn giá gốc.",
+                "Giﾃ｡ khuy蘯ｿn mﾃ｣i khﾃｴng ﾄ柁ｰ盻｣c l盻嬾 hﾆ｡n giﾃ｡ g盻祖.",
                 422,
             );
         }
@@ -517,7 +517,7 @@ final class InstructorCourseService
             ->count();
 
         if ($validCategoryCount !== count(array_unique($categoryIds))) {
-            throw new BusinessException("Danh mục không hợp lệ.", 422);
+            throw new BusinessException("Danh m盻･c khﾃｴng h盻｣p l盻・", 422);
         }
     }
 
@@ -648,12 +648,12 @@ final class InstructorCourseService
         $course = Course::query()->find($courseId);
 
         if (!$course) {
-            throw new BusinessException("Không tìm thấy dữ liệu.", 404);
+            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "Bạn không có quyền thao tác tài nguyên này.",
+                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
                 403,
             );
         }
@@ -670,16 +670,16 @@ final class InstructorCourseService
             ->find($sectionId);
 
         if (!$section) {
-            throw new BusinessException("Không tìm thấy dữ liệu.", 404);
+            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
         }
 
         if (!$section->course) {
-            throw new BusinessException("Không tìm thấy dữ liệu.", 404);
+            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
         }
 
         if ((int) $section->course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "Bạn không có quyền thao tác tài nguyên này.",
+                "B蘯｡n khﾃｴng cﾃｳ quy盻］ thao tﾃ｡c tﾃi nguyﾃｪn nﾃy.",
                 403,
             );
         }
@@ -715,7 +715,7 @@ final class InstructorCourseService
             ->first();
 
         if (!$profile) {
-            throw new BusinessException("Không tìm thấy dữ liệu.", 404);
+            throw new BusinessException("Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.", 404);
         }
 
         return $profile;
@@ -737,5 +737,24 @@ final class InstructorCourseService
         );
 
         return $profile->refresh()->load("user");
+    }
+
+    public function getRevenueReport(\App\Models\User $instructor, array $filters): array
+    {
+        $repository = app(\App\Repositories\Instructor\InstructorRevenueRepository::class);
+
+        if (!empty($filters['course_id'])) {
+            $courseId = (int) $filters['course_id'];
+
+            if (!$repository->courseExists($courseId)) {
+                throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
+            }
+
+            if (!$repository->instructorOwnsCourse((int) $instructor->id, $courseId)) {
+                throw new \App\Exceptions\BusinessException('Bạn không có quyền xem dữ liệu khóa học này.', 403);
+            }
+        }
+
+        return $repository->getRevenueReport((int) $instructor->id, $filters);
     }
 }
