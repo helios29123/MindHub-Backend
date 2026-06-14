@@ -16,6 +16,7 @@ use App\Http\Requests\Instructor\UpdateLessonRequest;
 use App\Http\Requests\Instructor\UpdateSectionRequest;
 use App\Http\Requests\Instructor\UploadLessonAssetRequest;
 use App\Http\Requests\Instructor\UploadLessonVideoRequest;
+use App\Http\Requests\Instructor\WithdrawRequest as InstructorWithdrawRequest;
 use App\Http\Resources\Instructor\InstructorCourseResource;
 use App\Http\Resources\Instructor\InstructorQuizResource;
 use App\Http\Resources\Instructor\InstructorRevenueResource;
@@ -23,6 +24,7 @@ use App\Http\Resources\Instructor\InstructorSectionResource;
 use App\Http\Resources\Instructor\LessonAssetResource;
 use App\Http\Resources\Instructor\LessonResource;
 use App\Http\Resources\Instructor\ReviewNoteResource;
+use App\Http\Resources\Instructor\WithdrawRequestResource;
 use App\Services\Instructor\InstructorCourseService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -532,5 +534,19 @@ final class InstructorCourseController extends Controller
         }
 
         return $validator->validated();
+    }
+
+    public function withdraw(InstructorWithdrawRequest $request): JsonResponse
+    {
+        $withdrawRequest = $this->instructorCourseService->createWithdrawRequest(
+            $request->user(),
+            $request->validated(),
+        );
+
+        return ApiResponse::success(
+            new WithdrawRequestResource($withdrawRequest),
+            "Thao tác thành công",
+            201,
+        );
     }
 }

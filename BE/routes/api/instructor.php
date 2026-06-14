@@ -99,3 +99,5 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
 Route::middleware(['auth.session', 'active.user', 'role:instructor'])
     ->match(['get', 'put', 'patch', 'delete'], '/instructor/quizzes/{id}', [InstructorCourseController::class, 'manageQuizzes'])
     ->where('id', '[0-9]+');
+Route::middleware(['auth.session', 'active.user', 'role:instructor'])
+    ->post('/instructor/withdrawals', [InstructorCourseController::class, 'withdraw']);

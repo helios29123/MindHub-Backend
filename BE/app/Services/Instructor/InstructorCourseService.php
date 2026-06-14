@@ -209,7 +209,7 @@ final class InstructorCourseService
             $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
             if ($isPreview && $lesson->status === "hidden") {
                 throw new BusinessException(
-                    "B・・｣ｰi h逶ｻ逧・・・鮪ng 陂ｯ・ｩn kh・・ｽｴng th逶ｻ繝ｻb陂ｯ・ｭt preview mi逶ｻ繝ｻ ph・・ｽｭ.",
+                    "B繝ｻ繝ｻ・｣・ｰi h騾ｶ・ｻ騾ｧ繝ｻ繝ｻ繝ｻ魄ｪng 髯ゑｽｯ繝ｻ・ｩn kh繝ｻ繝ｻ・ｽ・ｴng th騾ｶ・ｻ郢晢ｽｻb髯ゑｽｯ繝ｻ・ｭt preview mi騾ｶ・ｻ郢晢ｽｻ ph繝ｻ繝ｻ・ｽ・ｭ.",
                     400,
                 );
             }
@@ -288,17 +288,17 @@ final class InstructorCourseService
                 $courseId,
             );
             if (!$course) {
-                throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
+                throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
             }
             if ((int) $course->instructor_id !== (int) $instructor->id) {
                 throw new BusinessException(
-                    "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
+                    "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
                     403,
                 );
             }
             if (!$this->courseCanBeSubmitted($course)) {
                 throw new BusinessException(
-                    "Kh・・ｽｳa h逶ｻ逧・ch・・ｽｰa ・・ｻ幢ｽｻ・ｧ ・・ｨｴ逶ｻ縲・ki逶ｻ繻ｻ g逶ｻ・ｭi duy逶ｻ繽・",
+                    "Kh繝ｻ繝ｻ・ｽ・ｳa h騾ｶ・ｻ騾ｧ繝ｻch繝ｻ繝ｻ・ｽ・ｰa 繝ｻ繝ｻ・ｻ蟷｢・ｽ・ｻ繝ｻ・ｧ 繝ｻ繝ｻ・ｨ・ｴ騾ｶ・ｻ邵ｲ繝ｻki騾ｶ・ｻ郢ｻ・ｻ g騾ｶ・ｻ繝ｻ・ｭi duy騾ｶ・ｻ郢ｽ繝ｻ",
                     400,
                 );
             }
@@ -315,16 +315,16 @@ final class InstructorCourseService
             $courseId,
         );
         if (!$course) {
-            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
+            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new BusinessException(
-                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
+                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
                 403,
             );
         }
         if ($course->status !== "rejected") {
-            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
+            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
         }
         return $course;
     }
@@ -371,14 +371,14 @@ final class InstructorCourseService
             $lessonId,
         );
         if (!$lesson) {
-            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
+            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
         }
         if (
             !$lesson->course ||
             (int) $lesson->course->instructor_id !== (int) $instructor->id
         ) {
             throw new AccessDeniedHttpException(
-                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
+                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
             );
         }
         return $lesson->load(["course", "section", "assets"]);
@@ -389,11 +389,11 @@ final class InstructorCourseService
     ): Course {
         $course = $this->instructorLessonRepository->findCourseById($courseId);
         if (!$course) {
-            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
+            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new AccessDeniedHttpException(
-                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
+                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
             );
         }
         return $course;
@@ -404,7 +404,7 @@ final class InstructorCourseService
             $sectionId,
         );
         if (!$section) {
-            throw new NotFoundHttpException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.");
+            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
         }
         return $section;
     }
@@ -413,7 +413,7 @@ final class InstructorCourseService
         Course $course,
     ): void {
         if ((int) $section->course_id !== (int) $course->id) {
-            throw new HttpException(422, "Tham s逶ｻ繝ｻkh・・ｽｴng h逶ｻ・｣p l逶ｻ繝ｻ");
+            throw new HttpException(422, "Tham s騾ｶ・ｻ郢晢ｽｻkh繝ｻ繝ｻ・ｽ・ｴng h騾ｶ・ｻ繝ｻ・｣p l騾ｶ・ｻ郢晢ｽｻ");
         }
     }
     private function makeUniqueLessonSlug(
@@ -445,12 +445,12 @@ final class InstructorCourseService
         $course = Course::query()->where("id", $courseId)->first();
 
         if (!$course) {
-            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
+            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
+                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
                 403,
             );
         }
@@ -498,7 +498,7 @@ final class InstructorCourseService
             (float) $effectiveSalePrice > (float) $effectivePrice
         ) {
             throw new BusinessException(
-                "Gi・・ｽ｡ khuy陂ｯ・ｿn m・・ｽ｣i kh・・ｽｴng ・・氈・ｰ逶ｻ・｣c l逶ｻ螫ｾ h・・ｽ｡n gi・・ｽ｡ g逶ｻ逾・",
+                "Gi繝ｻ繝ｻ・ｽ・｡ khuy髯ゑｽｯ繝ｻ・ｿn m繝ｻ繝ｻ・ｽ・｣i kh繝ｻ繝ｻ・ｽ・ｴng 繝ｻ繝ｻ豌医・・ｰ騾ｶ・ｻ繝ｻ・｣c l騾ｶ・ｻ陞ｫ・ｾ h繝ｻ繝ｻ・ｽ・｡n gi繝ｻ繝ｻ・ｽ・｡ g騾ｶ・ｻ騾ｾ繝ｻ",
                 422,
             );
         }
@@ -517,7 +517,7 @@ final class InstructorCourseService
             ->count();
 
         if ($validCategoryCount !== count(array_unique($categoryIds))) {
-            throw new BusinessException("Danh m逶ｻ・･c kh・・ｽｴng h逶ｻ・｣p l逶ｻ繝ｻ", 422);
+            throw new BusinessException("Danh m騾ｶ・ｻ繝ｻ・･c kh繝ｻ繝ｻ・ｽ・ｴng h騾ｶ・ｻ繝ｻ・｣p l騾ｶ・ｻ郢晢ｽｻ", 422);
         }
     }
 
@@ -648,12 +648,12 @@ final class InstructorCourseService
         $course = Course::query()->find($courseId);
 
         if (!$course) {
-            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
+            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
+                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
                 403,
             );
         }
@@ -670,16 +670,16 @@ final class InstructorCourseService
             ->find($sectionId);
 
         if (!$section) {
-            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
+            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
         }
 
         if (!$section->course) {
-            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
+            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
         }
 
         if ((int) $section->course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ thao t・・ｽ｡c t・・｣ｰi nguy・・ｽｪn n・・｣ｰy.",
+                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
                 403,
             );
         }
@@ -715,7 +715,7 @@ final class InstructorCourseService
             ->first();
 
         if (!$profile) {
-            throw new BusinessException("Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.", 404);
+            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
         }
 
         return $profile;
@@ -747,11 +747,11 @@ final class InstructorCourseService
             $courseId = (int) $filters['course_id'];
 
             if (!$repository->courseExists($courseId)) {
-                throw new \App\Exceptions\BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
+                throw new \App\Exceptions\BusinessException('Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.', 404);
             }
 
             if (!$repository->instructorOwnsCourse((int) $instructor->id, $courseId)) {
-                throw new \App\Exceptions\BusinessException('B蘯｡n khﾃｴng cﾃｳ quy盻］ xem d盻ｯ li盻㎡ khﾃｳa h盻皇 nﾃy.', 403);
+                throw new \App\Exceptions\BusinessException('B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ xem d逶ｻ・ｯ li逶ｻ緕｡ kh・・ｽｳa h逶ｻ逧・n・・｣ｰy.', 403);
             }
         }
 
@@ -770,11 +770,11 @@ final class InstructorCourseService
             $lesson = $repository->findLessonWithCourse((int) $filters['lesson_id']);
 
             if (!$lesson || !$lesson->course) {
-                throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+                throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
             }
 
             if ((int) $lesson->course->instructor_id !== (int) $instructor->id) {
-                throw new BusinessException('Bạn không được thao tác quiz của khóa học này.', 403);
+                throw new BusinessException('B蘯｡n khﾃｴng ﾄ柁ｰ盻｣c thao tﾃ｡c quiz c盻ｧa khﾃｳa h盻皇 nﾃy.', 403);
             }
         }
 
@@ -788,7 +788,7 @@ final class InstructorCourseService
         $quiz = $repository->findOwnedQuiz((int) $instructor->id, $quizId);
 
         if (!$quiz) {
-            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+            throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
         }
 
         return $quiz;
@@ -876,11 +876,11 @@ final class InstructorCourseService
         $lesson = $repository->findLessonWithCourse($lessonId);
 
         if (!$lesson || !$lesson->course) {
-            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+            throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
         }
 
         if ((int) $lesson->course->instructor_id !== $instructorId) {
-            throw new BusinessException('Bạn không được thao tác quiz của khóa học này.', 403);
+            throw new BusinessException('B蘯｡n khﾃｴng ﾄ柁ｰ盻｣c thao tﾃ｡c quiz c盻ｧa khﾃｳa h盻皇 nﾃy.', 403);
         }
 
         return $lesson;
@@ -892,7 +892,7 @@ final class InstructorCourseService
             ->contains(fn (array $option): bool => (bool) ($option['is_correct'] ?? false));
 
         if (!$hasCorrectOption) {
-            throw new BusinessException('Mỗi câu hỏi phải có ít nhất một đáp án đúng.', 422);
+            throw new BusinessException('M盻擁 cﾃ｢u h盻淑 ph蘯｣i cﾃｳ ﾃｭt nh蘯･t m盻冲 ﾄ妥｡p ﾃ｡n ﾄ妥ｺng.', 422);
         }
     }
 
@@ -932,5 +932,58 @@ final class InstructorCourseService
                 ]);
             }
         }
+    }
+
+    public function createWithdrawRequest(User $instructor, array $data): \App\Models\WithdrawRequest
+    {
+        return DB::transaction(function () use ($instructor, $data): \App\Models\WithdrawRequest {
+            $repository = app(\App\Repositories\Instructor\InstructorWithdrawRepository::class);
+
+            $payoutAccount = $repository->findActivePayoutAccountForUser(
+                (int) $data['payout_account_id'],
+                (int) $instructor->id,
+            );
+
+            if (!$payoutAccount) {
+                throw new BusinessException('Tài khoản nhận tiền không hợp lệ.', 403);
+            }
+
+            $availableRevenueAmount = $repository->getAvailableRevenueAmount((int) $instructor->id);
+            $reservedWithdrawAmount = $repository->getReservedWithdrawAmount((int) $instructor->id);
+            $availableBalance = max($availableRevenueAmount - $reservedWithdrawAmount, 0);
+            $amount = (float) $data['amount'];
+
+            if ($amount > $availableBalance) {
+                throw new BusinessException('Số tiền yêu cầu vượt số dư khả dụng.', 422, [
+                    'amount' => ['Số tiền yêu cầu vượt số dư khả dụng.'],
+                ]);
+            }
+
+            $withdrawRequest = $repository->createWithdrawRequest([
+                'user_id' => (int) $instructor->id,
+                'payout_account_id' => (int) $payoutAccount->id,
+                'amount' => $amount,
+                'status' => 'pending',
+                'requested_at' => now(),
+                'approved_at' => null,
+                'paid_at' => null,
+                'rejected_reason' => null,
+                'provider_payout_id' => null,
+                'account_number_snapshot' => $payoutAccount->account_number,
+                'account_name_snapshot' => $payoutAccount->account_name,
+            ]);
+
+            $withdrawRequest->setAttribute(
+                'available_balance_before',
+                number_format($availableBalance, 2, '.', ''),
+            );
+
+            $withdrawRequest->setAttribute(
+                'available_balance_after',
+                number_format($availableBalance - $amount, 2, '.', ''),
+            );
+
+            return $withdrawRequest->load('payoutAccount');
+        });
     }
 }
