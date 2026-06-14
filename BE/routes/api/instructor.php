@@ -91,3 +91,5 @@ Route::middleware(["auth.session", "active.user", "role:instructor"])->get(
     "/instructor/courses/{id}/review-notes",
     [\App\Http\Controllers\InstructorCourseController::class, "reviewNotes"],
 );
+Route::get('/instructor/revenue', [InstructorCourseController::class, 'revenue'])
+    ->middleware(['auth.session', 'role:instructor']);

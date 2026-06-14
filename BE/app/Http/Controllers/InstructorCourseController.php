@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Instructor\InstructorRevenueQueryRequest;
+use App\Http\Resources\Instructor\InstructorRevenueResource;
 use App\Exceptions\BusinessException;
 
 use App\Http\Requests\Instructor\SubmitForReviewRequest;
@@ -38,7 +40,7 @@ final class InstructorCourseController extends Controller
         );
         return ApiResponse::success(
             new InstructorCourseResource($course),
-            "Tạo khóa học thành công.",
+            "T鬮ｯ繧托ｽｽ・ｯ郢晢ｽｻ繝ｻ・｡o kh郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｳa h鬨ｾ・ｶ繝ｻ・ｻ鬨ｾ・ｧ郢晢ｽｻth郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng.",
             201,
         );
     }
@@ -51,7 +53,7 @@ final class InstructorCourseController extends Controller
         return ApiResponse::paginated(
             LessonResource::collection($lessons),
             $lessons,
-            "Lấy danh sách bài học thành công.",
+            "L鬮ｯ繧托ｽｽ・ｯ郢晢ｽｻ繝ｻ・･y danh s郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡ch b郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰi h鬨ｾ・ｶ繝ｻ・ｻ鬨ｾ・ｧ郢晢ｽｻth郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng.",
         );
     }
     public function storeLesson(StoreLessonRequest $request): JsonResponse
@@ -62,7 +64,7 @@ final class InstructorCourseController extends Controller
         );
         return ApiResponse::success(
             new LessonResource($lesson),
-            "Tạo bài học thành công.",
+            "T鬮ｯ繧托ｽｽ・ｯ郢晢ｽｻ繝ｻ・｡o b郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰi h鬨ｾ・ｶ繝ｻ・ｻ鬨ｾ・ｧ郢晢ｽｻth郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng.",
             201,
         );
     }
@@ -74,7 +76,7 @@ final class InstructorCourseController extends Controller
         );
         return ApiResponse::success(
             new LessonResource($lesson),
-            "Lấy chi tiết bài học thành công.",
+            "L鬮ｯ繧托ｽｽ・ｯ郢晢ｽｻ繝ｻ・･y chi ti鬮ｯ繧托ｽｽ・ｯ郢晢ｽｻ繝ｻ・ｿt b郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰi h鬨ｾ・ｶ繝ｻ・ｻ鬨ｾ・ｧ郢晢ｽｻth郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng.",
         );
     }
     public function updateLesson(
@@ -88,7 +90,7 @@ final class InstructorCourseController extends Controller
         );
         return ApiResponse::success(
             new LessonResource($lesson),
-            "Cập nhật bài học thành công.",
+            "C鬮ｯ繧托ｽｽ・ｯ郢晢ｽｻ繝ｻ・ｭp nh鬮ｯ繧托ｽｽ・ｯ郢晢ｽｻ繝ｻ・ｭt b郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰi h鬨ｾ・ｶ繝ｻ・ｻ鬨ｾ・ｧ郢晢ｽｻth郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng.",
         );
     }
     public function togglePreview(
@@ -103,13 +105,13 @@ final class InstructorCourseController extends Controller
         );
         return ApiResponse::success(
             new LessonResource($lesson),
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
         );
     }
     public function destroyLesson(int $id): JsonResponse
     {
         $this->instructorCourseService->deleteLesson(request()->user(), $id);
-        return ApiResponse::success([], "Xóa bài học thành công.");
+        return ApiResponse::success([], "X郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｳa b郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰi h鬨ｾ・ｶ繝ｻ・ｻ鬨ｾ・ｧ郢晢ｽｻth郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng.");
     }
     public function uploadVideo(
         UploadLessonVideoRequest $request,
@@ -123,7 +125,7 @@ final class InstructorCourseController extends Controller
         );
         return ApiResponse::success(
             new LessonResource($lesson),
-            "Upload video bài học thành công.",
+            "Upload video b盻・l盻擁",
             201,
         );
     }
@@ -140,7 +142,7 @@ final class InstructorCourseController extends Controller
         );
         return ApiResponse::success(
             new LessonAssetResource($asset),
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
             201,
         );
     }
@@ -155,7 +157,7 @@ final class InstructorCourseController extends Controller
         );
         return ApiResponse::success(
             new InstructorCourseResource($course),
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
             201,
         );
     }
@@ -163,7 +165,7 @@ final class InstructorCourseController extends Controller
     public function reviewNotes(string $id): JsonResponse
     {
         if (!ctype_digit($id) || (int) $id < 1) {
-            throw new BusinessException("Tham số không hợp lệ.", 422);
+            throw new BusinessException("Tham s鬨ｾ・ｶ繝ｻ・ｻ驛｢譎｢・ｽ・ｻkh郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng h鬨ｾ・ｶ繝ｻ・ｻ郢晢ｽｻ繝ｻ・｣p l鬨ｾ・ｶ繝ｻ・ｻ驛｢譎｢・ｽ・ｻ", 422);
         }
         $course = $this->instructorCourseService->getRejectedReviewNotes(
             request()->user(),
@@ -171,7 +173,7 @@ final class InstructorCourseController extends Controller
         );
         return ApiResponse::success(
             new ReviewNoteResource($course),
-            "Lấy dữ liệu thành công",
+            "L鬮ｯ繧托ｽｽ・ｯ郢晢ｽｻ繝ｻ・･y d鬨ｾ・ｶ繝ｻ・ｻ郢晢ｽｻ繝ｻ・ｯ li鬨ｾ・ｶ繝ｻ・ｻ驍ｱ蛹・ｽｽ・｡ th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
         );
     }
 
@@ -185,7 +187,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorCourseResource($course),
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
             200,
         );
     }
@@ -200,7 +202,7 @@ final class InstructorCourseController extends Controller
         return ApiResponse::paginated(
             InstructorSectionResource::collection($sections),
             $sections,
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
         );
     }
 
@@ -213,7 +215,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorSectionResource($section),
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
             200,
         );
     }
@@ -227,7 +229,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorSectionResource($section),
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
             201,
         );
     }
@@ -244,7 +246,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorSectionResource($section),
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
             200,
         );
     }
@@ -256,7 +258,7 @@ final class InstructorCourseController extends Controller
             $request->user()->id,
         );
 
-        return ApiResponse::success(null, "Thao tác thành công", 200);
+        return ApiResponse::success(null, "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng", 200);
     }
 
     public function profile(Request $request): JsonResponse
@@ -265,7 +267,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new \App\Http\Resources\Instructor\InstructorProfileResource($profile),
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
             200
         );
     }
@@ -279,8 +281,22 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new \App\Http\Resources\Instructor\InstructorProfileResource($profile),
-            "Thao tác thành công",
+            "Thao t郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・｡c th郢晢ｽｻ郢晢ｽｻ繝ｻ・｣繝ｻ・ｰnh c郢晢ｽｻ郢晢ｽｻ繝ｻ・ｽ繝ｻ・ｴng",
             200
         );
+    }
+
+    public function revenue(InstructorRevenueQueryRequest $request)
+    {
+        $report = $this->instructorCourseService->getRevenueReport(
+            $request->user(),
+            $request->validated()
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "Thao t\u{00E1}c th\u{00E0}nh c\u{00F4}ng",
+            'data' => (new InstructorRevenueResource($report))->resolve($request),
+        ], 200);
     }
 }
