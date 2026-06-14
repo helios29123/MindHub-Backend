@@ -166,4 +166,34 @@ class AdminController extends Controller
             200
         );
     }
+
+    public function courses(\App\Http\Requests\Admin\AdminCourseQueryRequest $request): JsonResponse
+    {
+        $courses = $this->adminService->getCourses($request->validated());
+        return ApiResponse::paginated(
+            \App\Http\Resources\Admin\AdminCourseResource::collection($courses),
+            $courses,
+            'Lấy danh sách khóa học thành công.'
+        );
+    }
+
+    public function showCourse(int $id): JsonResponse
+    {
+        $course = $this->adminService->getCourse($id);
+        return ApiResponse::success(
+            new \App\Http\Resources\Admin\AdminCourseResource($course),
+            'Thao tác thành công',
+            200
+        );
+    }
+
+    public function updateCourse(\App\Http\Requests\Admin\UpdateAdminCourseRequest $request, int $id): JsonResponse
+    {
+        $course = $this->adminService->updateCourse($id, $request->validated());
+        return ApiResponse::success(
+            new \App\Http\Resources\Admin\AdminCourseResource($course),
+            'Cập nhật khóa học thành công',
+            200
+        );
+    }
 }

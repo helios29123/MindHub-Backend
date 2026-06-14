@@ -35,4 +35,10 @@ Route::middleware(['auth.session', 'role:admin'])
         
         Route::delete('/categories/{id}', [AdminController::class, 'deleteCategory'])
             ->where('id', '[0-9]+');
+
+        Route::get('/courses', [AdminController::class, 'courses']);
+        Route::get('/courses/{id}', [AdminController::class, 'showCourse'])
+            ->where('id', '[0-9]+');
+        Route::patch('/courses/{id}', [AdminController::class, 'updateCourse'])
+            ->where('id', '[0-9]+');
     });
