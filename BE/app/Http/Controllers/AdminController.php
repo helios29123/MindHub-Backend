@@ -116,4 +116,54 @@ class AdminController extends Controller
         }
         return ApiResponse::error('Phương thức không được hỗ trợ.', [], 405);
     }
+
+    public function categories(\App\Http\Requests\Admin\CategoryQueryRequest $request): JsonResponse
+    {
+        $categories = $this->adminService->getCategories($request->validated());
+        return ApiResponse::paginated(
+            \App\Http\Resources\Admin\AdminCategoryResource::collection($categories),
+            $categories,
+            'Lấy danh sách danh mục thành công.'
+        );
+    }
+
+    public function showCategory(int $id): JsonResponse
+    {
+        $category = $this->adminService->getCategory($id);
+        return ApiResponse::success(
+            new \App\Http\Resources\Admin\AdminCategoryResource($category),
+            'Thao tác thành công',
+            200
+        );
+    }
+
+    public function storeCategory(\App\Http\Requests\Admin\StoreCategoryRequest $request): JsonResponse
+    {
+        $category = $this->adminService->createCategory($request->validated());
+        return ApiResponse::success(
+            new \App\Http\Resources\Admin\AdminCategoryResource($category),
+            'Tạo danh mục thành công',
+            201
+        );
+    }
+
+    public function updateCategory(\App\Http\Requests\Admin\UpdateCategoryRequest $request, int $id): JsonResponse
+    {
+        $category = $this->adminService->updateCategory($id, $request->validated());
+        return ApiResponse::success(
+            new \App\Http\Resources\Admin\AdminCategoryResource($category),
+            'Cập nhật danh mục thành công',
+            200
+        );
+    }
+
+    public function deleteCategory(int $id): JsonResponse
+    {
+        $this->adminService->deleteCategory($id);
+        return ApiResponse::success(
+            null,
+            'Xóa danh mục thành công',
+            200
+        );
+    }
 }
