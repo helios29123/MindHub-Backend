@@ -8,3 +8,5 @@ Route::middleware(['auth.session', 'role:learner'])
         Route::post('/quizzes/{id}/attempts', [QuizController::class, 'storeAttempt'])
             ->where('id', '[0-9]+');
     });
+Route::middleware(['auth.session', 'active.user', 'role:learner'])
+    ->get('/courses/{id}/completion-status', [QuizController::class, 'completionStatus']);
