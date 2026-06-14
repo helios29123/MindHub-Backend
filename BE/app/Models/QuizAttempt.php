@@ -48,6 +48,6 @@ class QuizAttempt extends Model
 
     public function answers(): HasMany
     {
-        return $this->hasMany(QuizAnswer::class, 'attempt_id');
+        return $this->hasMany(QuizAttemptAnswer::class, 'attempt_id');
     }
 }
