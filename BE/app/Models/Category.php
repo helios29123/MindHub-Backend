@@ -35,4 +35,9 @@ class Category extends Model
             "course_id",
         )->withPivot("created_at");
     }
+
+    public function children(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Category::class, "parent_id");
+    }
 }

@@ -20,4 +20,19 @@ Route::middleware(['auth.session', 'role:admin'])
         Route::match(['get', 'post'], '/banners', [AdminController::class, 'banners']);
         Route::match(['get', 'put', 'patch', 'delete'], '/banners/{id}', [AdminController::class, 'banners'])
             ->where('id', '[0-9]+');
+
+        Route::get('/categories', [AdminController::class, 'categories']);
+        Route::post('/categories', [AdminController::class, 'storeCategory']);
+        
+        Route::get('/categories/{id}', [AdminController::class, 'showCategory'])
+            ->where('id', '[0-9]+');
+        
+        Route::put('/categories/{id}', [AdminController::class, 'updateCategory'])
+            ->where('id', '[0-9]+');
+        
+        Route::patch('/categories/{id}', [AdminController::class, 'updateCategory'])
+            ->where('id', '[0-9]+');
+        
+        Route::delete('/categories/{id}', [AdminController::class, 'deleteCategory'])
+            ->where('id', '[0-9]+');
     });
