@@ -93,3 +93,9 @@ Route::middleware(["auth.session", "active.user", "role:instructor"])->get(
 );
 Route::get('/instructor/revenue', [InstructorCourseController::class, 'revenue'])
     ->middleware(['auth.session', 'role:instructor']);
+Route::middleware(['auth.session', 'active.user', 'role:instructor'])
+    ->match(['get', 'post'], '/instructor/quizzes', [InstructorCourseController::class, 'manageQuizzes']);
+
+Route::middleware(['auth.session', 'active.user', 'role:instructor'])
+    ->match(['get', 'put', 'patch', 'delete'], '/instructor/quizzes/{id}', [InstructorCourseController::class, 'manageQuizzes'])
+    ->where('id', '[0-9]+');
