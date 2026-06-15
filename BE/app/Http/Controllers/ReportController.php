@@ -7,6 +7,8 @@ use App\Http\Requests\Report\TopCourseReportRequest;
 use App\Http\Resources\Report\TopCourseReportResource;
 use App\Http\Requests\Report\TopInstructorReportRequest;
 use App\Http\Resources\Report\TopInstructorReportResource;
+use App\Http\Requests\Report\InactiveLearnerReportRequest;
+use App\Http\Resources\Report\InactiveLearnerReportResource;
 use App\Services\Report\ReportService;
 use App\Support\ApiResponse;
 
@@ -66,6 +68,33 @@ final class ReportController extends Controller
                 'items' => TopInstructorReportResource::collection($paginator),
             ],
             message: 'Lấy báo cáo giảng viên thành công',
+            meta: [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]
+        );
+    }
+
+    public function inactiveLearners(InactiveLearnerReportRequest $request, ReportService $adminReportService)
+    {
+        $validated = $request->validated();
+        if (!empty($validated['course_id'])) {
+            $course = \App\Models\Course::find($validated['course_id']);
+            if ($course && $course->instructor_id !== $request->user()->id) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        }
+
+        $result = $adminReportService->getInactiveLearnersReport($request->user()->id, $validated);
+        $paginator = $result['paginator'];
+
+        return ApiResponse::success(
+            data: [
+                'items' => InactiveLearnerReportResource::collection($paginator),
+            ],
+            message: 'Lấy báo cáo học viên bỏ dở thành công',
             meta: [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),

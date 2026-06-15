@@ -220,4 +220,91 @@ class ReportService
             'paginator' => $paginator,
         ];
     }
+
+    public function getInactiveLearnersReport(int $instructorId, array $filters)
+    {
+        $lessonProgressQuery = DB::table('lesson_progress')
+            ->join('lessons', 'lesson_progress.lesson_id', '=', 'lessons.id')
+            ->select('lesson_progress.user_id', 'lessons.course_id')
+            ->selectRaw('MAX(lesson_progress.last_accessed_at) as max_lesson_accessed_at')
+            ->groupBy('lesson_progress.user_id', 'lessons.course_id');
+
+        $query = DB::table('enrollments')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.id')
+            ->leftJoinSub($lessonProgressQuery, 'lp', function ($join) {
+                $join->on('enrollments.user_id', '=', 'lp.user_id')
+                     ->on('enrollments.course_id', '=', 'lp.course_id');
+            })
+            ->select(
+                'users.id as learner_id',
+                'users.full_name',
+                'users.email',
+                'users.phone',
+                'courses.id as course_id',
+                'courses.title as course_title',
+                'courses.slug as course_slug',
+                'enrollments.id as enrollment_id',
+                'enrollments.status as enrollment_status',
+                'enrollments.progress_percent',
+                'enrollments.enrolled_at',
+                DB::raw('COALESCE(lp.max_lesson_accessed_at, enrollments.last_accessed_at, enrollments.enrolled_at, enrollments.created_at) as last_activity_at')
+            )
+            ->where('courses.instructor_id', $instructorId)
+            ->whereNull('courses.deleted_at');
+
+        // Base condition for "bỏ dở": not completed
+        $query->where(function($q) {
+            $q->where('enrollments.status', '!=', 'completed')
+              ->orWhereNull('enrollments.completed_at');
+        });
+
+        // Filter inactive_days
+        $inactiveDays = $filters['inactive_days'] ?? 14;
+        $cutoffDate = now()->subDays($inactiveDays);
+
+        $query->where(function ($q) use ($cutoffDate) {
+            $q->where(DB::raw('COALESCE(lp.max_lesson_accessed_at, enrollments.last_accessed_at, enrollments.enrolled_at, enrollments.created_at)'), '<=', $cutoffDate)
+              ->orWhereNull(DB::raw('COALESCE(lp.max_lesson_accessed_at, enrollments.last_accessed_at, enrollments.enrolled_at, enrollments.created_at)'));
+        });
+
+        if (!empty($filters['course_id'])) {
+            $query->where('enrollments.course_id', $filters['course_id']);
+        }
+        if (!empty($filters['date_from'])) {
+            $query->whereDate('enrollments.enrolled_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $query->whereDate('enrollments.enrolled_at', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['month'])) {
+            $query->whereMonth('enrollments.enrolled_at', $filters['month']);
+        }
+        if (!empty($filters['year'])) {
+            $query->whereYear('enrollments.enrolled_at', $filters['year']);
+        }
+        if (!empty($filters['status'])) {
+            $query->where('enrollments.status', $filters['status']);
+        }
+
+        $sortBy = $filters['sort_by'] ?? 'last_activity_at';
+        $sortDirection = $filters['sort_direction'] ?? 'desc';
+
+        if ($sortBy === 'inactive_days') {
+            // Sorting by inactive_days DESC is sorting by last_activity_at ASC
+            $realDirection = strtolower($sortDirection) === 'desc' ? 'asc' : 'desc';
+            $query->orderBy('last_activity_at', $realDirection);
+        } else {
+            $query->orderBy($sortBy, $sortDirection);
+        }
+        
+        $query->orderBy('enrollments.id', 'desc');
+
+        $perPage = $filters['per_page'] ?? 15;
+        $paginator = $query->paginate($perPage);
+
+        return [
+            'paginator' => $paginator,
+        ];
+    }
 }
