@@ -114,4 +114,110 @@ class ReportService
             'summary' => $summary,
         ];
     }
+
+    public function getTopInstructorsReport(array $filters)
+    {
+        $query = \App\Models\User::query()
+            ->select('users.id', 'users.full_name', 'users.email', 'users.role', 'users.status')
+            ->where('users.role', 'instructor');
+
+        if (!empty($filters['course_id'])) {
+            $query->whereHas('courses', function($q) use ($filters) {
+                $q->where('id', $filters['course_id']);
+            });
+        }
+
+        $courseQuery = DB::table('courses')
+            ->select('instructor_id')
+            ->selectRaw('COUNT(id) as total_courses')
+            ->selectRaw("SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) as published_courses")
+            ->whereNull('deleted_at')
+            ->groupBy('instructor_id');
+
+        if (!empty($filters['course_id'])) {
+            $courseQuery->where('id', $filters['course_id']);
+        }
+
+        $revenueQuery = DB::table('orders')
+            ->join('courses', 'orders.course_id', '=', 'courses.id')
+            ->select('courses.instructor_id')
+            ->selectRaw('COUNT(orders.id) as total_sold')
+            ->selectRaw('SUM(orders.amount) as total_revenue')
+            // Since we use orders, instructor_amount might not be available unless we have a fixed percentage, or we just set it to total_revenue for now or 0.
+            ->selectRaw('0 as instructor_amount')
+            ->selectRaw('0 as platform_fee_amount')
+            ->selectRaw('MAX(orders.paid_at) as last_activity_at')
+            ->where('orders.status', 'paid')
+            ->where('orders.payment_status', 'paid')
+            ->groupBy('courses.instructor_id');
+
+        if (!empty($filters['course_id'])) {
+            $revenueQuery->where('orders.course_id', $filters['course_id']);
+        }
+        if (!empty($filters['date_from'])) {
+            $revenueQuery->whereDate('orders.paid_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $revenueQuery->whereDate('orders.paid_at', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['month'])) {
+            $revenueQuery->whereMonth('orders.paid_at', $filters['month']);
+        }
+        if (!empty($filters['year'])) {
+            $revenueQuery->whereYear('orders.paid_at', $filters['year']);
+        }
+
+        $enrollmentQuery = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.id')
+            ->select('courses.instructor_id')
+            ->selectRaw('COUNT(enrollments.id) as total_enrollments')
+            ->selectRaw("SUM(CASE WHEN enrollments.status = 'completed' THEN 1 ELSE 0 END) as total_completed")
+            ->groupBy('courses.instructor_id');
+
+        if (!empty($filters['course_id'])) {
+            $enrollmentQuery->where('enrollments.course_id', $filters['course_id']);
+        }
+
+        $query->leftJoinSub($courseQuery, 'c', function ($join) {
+            $join->on('users.id', '=', 'c.instructor_id');
+        });
+
+        $query->leftJoinSub($revenueQuery, 'r', function ($join) {
+            $join->on('users.id', '=', 'r.instructor_id');
+        });
+
+        $query->leftJoinSub($enrollmentQuery, 'e', function ($join) {
+            $join->on('users.id', '=', 'e.instructor_id');
+        });
+
+        $query->addSelect([
+            DB::raw('COALESCE(c.total_courses, 0) as total_courses'),
+            DB::raw('COALESCE(c.published_courses, 0) as published_courses'),
+            DB::raw('COALESCE(r.total_sold, 0) as total_sold'),
+            DB::raw('COALESCE(r.total_revenue, 0) as total_revenue'),
+            DB::raw('COALESCE(r.instructor_amount, 0) as instructor_amount'),
+            DB::raw('COALESCE(r.platform_fee_amount, 0) as platform_fee_amount'),
+            'r.last_activity_at',
+            DB::raw('COALESCE(e.total_enrollments, 0) as total_enrollments'),
+            DB::raw('COALESCE(e.total_completed, 0) as total_completed'),
+        ]);
+
+        $sortBy = $filters['sort_by'] ?? 'total_revenue';
+        $sortDirection = $filters['sort_direction'] ?? 'desc';
+
+        if ($sortBy === 'completion_rate') {
+            $query->orderByRaw('CASE WHEN COALESCE(e.total_enrollments, 0) > 0 THEN (COALESCE(e.total_completed, 0) * 100.0 / e.total_enrollments) ELSE 0 END ' . $sortDirection);
+        } else {
+            $query->orderBy($sortBy, $sortDirection);
+        }
+        
+        $query->orderBy('users.id', 'desc');
+
+        $perPage = $filters['per_page'] ?? 15;
+        $paginator = $query->paginate($perPage);
+
+        return [
+            'paginator' => $paginator,
+        ];
+    }
 }

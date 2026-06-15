@@ -5,6 +5,8 @@ use App\Http\Resources\Report\CompletionRateResource;
 use App\Services\Report\InstructorReportService;
 use App\Http\Requests\Report\TopCourseReportRequest;
 use App\Http\Resources\Report\TopCourseReportResource;
+use App\Http\Requests\Report\TopInstructorReportRequest;
+use App\Http\Resources\Report\TopInstructorReportResource;
 use App\Services\Report\ReportService;
 use App\Support\ApiResponse;
 
@@ -45,6 +47,25 @@ final class ReportController extends Controller
                 'items' => TopCourseReportResource::collection($paginator),
             ],
             message: 'Lấy báo cáo khóa học bán chạy thành công',
+            meta: [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]
+        );
+    }
+
+    public function topInstructors(TopInstructorReportRequest $request, ReportService $adminReportService)
+    {
+        $result = $adminReportService->getTopInstructorsReport($request->validated());
+        $paginator = $result['paginator'];
+
+        return ApiResponse::success(
+            data: [
+                'items' => TopInstructorReportResource::collection($paginator),
+            ],
+            message: 'Lấy báo cáo giảng viên thành công',
             meta: [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),

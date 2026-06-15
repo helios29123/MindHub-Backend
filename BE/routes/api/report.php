@@ -9,4 +9,5 @@ Route::middleware(['auth.session', 'role:admin'])
     ->prefix('admin/reports')
     ->group(function (): void {
         Route::get('/top-courses', [ReportController::class, 'topCourses']);
+        Route::get('/instructors', [ReportController::class, 'topInstructors']);
     });
