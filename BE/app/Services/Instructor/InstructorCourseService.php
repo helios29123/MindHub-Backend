@@ -986,4 +986,102 @@ final class InstructorCourseService
             return $withdrawRequest->load('payoutAccount');
         });
     }
+
+    public function getCourseLearners(int $courseId, int $instructorId, array $filters)
+    {
+        $course = \DB::table('courses')->where('id', $courseId)->whereNull('deleted_at')->first();
+
+        if (!$course) {
+            throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Không tìm thấy dữ liệu.');
+        }
+
+        if ($course->instructor_id !== $instructorId) {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Bạn không có quyền xem dữ liệu khóa học này.');
+        }
+
+        $query = \DB::table('enrollments')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->where('enrollments.course_id', $courseId)
+            ->where('users.role', 'learner')
+            ->select(
+                'users.id as learner_id',
+                'users.full_name',
+                'users.email',
+                'users.phone',
+                'users.status as learner_status',
+                'enrollments.id as enrollment_id',
+                'enrollments.status as enrollment_status',
+                'enrollments.last_accessed_at',
+                'enrollments.completed_at'
+            );
+        
+        if (\Schema::hasColumn('enrollments', 'enrolled_at')) {
+            $query->addSelect('enrollments.enrolled_at');
+        } elseif (\Schema::hasColumn('enrollments', 'created_at')) {
+            $query->addSelect('enrollments.created_at as enrolled_at');
+        }
+
+        // Search
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('users.full_name', 'like', "%{$search}%")
+                  ->orWhere('users.email', 'like', "%{$search}%");
+            });
+        }
+
+        // Status
+        if (!empty($filters['status'])) {
+            $query->where('enrollments.status', $filters['status']);
+        }
+
+        // Progress Calculation using subquery if tables exist
+        if (\Schema::hasTable('lessons') && \Schema::hasTable('lesson_progress')) {
+            $totalLessonsSubquery = \DB::table('lessons')
+                ->where('course_id', $courseId)
+                ->selectRaw('count(*)')
+                ->toSql();
+
+            $completedLessonsSubquery = \DB::table('lesson_progress')
+                ->join('lessons', 'lesson_progress.lesson_id', '=', 'lessons.id')
+                ->where('lessons.course_id', $courseId)
+                ->whereColumn('lesson_progress.user_id', 'users.id')
+                ->where('lesson_progress.status', 'completed')
+                ->selectRaw('count(*)')
+                ->toSql();
+            
+            // Avoid division by zero
+            $query->selectRaw("
+                CASE 
+                    WHEN ($totalLessonsSubquery) > 0 THEN 
+                        CAST(($completedLessonsSubquery) AS FLOAT) / ($totalLessonsSubquery) * 100
+                    ELSE 0 
+                END as progress_percent
+            ", [\DB::raw($courseId), \DB::raw($courseId)]);
+        }
+
+        // Sort
+        $sortBy = $filters['sort_by'] ?? 'last_accessed_at';
+        $sortDirection = $filters['sort_direction'] ?? 'desc';
+
+        $sortMap = [
+            'id' => 'users.id',
+            'full_name' => 'users.full_name',
+            'email' => 'users.email',
+            'status' => 'enrollments.status',
+            'last_accessed_at' => 'enrollments.last_accessed_at',
+            'completed_at' => 'enrollments.completed_at',
+            'created_at' => 'enrollments.created_at',
+        ];
+
+        $orderCol = $sortMap[$sortBy] ?? 'enrollments.last_accessed_at';
+        if ($orderCol === 'enrollments.created_at' && \Schema::hasColumn('enrollments', 'enrolled_at')) {
+            $orderCol = 'enrollments.enrolled_at';
+        }
+        $query->orderBy($orderCol, $sortDirection);
+
+        $perPage = $filters['per_page'] ?? 15;
+        
+        return $query->paginate($perPage);
+    }
 }
