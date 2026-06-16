@@ -9,6 +9,7 @@ use App\Http\Requests\Report\TopInstructorReportRequest;
 use App\Http\Resources\Report\TopInstructorReportResource;
 use App\Http\Requests\Report\InactiveLearnerReportRequest;
 use App\Http\Resources\Report\InactiveLearnerReportResource;
+use App\Http\Requests\Report\DashboardReportRequest;
 use App\Services\Report\ReportService;
 use App\Support\ApiResponse;
 
@@ -101,6 +102,16 @@ final class ReportController extends Controller
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
             ]
+        );
+    }
+
+    public function dashboard(DashboardReportRequest $request, ReportService $adminReportService)
+    {
+        $result = $adminReportService->getSystemDashboard($request->validated());
+
+        return ApiResponse::success(
+            data: $result,
+            message: 'Lấy dashboard tổng quan thành công'
         );
     }
 }
