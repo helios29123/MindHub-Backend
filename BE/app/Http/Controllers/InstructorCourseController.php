@@ -20,6 +20,8 @@ use App\Http\Requests\Instructor\WithdrawRequest as InstructorWithdrawRequest;
 use App\Http\Resources\Instructor\InstructorCourseResource;
 use App\Http\Resources\Instructor\InstructorQuizResource;
 use App\Http\Resources\Instructor\InstructorRevenueResource;
+use App\Http\Requests\Instructor\CourseLearnerQueryRequest;
+use App\Http\Resources\Instructor\CourseLearnerResource;
 use App\Http\Resources\Instructor\InstructorSectionResource;
 use App\Http\Resources\Instructor\LessonAssetResource;
 use App\Http\Resources\Instructor\LessonResource;
@@ -547,6 +549,21 @@ final class InstructorCourseController extends Controller
             new WithdrawRequestResource($withdrawRequest),
             "Thao tác thành công",
             201,
+        );
+    }
+
+    public function learners(CourseLearnerQueryRequest $request, int $id): JsonResponse
+    {
+        $paginator = $this->instructorCourseService->getCourseLearners(
+            $id,
+            $request->user()->id,
+            $request->validated()
+        );
+
+        return ApiResponse::paginated(
+            CourseLearnerResource::collection($paginator),
+            $paginator,
+            "Thao tác thành công",
         );
     }
 }

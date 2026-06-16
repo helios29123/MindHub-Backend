@@ -79,6 +79,9 @@ Route::middleware(["auth.session", "role:instructor"])
             InstructorCourseController::class,
             "deleteSection",
         ])->where("id", "[0-9]+");
+        
+        Route::get('/courses/{id}/learners', [InstructorCourseController::class, 'learners'])
+            ->where('id', '[0-9]+');
     });
 
 Route::middleware(["auth.session", "active.user", "role:instructor"])
