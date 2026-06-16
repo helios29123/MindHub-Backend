@@ -196,4 +196,54 @@ class AdminController extends Controller
             200
         );
     }
+
+    public function users(\App\Http\Requests\Admin\UserQueryRequest $request): JsonResponse
+    {
+        $users = $this->adminService->getUsers($request->validated());
+        return ApiResponse::paginated(
+            \App\Http\Resources\Admin\AdminUserResource::collection($users),
+            $users,
+            'Lấy danh sách người dùng thành công.'
+        );
+    }
+
+    public function showUser(int $id): JsonResponse
+    {
+        $user = $this->adminService->getUser($id);
+        return ApiResponse::success(
+            new \App\Http\Resources\Admin\AdminUserResource($user),
+            'Thao tác thành công',
+            200
+        );
+    }
+
+    public function storeUser(\App\Http\Requests\Admin\StoreUserRequest $request): JsonResponse
+    {
+        $user = $this->adminService->createUser($request->validated());
+        return ApiResponse::success(
+            new \App\Http\Resources\Admin\AdminUserResource($user),
+            'Tạo người dùng thành công',
+            201
+        );
+    }
+
+    public function updateUser(\App\Http\Requests\Admin\UpdateUserRequest $request, int $id): JsonResponse
+    {
+        $user = $this->adminService->updateUser($id, $request->validated(), $request->user()->id);
+        return ApiResponse::success(
+            new \App\Http\Resources\Admin\AdminUserResource($user),
+            'Cập nhật người dùng thành công',
+            200
+        );
+    }
+
+    public function deleteUser(Request $request, int $id): JsonResponse
+    {
+        $this->adminService->deleteUser($id, $request->user()->id);
+        return ApiResponse::success(
+            null,
+            'Xóa người dùng thành công',
+            200
+        );
+    }
 }

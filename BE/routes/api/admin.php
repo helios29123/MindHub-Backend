@@ -41,4 +41,19 @@ Route::middleware(['auth.session', 'role:admin'])
             ->where('id', '[0-9]+');
         Route::patch('/courses/{id}', [AdminController::class, 'updateCourse'])
             ->where('id', '[0-9]+');
+
+        Route::get('/users', [AdminController::class, 'users']);
+        Route::post('/users', [AdminController::class, 'storeUser']);
+
+        Route::get('/users/{id}', [AdminController::class, 'showUser'])
+            ->where('id', '[0-9]+');
+
+        Route::put('/users/{id}', [AdminController::class, 'updateUser'])
+            ->where('id', '[0-9]+');
+
+        Route::patch('/users/{id}', [AdminController::class, 'updateUser'])
+            ->where('id', '[0-9]+');
+
+        Route::delete('/users/{id}', [AdminController::class, 'deleteUser'])
+            ->where('id', '[0-9]+');
     });

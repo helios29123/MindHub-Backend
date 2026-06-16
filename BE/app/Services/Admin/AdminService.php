@@ -272,4 +272,121 @@ class AdminService
             return $course->refresh()->load(['instructor', 'categories']);
         });
     }
+
+    public function getUsers(array $queryParams): LengthAwarePaginator
+    {
+        $perPage = min((int) ($queryParams['per_page'] ?? 15), 100);
+        $query = \App\Models\User::query()->whereNull('deleted_at');
+
+        if (!empty($queryParams['search'])) {
+            $search = trim((string) $queryParams['search']);
+            $query->where(function ($builder) use ($search): void {
+                $builder->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        if (!empty($queryParams['role'])) {
+            $query->where('role', $queryParams['role']);
+        }
+
+        if (!empty($queryParams['status'])) {
+            $query->where('status', $queryParams['status']);
+        }
+
+        $sortBy = $queryParams['sort_by'] ?? 'created_at';
+        $sortDirection = $queryParams['sort_direction'] ?? 'desc';
+
+        return $query->orderBy($sortBy, $sortDirection)
+            ->orderBy('id', 'desc')
+            ->paginate($perPage)
+            ->appends($queryParams);
+    }
+
+    public function getUser(int $id): \App\Models\User
+    {
+        $user = \App\Models\User::where('id', $id)->whereNull('deleted_at')->first();
+
+        if (!$user) {
+            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
+
+        return $user;
+    }
+
+    public function createUser(array $data): \App\Models\User
+    {
+        $data['password_hash'] = \Illuminate\Support\Facades\Hash::make($data['password']);
+        unset($data['password']);
+
+        $data['status'] = $data['status'] ?? 'active';
+        $data['locked'] = $data['status'] === 'locked';
+
+        return \App\Models\User::create($data);
+    }
+
+    public function updateUser(int $id, array $data, int $currentAdminId): \App\Models\User
+    {
+        $user = $this->getUser($id);
+
+        if (empty($data)) {
+            throw new BusinessException('Cần ít nhất một trường hợp lệ để cập nhật.', 422);
+        }
+
+        if ($user->id === $currentAdminId) {
+            if (isset($data['role']) && $data['role'] !== $user->role) {
+                throw new BusinessException('Không được tự đổi role của chính mình.', 422);
+            }
+            if (isset($data['status']) && $data['status'] !== 'active') {
+                throw new BusinessException('Không được tự khóa hoặc vô hiệu hóa chính mình.', 422);
+            }
+        }
+
+        if (isset($data['password'])) {
+            $data['password_hash'] = \Illuminate\Support\Facades\Hash::make($data['password']);
+            unset($data['password']);
+        }
+
+        if (isset($data['status'])) {
+            $data['locked'] = $data['status'] === 'locked';
+        }
+
+        $allowedFields = ['full_name', 'email', 'password_hash', 'phone', 'role', 'status', 'locked', 'locked_reason'];
+        $updateData = [];
+        foreach ($allowedFields as $field) {
+            if (array_key_exists($field, $data)) {
+                $updateData[$field] = $data[$field];
+            }
+        }
+
+        if (empty($updateData)) {
+            throw new BusinessException('Cần ít nhất một trường hợp lệ để cập nhật.', 422);
+        }
+
+        $user->update($updateData);
+
+        return $user->refresh();
+    }
+
+    public function deleteUser(int $id, int $currentAdminId): void
+    {
+        $user = $this->getUser($id);
+
+        if ($user->id === $currentAdminId) {
+            throw new BusinessException('Không được tự xóa chính mình.', 422);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($user): void {
+            $user->delete();
+            
+            try {
+                \Illuminate\Support\Facades\DB::table('sessions')
+                    ->where('user_id', $user->id)
+                    ->update(['revoked_at' => now()]);
+            } catch (\Exception $e) {
+                info('Session revoke error: ' . $e->getMessage());
+            }
+        });
+    }
 }
