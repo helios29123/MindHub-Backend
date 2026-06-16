@@ -17,4 +17,5 @@ Route::middleware(['auth.session', 'role:admin'])
     ->group(function (): void {
         Route::get('/top-courses', [ReportController::class, 'topCourses']);
         Route::get('/instructors', [ReportController::class, 'topInstructors']);
+        Route::get('/revenue', [ReportController::class, 'revenueReport']);
     });
