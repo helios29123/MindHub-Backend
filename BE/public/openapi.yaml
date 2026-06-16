@@ -4698,7 +4698,7 @@ paths:
                   example: 1
                 title:
                   type: string
-                  example: Chương 1: Giới thiệu
+                  example: "Chương 1: Giới thiệu"
                 description:
                   type: string
                   example: Tổng quan về khóa học
