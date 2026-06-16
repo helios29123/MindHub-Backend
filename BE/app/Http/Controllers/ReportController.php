@@ -10,6 +10,8 @@ use App\Http\Resources\Report\TopInstructorReportResource;
 use App\Http\Requests\Report\InactiveLearnerReportRequest;
 use App\Http\Resources\Report\InactiveLearnerReportResource;
 use App\Http\Requests\Report\DashboardReportRequest;
+use App\Http\Requests\Report\RevenueReportRequest;
+use App\Http\Resources\Report\RevenueReportResource;
 use App\Services\Report\ReportService;
 use App\Support\ApiResponse;
 
@@ -112,6 +114,26 @@ final class ReportController extends Controller
         return ApiResponse::success(
             data: $result,
             message: 'Lấy dashboard tổng quan thành công'
+        );
+    }
+
+    public function revenueReport(RevenueReportRequest $request, ReportService $adminReportService)
+    {
+        $result = $adminReportService->getRevenueReport($request->validated());
+        $paginator = $result['paginator'];
+
+        return ApiResponse::success(
+            data: [
+                'summary' => $result['summary'],
+                'items' => RevenueReportResource::collection($paginator),
+            ],
+            message: 'Lấy báo cáo doanh thu thành công',
+            meta: [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]
         );
     }
 }

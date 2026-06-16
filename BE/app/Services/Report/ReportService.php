@@ -440,4 +440,116 @@ class ReportService
             ]
         ];
     }
+
+    public function getRevenueReport(array $filters): array
+    {
+        $dateFrom = $filters['date_from'] ?? null;
+        $dateTo = $filters['date_to'] ?? null;
+        $month = $filters['month'] ?? null;
+        $year = $filters['year'] ?? null;
+        $courseId = $filters['course_id'] ?? null;
+        $instructorId = $filters['instructor_id'] ?? null;
+        $groupBy = $filters['group_by'] ?? 'day';
+        
+        $sortBy = $filters['sort_by'] ?? 'date';
+        $sortDirection = strtolower($filters['sort_direction'] ?? 'asc');
+
+        // Check if revenues table exists and has data
+        $hasRevenues = \Schema::hasTable('revenues') && DB::table('revenues')->exists();
+
+        $query = $hasRevenues ? DB::table('revenues') : DB::table('orders')->where('status', 'paid');
+        $dateColumn = $hasRevenues ? 'earned_at' : 'paid_at';
+
+        // Apply filters
+        if ($dateFrom) $query->whereDate($dateColumn, '>=', $dateFrom);
+        if ($dateTo) $query->whereDate($dateColumn, '<=', $dateTo);
+        if ($month) $query->whereMonth($dateColumn, $month);
+        if ($year) $query->whereYear($dateColumn, $year);
+        if ($courseId) $query->where('course_id', $courseId);
+
+        if ($hasRevenues) {
+            if ($instructorId) $query->where('instructor_id', $instructorId);
+        } else {
+            // For orders, to filter by instructor_id, we need to join courses
+            if ($instructorId) {
+                $query->join('courses', 'orders.course_id', '=', 'courses.id')
+                      ->where('courses.instructor_id', $instructorId);
+            }
+        }
+
+        // Calculate summary
+        $summaryQuery = clone $query;
+        if ($hasRevenues) {
+            $summary = [
+                'total_gross_amount' => (float) $summaryQuery->sum('gross_amount'),
+                'total_instructor_amount' => (float) $summaryQuery->sum('instructor_amount'),
+                'total_platform_fee_amount' => (float) $summaryQuery->sum('platform_fee_amount'),
+                'order_count' => $summaryQuery->count(),
+                'course_count' => $summaryQuery->distinct()->count('course_id'),
+                'instructor_count' => $summaryQuery->distinct()->count('instructor_id'),
+            ];
+        } else {
+            $summary = [
+                'total_gross_amount' => (float) $summaryQuery->sum($instructorId ? 'orders.amount' : 'amount'),
+                'total_instructor_amount' => 0,
+                'total_platform_fee_amount' => 0,
+                'order_count' => $summaryQuery->count(),
+                'course_count' => $summaryQuery->distinct()->count($instructorId ? 'orders.course_id' : 'course_id'),
+                'instructor_count' => 0,
+            ];
+        }
+
+        // Grouping
+        $dbConnection = DB::connection()->getDriverName();
+        $dateFormat = '';
+
+        if ($dbConnection === 'sqlite') {
+            $dateFormat = $groupBy === 'month' ? "strftime('%Y-%m', $dateColumn)" : "strftime('%Y-%m-%d', $dateColumn)";
+        } else {
+            $dateFormat = $groupBy === 'month' ? "DATE_FORMAT($dateColumn, '%Y-%m')" : "DATE($dateColumn)";
+        }
+
+        $query->selectRaw("$dateFormat as period");
+
+        if ($hasRevenues) {
+            $query->selectRaw('SUM(gross_amount) as gross_amount')
+                  ->selectRaw('SUM(instructor_amount) as instructor_amount')
+                  ->selectRaw('SUM(platform_fee_amount) as platform_fee_amount')
+                  ->selectRaw('COUNT(id) as order_count')
+                  ->selectRaw('COUNT(DISTINCT course_id) as course_count')
+                  ->selectRaw('COUNT(DISTINCT instructor_id) as instructor_count');
+        } else {
+            $amtCol = $instructorId ? 'orders.amount' : 'amount';
+            $crsCol = $instructorId ? 'orders.course_id' : 'course_id';
+            $idCol = $instructorId ? 'orders.id' : 'id';
+            $query->selectRaw("SUM($amtCol) as gross_amount")
+                  ->selectRaw('0 as instructor_amount')
+                  ->selectRaw('0 as platform_fee_amount')
+                  ->selectRaw("COUNT($idCol) as order_count")
+                  ->selectRaw("COUNT(DISTINCT $crsCol) as course_count")
+                  ->selectRaw('0 as instructor_count');
+        }
+
+        $query->groupBy(DB::raw($dateFormat));
+
+        // Sorting
+        $sortFieldMap = [
+            'date' => 'period',
+            'gross_amount' => 'gross_amount',
+            'instructor_amount' => 'instructor_amount',
+            'platform_fee_amount' => 'platform_fee_amount',
+            'order_count' => 'order_count',
+        ];
+
+        $orderCol = $sortFieldMap[$sortBy] ?? 'period';
+        $query->orderBy($orderCol, $sortDirection);
+
+        $perPage = $filters['per_page'] ?? 15;
+        $paginator = $query->paginate($perPage);
+
+        return [
+            'summary' => $summary,
+            'paginator' => $paginator,
+        ];
+    }
 }
