@@ -4066,6 +4066,2540 @@ paths:
         '422':
           description: Dữ liệu không hợp lệ.
 
+  /admin/users:
+    get:
+      tags:
+        - Admin User Management
+      summary: "[ADM-01] Danh sách người dùng"
+      description: Lấy danh sách người dùng phân trang và hỗ trợ lọc theo role, status, tìm kiếm và sắp xếp.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Learner One
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [admin, instructor, learner]
+          example: learner
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive, locked]
+          example: active
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [id, full_name, email, role, status, created_at, last_login_at]
+          example: id
+        - name: sort_direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: desc
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy danh sách người dùng thành công.
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 4
+                        full_name:
+                          type: string
+                          example: Learner One
+                        email:
+                          type: string
+                          example: learner1@mindhub.test
+                        phone:
+                          type: string
+                          nullable: true
+                          example: null
+                        role:
+                          type: string
+                          example: learner
+                        status:
+                          type: string
+                          example: active
+                        oauth_account_login:
+                          type: boolean
+                          example: false
+                        email_verified_at:
+                          type: string
+                          nullable: true
+                          example: "2026-06-12 14:00:00"
+                        last_login_at:
+                          type: string
+                          nullable: true
+                          example: "2026-06-16 10:00:00"
+                        locked:
+                          type: boolean
+                          example: false
+                        locked_reason:
+                          type: string
+                          nullable: true
+                          example: null
+                        created_at:
+                          type: string
+                          example: "2026-06-12 14:00:00"
+                        updated_at:
+                          type: string
+                          example: "2026-06-16 10:00:00"
+                  meta:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        example: 1
+                      per_page:
+                        type: integer
+                        example: 15
+                      total:
+                        type: integer
+                        example: 1
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập.
+    post:
+      tags:
+        - Admin User Management
+      summary: "[ADM-01] Tạo người dùng mới"
+      description: Admin tạo mới một tài khoản người dùng với thông tin được chỉ định.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - full_name
+                - email
+                - password
+                - role
+              properties:
+                full_name:
+                  type: string
+                  example: Nguyễn Văn A
+                email:
+                  type: string
+                  format: email
+                  example: learner.new@mindhub.test
+                password:
+                  type: string
+                  example: "12345678"
+                phone:
+                  type: string
+                  nullable: true
+                  example: "0987654321"
+                role:
+                  type: string
+                  enum: [admin, instructor, learner]
+                  example: learner
+                status:
+                  type: string
+                  enum: [active, inactive, locked]
+                  example: active
+                locked_reason:
+                  type: string
+                  example: null
+      responses:
+        '201':
+          description: Tạo người dùng thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Tạo người dùng thành công
+                  data:
+                    type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /admin/users/{id}:
+    get:
+      tags:
+        - Admin User Management
+      summary: "[ADM-01] Xem chi tiết người dùng"
+      description: Lấy thông tin chi tiết của một người dùng theo ID.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 4
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập.
+        '404':
+          description: Không tìm thấy người dùng.
+    put:
+      tags:
+        - Admin User Management
+      summary: "[ADM-01] Cập nhật người dùng (PUT)"
+      description: Cập nhật thông tin chi tiết của một người dùng. Admin không được tự đổi role hoặc status của chính mình.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                  example: Nguyễn Văn A Cập Nhật
+                email:
+                  type: string
+                  format: email
+                  example: learner.updated@mindhub.test
+                password:
+                  type: string
+                  example: "newpassword123"
+                phone:
+                  type: string
+                  nullable: true
+                  example: "0987654321"
+                role:
+                  type: string
+                  enum: [admin, instructor, learner]
+                  example: learner
+                status:
+                  type: string
+                  enum: [active, inactive, locked]
+                  example: active
+                locked_reason:
+                  type: string
+                  nullable: true
+                  example: null
+      responses:
+        '200':
+          description: Cập nhật người dùng thành công.
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập hoặc tự cập nhật thông tin nhạy cảm của chính mình.
+        '404':
+          description: Không tìm thấy người dùng.
+        '422':
+          description: Dữ liệu không hợp lệ.
+    patch:
+      tags:
+        - Admin User Management
+      summary: "[ADM-01] Cập nhật một phần người dùng (PATCH)"
+      description: Cập nhật một số trường thông tin của người dùng.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, inactive, locked]
+                  example: locked
+                locked_reason:
+                  type: string
+                  example: Vi phạm điều khoản.
+      responses:
+        '200':
+          description: Cập nhật người dùng thành công.
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập.
+        '404':
+          description: Không tìm thấy người dùng.
+        '422':
+          description: Dữ liệu không hợp lệ.
+    delete:
+      tags:
+        - Admin User Management
+      summary: "[ADM-01] Xóa người dùng (Soft Delete)"
+      description: Thực hiện soft delete người dùng và thu hồi (revoke) các sessions đang hoạt động. Admin không được tự xóa chính mình.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 4
+      responses:
+        '200':
+          description: Xóa người dùng thành công.
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập hoặc tự xóa chính mình.
+        '404':
+          description: Không tìm thấy người dùng.
+
+  /admin/roles:
+    get:
+      tags:
+        - Admin User Management
+      summary: "[ADM-03] Lấy danh sách roles (Chưa triển khai)"
+      description: Endpoint placeholder trả về 501 do thiếu bảng RBAC ở Giai đoạn 1.
+      security:
+        - BearerAuth: []
+      responses:
+        '501':
+          description: Chức năng chưa sẵn sàng triển khai trong Sprint 1.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: Chức năng chưa sẵn sàng triển khai trong Sprint 1.
+    post:
+      tags:
+        - Admin User Management
+      summary: "[ADM-03] Tạo role mới (Chưa triển khai)"
+      description: Endpoint placeholder trả về 501.
+      security:
+        - BearerAuth: []
+      responses:
+        '501':
+          description: Chức năng chưa sẵn sàng triển khai trong Sprint 1.
+
+  /admin/roles/{id}:
+    get:
+      tags:
+        - Admin User Management
+      summary: "[ADM-03] Chi tiết role (Chưa triển khai)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '501':
+          description: Chức năng chưa sẵn sàng triển khai trong Sprint 1.
+    put:
+      tags:
+        - Admin User Management
+      summary: "[ADM-03] Cập nhật role (PUT) (Chưa triển khai)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '501':
+          description: Chức năng chưa sẵn sàng triển khai trong Sprint 1.
+    patch:
+      tags:
+        - Admin User Management
+      summary: "[ADM-03] Cập nhật role (PATCH) (Chưa triển khai)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '501':
+          description: Chức năng chưa sẵn sàng triển khai trong Sprint 1.
+    delete:
+      tags:
+        - Admin User Management
+      summary: "[ADM-03] Xóa role (Chưa triển khai)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '501':
+          description: Chức năng chưa sẵn sàng triển khai trong Sprint 1.
+
+  /instructor/profile:
+    get:
+      tags:
+        - Instructor Management
+      summary: "[INS-01] Xem thông tin hồ sơ giảng viên"
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      user_id:
+                        type: integer
+                        example: 2
+                      bio:
+                        type: string
+                        example: Giảng viên lập trình PHP/Laravel
+                      expertise:
+                        type: string
+                        example: Web Development
+                      experience_years:
+                        type: integer
+                        example: 5
+                      level:
+                        type: string
+                        example: Senior
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên.
+    patch:
+      tags:
+        - Instructor Management
+      summary: "[INS-01] Cập nhật hồ sơ giảng viên"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bio:
+                  type: string
+                  example: Giảng viên lập trình PHP/Laravel
+                expertise:
+                  type: string
+                  example: Web Development
+                experience_years:
+                  type: integer
+                  example: 6
+                level:
+                  type: string
+                  example: Expert
+      responses:
+        '200':
+          description: Thao tác thành công.
+        '401':
+          description: Chưa đăng nhập.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /instructor/sections:
+    get:
+      tags:
+        - Instructor Management
+      summary: "[INS-04] Lấy danh sách chương học"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Chương 1
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, published, hidden]
+          example: published
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [id, title, status, sort_order, created_at, updated_at]
+          example: sort_order
+        - name: sort_direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: asc
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          description: Chưa đăng nhập.
+    post:
+      tags:
+        - Instructor Management
+      summary: "[INS-04] Tạo chương học mới"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - course_id
+                - title
+              properties:
+                course_id:
+                  type: integer
+                  example: 1
+                title:
+                  type: string
+                  example: Chương 1: Giới thiệu
+                description:
+                  type: string
+                  example: Tổng quan về khóa học
+                sort_order:
+                  type: integer
+                  example: 1
+                status:
+                  type: string
+                  enum: [draft, published, hidden]
+                  example: published
+      responses:
+        '201':
+          description: Tạo chương học thành công.
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên của khóa học.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /instructor/sections/{id}:
+    get:
+      tags:
+        - Instructor Management
+      summary: "[INS-04] Chi tiết chương học"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+        '404':
+          description: Chương học không tồn tại.
+    put:
+      tags:
+        - Instructor Management
+      summary: "[INS-04] Cập nhật chương học (PUT)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                sort_order:
+                  type: integer
+                status:
+                  type: string
+                  enum: [draft, published, hidden]
+      responses:
+        '200':
+          description: Cập nhật thành công.
+    patch:
+      tags:
+        - Instructor Management
+      summary: "[INS-04] Cập nhật chương học (PATCH)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+      responses:
+        '200':
+          description: Cập nhật thành công.
+    delete:
+      tags:
+        - Instructor Management
+      summary: "[INS-04] Xóa chương học"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Xóa thành công.
+
+  /admin/categories:
+    get:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-04] Danh sách danh mục hệ thống"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Lập trình
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive]
+          example: active
+        - name: parent_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [id, name, slug, status, sort_order, created_at, updated_at]
+          example: sort_order
+        - name: sort_direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: asc
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy danh sách danh mục thành công.
+                  data:
+                    type: array
+                    items:
+                      type: object
+    post:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-04] Tạo danh mục mới"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - slug
+              properties:
+                name:
+                  type: string
+                  example: Lập trình Web
+                slug:
+                  type: string
+                  example: lap-trinh-web
+                parent_id:
+                  type: integer
+                  nullable: true
+                  example: null
+                description:
+                  type: string
+                  example: Các khóa học lập trình web
+                sort_order:
+                  type: integer
+                  example: 1
+                status:
+                  type: string
+                  enum: [active, inactive]
+                  example: active
+      responses:
+        '201':
+          description: Tạo danh mục thành công.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /admin/categories/{id}:
+    get:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-04] Chi tiết danh mục"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+        '404':
+          description: Không tìm thấy danh mục.
+    put:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-04] Cập nhật danh mục (PUT)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                parent_id:
+                  type: integer
+                  nullable: true
+                description:
+                  type: string
+                sort_order:
+                  type: integer
+                status:
+                  type: string
+                  enum: [active, inactive]
+      responses:
+        '200':
+          description: Cập nhật thành công.
+        '404':
+          description: Danh mục không tồn tại.
+        '422':
+          description: Dữ liệu không hợp lệ (ví dụ tạo vòng lặp danh mục).
+    patch:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-04] Cập nhật danh mục (PATCH)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, inactive]
+      responses:
+        '200':
+          description: Cập nhật thành công.
+    delete:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-04] Xóa danh mục"
+      description: Soft delete danh mục. Không cho xóa nếu danh mục đang chứa danh mục con hoặc khóa học.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Xóa danh mục thành công.
+        '400':
+          description: Không thể xóa danh mục đang có danh mục con hoặc khóa học liên kết.
+        '404':
+          description: Không tìm thấy danh mục.
+
+  /admin/courses:
+    get:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-05] Danh sách khóa học hệ thống"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Laravel
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, pending_review, approved, rejected, published, hidden]
+          example: published
+        - name: instructor_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 2
+        - name: category_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced, all_levels]
+          example: intermediate
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [id, title, slug, status, price, sale_price, created_at, updated_at, published_at]
+          example: created_at
+        - name: sort_direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: desc
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy danh sách khóa học thành công.
+                  data:
+                    type: array
+                    items:
+                      type: object
+
+  /admin/courses/{id}:
+    get:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-05] Xem chi tiết khóa học"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+        '404':
+          description: Khóa học không tồn tại.
+    patch:
+      tags:
+        - Admin Moderation
+      summary: "[ADM-05] Cập nhật thông tin khóa học"
+      description: Cập nhật status, is_featured, slug, price, sale_price, admin_reject_reason, etc.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [draft, pending_review, approved, rejected, published, hidden]
+                is_featured:
+                  type: boolean
+                admin_reject_reason:
+                  type: string
+                price:
+                  type: number
+                sale_price:
+                  type: number
+      responses:
+        '200':
+          description: Cập nhật thành công.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /instructor/courses/{id}/learners:
+    get:
+      tags:
+        - Instructor Management
+      summary: "[INS-12] Quản lý học viên theo khóa học"
+      description: Lấy danh sách học viên đã ghi danh vào khóa học cụ thể do giảng viên sở hữu.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của khóa học
+          schema:
+            type: integer
+          example: 1
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 10
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, completed, cancelled, expired]
+          example: active
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Learner One
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [enrolled_at, progress_percent, full_name]
+          example: enrolled_at
+        - name: sort_direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: desc
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 4
+                        full_name:
+                          type: string
+                          example: Learner One
+                        email:
+                          type: string
+                          example: learner1@mindhub.test
+                        phone:
+                          type: string
+                          nullable: true
+                          example: null
+                        enrollment_status:
+                          type: string
+                          example: active
+                        enrolled_at:
+                          type: string
+                          example: "2026-06-12 14:00:00"
+                        progress_percent:
+                          type: number
+                          example: 100.00
+                        completed_at:
+                          type: string
+                          nullable: true
+                          example: null
+                  meta:
+                    type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên của khóa học này.
+        '404':
+          description: Khóa học không tồn tại.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /instructor/revenue:
+    get:
+      tags:
+        - Instructor Management
+      summary: "[INS-13] Báo cáo doanh thu của giảng viên"
+      description: Xem doanh thu chi tiết theo tháng và theo khóa học của giảng viên hiện tại.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 10
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-06-01"
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-06-30"
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          example: 6
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 2100
+          example: 2026
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            course_id:
+                              type: integer
+                              example: 1
+                            course_title:
+                              type: string
+                              example: Laravel REST API Cơ Bản
+                            month:
+                              type: string
+                              example: "2026-06"
+                            revenue_count:
+                              type: integer
+                              example: 1
+                            gross_amount:
+                              type: string
+                              example: "500000.00"
+                            instructor_amount:
+                              type: string
+                              example: "400000.00"
+                            platform_fee_amount:
+                              type: string
+                              example: "100000.00"
+                            first_earned_at:
+                              type: string
+                              example: "2026-06-12 14:00:00"
+                            last_earned_at:
+                              type: string
+                              example: "2026-06-12 14:00:00"
+                      summary:
+                        type: object
+                        properties:
+                          total_revenue_count:
+                            type: integer
+                            example: 1
+                          total_gross_amount:
+                            type: string
+                            example: "500000.00"
+                          total_instructor_amount:
+                            type: string
+                            example: "400000.00"
+                          total_platform_fee_amount:
+                            type: string
+                            example: "100000.00"
+                          by_status:
+                            type: object
+                      filters:
+                        type: object
+                      meta:
+                        type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên.
+        '422':
+          description: Dữ liệu lọc không hợp lệ.
+
+  /instructor/quizzes:
+    get:
+      tags:
+        - Instructor Management
+      summary: "[INS-11] Lấy danh sách quiz của giảng viên"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: lesson_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 5
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, published, hidden]
+          example: published
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  meta:
+                    type: object
+    post:
+      tags:
+        - Instructor Management
+      summary: "[INS-11] Tạo quiz/test mới"
+      description: Tạo mới một bài trắc nghiệm gắn với bài học của khóa học do giảng viên quản lý.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lesson_id
+                - title
+                - questions
+              properties:
+                lesson_id:
+                  type: integer
+                  example: 5
+                title:
+                  type: string
+                  example: Trắc nghiệm chương 1
+                description:
+                  type: string
+                  example: Kiểm tra kiến thức chương 1
+                passing_score:
+                  type: number
+                  example: 80
+                status:
+                  type: string
+                  enum: [draft, published, hidden]
+                  example: published
+                questions:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - question_text
+                      - question_type
+                      - score
+                      - options
+                    properties:
+                      question_text:
+                        type: string
+                        example: Laravel là gì?
+                      question_type:
+                        type: string
+                        enum: [single_choice, multiple_choice, true_false]
+                        example: single_choice
+                      score:
+                        type: number
+                        example: 10
+                      options:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - option_text
+                            - is_correct
+                          properties:
+                            option_text:
+                              type: string
+                              example: Một framework PHP
+                            is_correct:
+                              type: boolean
+                              example: true
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên sở hữu bài học này.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /instructor/quizzes/{id}:
+    get:
+      tags:
+        - Instructor Management
+      summary: "[INS-11] Xem chi tiết quiz"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+        '404':
+          description: Quiz không tồn tại.
+    put:
+      tags:
+        - Instructor Management
+      summary: "[INS-11] Cập nhật quiz (PUT)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: Tiêu đề mới
+                status:
+                  type: string
+                  enum: [draft, published, hidden]
+                  example: published
+      responses:
+        '200':
+          description: Cập nhật thành công.
+        '404':
+          description: Quiz không tồn tại.
+    patch:
+      tags:
+        - Instructor Management
+      summary: "[INS-11] Cập nhật quiz (PATCH)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: Tiêu đề mới
+      responses:
+        '200':
+          description: Cập nhật thành công.
+    delete:
+      tags:
+        - Instructor Management
+      summary: "[INS-11] Xóa quiz"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Xóa quiz thành công.
+        '404':
+          description: Quiz không tồn tại.
+
+  /instructor/withdrawals:
+    post:
+      tags:
+        - Instructor Management
+      summary: "[INS-14] Yêu cầu rút tiền"
+      description: Tạo yêu cầu rút tiền cho giảng viên hiện tại từ số dư khả dụng dựa trên tài khoản thụ hưởng đã thiết lập.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+                - payout_account_id
+              properties:
+                amount:
+                  type: number
+                  example: 2000000.00
+                payout_account_id:
+                  type: integer
+                  example: 1
+                note:
+                  type: string
+                  example: Rút tiền doanh thu tháng 6
+      responses:
+        '201':
+          description: Yêu cầu rút tiền được tạo thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      user_id:
+                        type: integer
+                        example: 2
+                      payout_account_id:
+                        type: integer
+                        example: 1
+                      amount:
+                        type: string
+                        example: "2000000.00"
+                      status:
+                        type: string
+                        example: pending
+                      requested_at:
+                        type: string
+                        example: "2026-06-16 11:00:00"
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không đủ số dư khả dụng hoặc tài khoản không phải giảng viên.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /quiz-attempts/{id}:
+    get:
+      tags:
+        - Quizzes
+      summary: "[ASM-02] Xem kết quả làm bài quiz"
+      description: Lấy kết quả chi tiết của lượt làm bài trắc nghiệm. Learner chỉ xem được kết quả của chính mình. Nếu lượt làm bài chưa nộp (in_progress), các trường is_correct và đáp án đúng sẽ bị ẩn để chống rò rỉ đáp án.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      quiz_id:
+                        type: integer
+                        example: 1
+                      user_id:
+                        type: integer
+                        example: 4
+                      status:
+                        type: string
+                        example: submitted
+                      score_earned:
+                        type: string
+                        example: "80.00"
+                      is_passed:
+                        type: boolean
+                        example: true
+                      started_at:
+                        type: string
+                        example: "2026-06-16 10:00:00"
+                      submitted_at:
+                        type: string
+                        example: "2026-06-16 10:30:00"
+                      answers:
+                        type: array
+                        items:
+                          type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập lượt làm bài này hoặc chưa ghi danh khóa học tương ứng.
+        '404':
+          description: Lượt làm bài không tồn tại.
+
+  /courses/{id}/completion-status:
+    get:
+      tags:
+        - Quizzes
+      summary: "[ASM-03] Kiểm tra điều kiện hoàn thành khóa học"
+      description: Lấy tiến trình học tập của học viên bao gồm số bài học đã hoàn thành và danh sách các bài test bắt buộc kèm trạng thái đạt/chưa đạt.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      title:
+                        type: string
+                        example: Laravel REST API Cơ Bản
+                      completed_lessons_count:
+                        type: integer
+                        example: 5
+                      total_lessons_count:
+                        type: integer
+                        example: 10
+                      progress_percent:
+                        type: number
+                        example: 50
+                      quizzes_status:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            quiz_id:
+                              type: integer
+                              example: 1
+                            title:
+                              type: string
+                              example: Trắc nghiệm kết thúc khóa
+                            passing_score:
+                              type: number
+                              example: 80
+                            highest_score:
+                              type: number
+                              nullable: true
+                              example: 90
+                            is_passed:
+                              type: boolean
+                              example: true
+                      is_completed:
+                        type: boolean
+                        example: false
+                      completed_at:
+                        type: string
+                        nullable: true
+                        example: null
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Chưa ghi danh khóa học này.
+        '404':
+          description: Khóa học không tồn tại.
+
+  /instructor/reports/completion-rate:
+    get:
+      tags:
+        - Reports
+      summary: "[RPT-06] Báo cáo tỷ lệ hoàn thành khóa học"
+      description: Giảng viên xem tỷ lệ hoàn thành các khóa học của mình, hỗ trợ lọc theo thời gian, tháng, năm hoặc theo khóa học cụ thể.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-06-01"
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-06-30"
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          example: 6
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 2000
+          example: 2026
+      responses:
+        '200':
+          description: Lấy báo cáo thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Thao tác thành công
+                  data:
+                    type: object
+                    properties:
+                      summary:
+                        type: object
+                        properties:
+                          total_courses:
+                            type: integer
+                            example: 1
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            course_id:
+                              type: integer
+                              example: 1
+                            course_title:
+                              type: string
+                              example: Laravel REST API Cơ Bản
+                            total_enrollments:
+                              type: integer
+                              example: 10
+                            completed_count:
+                              type: integer
+                              example: 2
+                            completion_rate:
+                              type: number
+                              example: 20.00
+                      meta:
+                        type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập.
+
+  /instructor/reports/inactive-learners:
+    get:
+      tags:
+        - Reports
+      summary: "[RPT-07] Báo cáo danh sách học viên bỏ dở"
+      description: Giảng viên xem danh sách học viên không có hoạt động học tập nào trong một khoảng thời gian thiết lập (mặc định 14 ngày).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 6
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 2026
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, completed, in_progress, not_started]
+          example: active
+        - name: inactive_days
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+          example: 14
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [last_activity_at, inactive_days, progress_percent, enrolled_at]
+          example: inactive_days
+        - name: sort_direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: desc
+      responses:
+        '200':
+          description: Lấy báo cáo thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy báo cáo học viên bỏ dở thành công
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            user_id:
+                              type: integer
+                              example: 4
+                            full_name:
+                              type: string
+                              example: Learner One
+                            email:
+                              type: string
+                              example: learner1@mindhub.test
+                            phone:
+                              type: string
+                              nullable: true
+                            course_id:
+                              type: integer
+                              example: 1
+                            course_title:
+                              type: string
+                              example: Laravel REST API Cơ Bản
+                            enrollment_status:
+                              type: string
+                              example: active
+                            enrolled_at:
+                              type: string
+                              example: "2026-06-12 14:00:00"
+                            last_activity_at:
+                              type: string
+                              nullable: true
+                              example: "2026-06-12 14:00:00"
+                            inactive_days:
+                              type: integer
+                              nullable: true
+                              example: 4
+                            progress_percent:
+                              type: number
+                              example: 50.00
+                      meta:
+                        type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập báo cáo này của khóa học.
+
+  /instructor/courses/{id}/dashboard:
+    get:
+      tags:
+        - Reports
+      summary: "[RPT-05] Dashboard chi tiết khóa học"
+      description: Dashboard phân tích hiệu năng của một khóa học cụ thể bao gồm doanh thu, số lượng đăng ký, tiến độ trung bình, đánh giá và tỷ lệ làm quiz.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 6
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 2026
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy dashboard khóa học thành công
+                  data:
+                    type: object
+                    properties:
+                      course_id:
+                        type: integer
+                        example: 1
+                      course_title:
+                        type: string
+                        example: Laravel REST API Cơ Bản
+                      total_revenue:
+                        type: number
+                        example: 500000.00
+                      total_enrollments:
+                        type: integer
+                        example: 10
+                      active_enrollments:
+                        type: integer
+                        example: 8
+                      completed_enrollments:
+                        type: integer
+                        example: 2
+                      completion_rate:
+                        type: number
+                        example: 20.00
+                      average_progress:
+                        type: number
+                        example: 50.00
+                      average_rating:
+                        type: number
+                        example: 4.5
+                      total_reviews:
+                        type: integer
+                        example: 4
+                      quiz_completion_rate:
+                        type: number
+                        example: 10.00
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập (yêu cầu role instructor sở hữu khóa).
+        '404':
+          description: Khóa học không tồn tại.
+
+  /admin/dashboard:
+    get:
+      tags:
+        - Reports
+      summary: "[RPT-01] Dashboard tổng quan hệ thống"
+      description: Admin xem thống kê toàn hệ thống bao gồm tổng doanh thu, số lượng người dùng, giảng viên, khóa học đã bán và số lượt học viên mới.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 6
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 2026
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy dashboard tổng quan thành công
+                  data:
+                    type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập (yêu cầu role admin).
+
+  /admin/reports/top-courses:
+    get:
+      tags:
+        - Reports
+      summary: "[RPT-03] Báo cáo khóa học bán chạy"
+      description: Admin xem bảng xếp hạng các khóa học bán chạy nhất hệ thống dựa theo doanh thu hoặc số lượng đã bán.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [sold_count, total_revenue, completed_count, completion_rate, last_paid_at]
+          example: sold_count
+        - name: sort_direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: desc
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy báo cáo khóa học bán chạy thành công
+                  data:
+                    type: object
+                    properties:
+                      summary:
+                        type: object
+                      items:
+                        type: array
+                        items:
+                          type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập.
+
+  /admin/reports/instructors:
+    get:
+      tags:
+        - Reports
+      summary: "[RPT-04] Báo cáo giảng viên hoạt động tốt"
+      description: Admin xem danh sách giảng viên hoạt động tốt nhất dựa trên tổng số khóa học, số lượng học viên và doanh thu kiếm được.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [total_courses, total_sold, total_revenue, total_completed, completion_rate, last_activity_at]
+          example: total_revenue
+        - name: sort_direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: desc
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy báo cáo giảng viên thành công
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập.
+
+  /admin/reports/revenue:
+    get:
+      tags:
+        - Reports
+      summary: "[RPT-02] Báo cáo doanh thu ngày/tháng"
+      description: Admin xem báo cáo doanh thu tổng quan của hệ thống, hỗ trợ gom nhóm theo ngày hoặc tháng, lọc theo giảng viên hoặc khóa học cụ thể.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 15
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: instructor_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: group_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [day, month]
+          example: day
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [date, gross_amount, instructor_amount, platform_fee_amount, order_count]
+          example: date
+        - name: sort_direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+          example: desc
+      responses:
+        '200':
+          description: Thao tác thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy báo cáo doanh thu thành công
+                  data:
+                    type: object
+                    properties:
+                      summary:
+                        type: object
+                      items:
+                        type: array
+                        items:
+                          type: object
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không có quyền truy cập.
+
 components:
   securitySchemes:
     BearerAuth:
