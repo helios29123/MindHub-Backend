@@ -56,4 +56,19 @@ Route::middleware(['auth.session', 'role:admin'])
 
         Route::delete('/users/{id}', [AdminController::class, 'deleteUser'])
             ->where('id', '[0-9]+');
+
+        Route::get('/roles', [AdminController::class, 'roles']);
+        Route::post('/roles', [AdminController::class, 'roles']);
+
+        Route::get('/roles/{id}', [AdminController::class, 'roles'])
+            ->where('id', '[0-9]+');
+
+        Route::put('/roles/{id}', [AdminController::class, 'roles'])
+            ->where('id', '[0-9]+');
+
+        Route::patch('/roles/{id}', [AdminController::class, 'roles'])
+            ->where('id', '[0-9]+');
+
+        Route::delete('/roles/{id}', [AdminController::class, 'roles'])
+            ->where('id', '[0-9]+');
     });
