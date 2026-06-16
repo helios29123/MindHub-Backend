@@ -6,6 +6,13 @@ Route::middleware(['auth.session', 'role:instructor'])->prefix('instructor/repor
     Route::get('/inactive-learners', [ReportController::class, 'inactiveLearners']);
 });
 
+Route::middleware(['auth.session', 'role:instructor'])
+    ->prefix('instructor')
+    ->group(function (): void {
+        Route::get('/courses/{id}/dashboard', [ReportController::class, 'courseDashboard'])
+            ->where('id', '[0-9]+');
+    });
+
 Route::middleware(['auth.session', 'role:admin'])
     ->prefix('admin')
     ->group(function (): void {
