@@ -246,4 +246,13 @@ class AdminController extends Controller
             200
         );
     }
+
+    public function roles(): JsonResponse
+    {
+        return ApiResponse::error(
+            'Chức năng chưa sẵn sàng triển khai trong Sprint 1.',
+            [],
+            501
+        );
+    }
 }
