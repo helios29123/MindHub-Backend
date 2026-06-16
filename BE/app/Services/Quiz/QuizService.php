@@ -245,4 +245,54 @@ class QuizService
             ],
         ];
     }
+
+    public function showAttemptResult(int $attemptId, int $userId): QuizAttempt
+    {
+        $attempt = QuizAttempt::with([
+            'quiz.course',
+            'quiz.lesson',
+            'answers.question.options'
+        ])->find($attemptId);
+
+        if (!$attempt) {
+            throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Không tìm thấy dữ liệu.');
+        }
+
+        if ($attempt->user_id !== $userId) {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Bạn không được xem kết quả của người khác.');
+        }
+
+        $quiz = $attempt->quiz;
+        
+        if (!$quiz) {
+            throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Không tìm thấy dữ liệu.');
+        }
+
+        if ($quiz->status !== 'published') {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Nội dung chưa khả dụng.');
+        }
+
+        $course = $quiz->course;
+        if (!$course || $course->status !== 'published') {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Nội dung chưa khả dụng.');
+        }
+
+        if ($quiz->lesson_id) {
+            $lesson = $quiz->lesson;
+            if (!$lesson || $lesson->status !== 'published') {
+                throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Nội dung chưa khả dụng.');
+            }
+        }
+
+        $enrollment = Enrollment::where('user_id', $userId)
+            ->where('course_id', $course->id)
+            ->whereIn('status', ['active', 'completed'])
+            ->first();
+
+        if (!$enrollment) {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Bạn chưa có quyền truy cập nội dung này.');
+        }
+
+        return $attempt;
+    }
 }

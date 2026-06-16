@@ -64,4 +64,23 @@ class QuizController extends Controller
             200
         );
     }
+
+    public function showAttempt(mixed $id, \Illuminate\Http\Request $request): JsonResponse
+    {
+        $validator = Validator::make(['id' => $id], [
+            'id' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Không tìm thấy dữ liệu.');
+        }
+
+        $attempt = $this->quizService->showAttemptResult((int) $id, $request->user()->id);
+
+        return ApiResponse::success(
+            new QuizAttemptResource($attempt),
+            'Thao tác thành công',
+            200
+        );
+    }
 }
