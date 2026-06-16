@@ -12,6 +12,7 @@ use App\Http\Resources\Report\InactiveLearnerReportResource;
 use App\Http\Requests\Report\DashboardReportRequest;
 use App\Http\Requests\Report\RevenueReportRequest;
 use App\Http\Resources\Report\RevenueReportResource;
+use App\Http\Requests\Report\CourseDashboardRequest;
 use App\Services\Report\ReportService;
 use App\Support\ApiResponse;
 
@@ -134,6 +135,16 @@ final class ReportController extends Controller
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
             ]
+        );
+    }
+
+    public function courseDashboard(CourseDashboardRequest $request, int $id, ReportService $adminReportService)
+    {
+        $result = $adminReportService->getInstructorCourseDashboard($request->user()->id, $id, $request->validated());
+
+        return ApiResponse::success(
+            data: $result,
+            message: 'Lấy dashboard khóa học thành công'
         );
     }
 }

@@ -552,4 +552,149 @@ class ReportService
             'paginator' => $paginator,
         ];
     }
+
+    public function getInstructorCourseDashboard(int $instructorId, int $courseId, array $filters): array
+    {
+        $course = DB::table('courses')
+            ->where('id', $courseId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$course) {
+            abort(404, 'Không tìm thấy dữ liệu.');
+        }
+
+        if ($course->instructor_id !== $instructorId) {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Bạn không có quyền xem dữ liệu khóa học này.');
+        }
+
+        $dateFrom = $filters['date_from'] ?? null;
+        $dateTo = $filters['date_to'] ?? null;
+        $month = $filters['month'] ?? null;
+        $year = $filters['year'] ?? null;
+
+        $applyDateFilter = function ($query, $column) use ($dateFrom, $dateTo, $month, $year) {
+            if ($dateFrom) $query->whereDate($column, '>=', $dateFrom);
+            if ($dateTo) $query->whereDate($column, '<=', $dateTo);
+            if ($month) $query->whereMonth($column, $month);
+            if ($year) $query->whereYear($column, $year);
+        };
+
+        // Orders
+        $ordersQuery = DB::table('orders')->where('course_id', $courseId);
+        $applyDateFilter($ordersQuery, 'created_at');
+        $totalOrders = (clone $ordersQuery)->count();
+
+        $paidOrdersQuery = DB::table('orders')->where('course_id', $courseId)->where('status', 'paid');
+        $applyDateFilter($paidOrdersQuery, 'paid_at');
+        $paidOrders = (clone $paidOrdersQuery)->count();
+        $latestOrderPaidAt = (clone $paidOrdersQuery)->max('paid_at');
+
+        // Revenue
+        $hasRevenues = \Schema::hasTable('revenues');
+        $totalRevenue = 0;
+        $instructorRevenue = 0;
+        $platformFee = 0;
+
+        if ($hasRevenues) {
+            $revenuesQuery = DB::table('revenues')->where('course_id', $courseId);
+            $applyDateFilter($revenuesQuery, 'earned_at');
+            $totalRevenue = (clone $revenuesQuery)->sum('gross_amount');
+            $instructorRevenue = (clone $revenuesQuery)->sum('instructor_amount');
+            $platformFee = (clone $revenuesQuery)->sum('platform_fee_amount');
+        } else {
+            // Fallback to orders
+            $totalRevenue = (clone $paidOrdersQuery)->sum('amount');
+        }
+
+        // Enrollments
+        $enrollmentsQuery = DB::table('enrollments')->where('course_id', $courseId);
+        if (\Schema::hasColumn('enrollments', 'enrolled_at')) {
+            $applyDateFilter($enrollmentsQuery, 'enrolled_at');
+        } else {
+            $applyDateFilter($enrollmentsQuery, 'created_at');
+        }
+
+        $totalEnrollments = (clone $enrollmentsQuery)->count();
+        $activeEnrollments = (clone $enrollmentsQuery)->where('status', 'active')->count();
+        $completedEnrollments = (clone $enrollmentsQuery)->where('status', 'completed')->count();
+        $completionRate = $totalEnrollments > 0 ? round(($completedEnrollments / $totalEnrollments) * 100, 2) : 0;
+        $latestEnrollmentAccessedAt = (clone $enrollmentsQuery)->max('last_accessed_at');
+
+        // Lessons
+        $totalLessons = 0;
+        if (\Schema::hasTable('lessons')) {
+            $totalLessons = DB::table('lessons')->where('course_id', $courseId)->count();
+        }
+
+        // Lesson Progress
+        $completedLessonProgress = 0;
+        $latestLessonAccessedAt = null;
+        if (\Schema::hasTable('lesson_progress') && \Schema::hasTable('lessons')) {
+            $lessonProgressQuery = DB::table('lesson_progress')
+                ->join('lessons', 'lesson_progress.lesson_id', '=', 'lessons.id')
+                ->where('lessons.course_id', $courseId);
+            
+            // Note: date filters usually apply to activity here, we use last_accessed_at
+            $applyDateFilter($lessonProgressQuery, 'lesson_progress.last_accessed_at');
+            
+            $completedLessonProgress = (clone $lessonProgressQuery)->where('lesson_progress.status', 'completed')->count();
+            $latestLessonAccessedAt = (clone $lessonProgressQuery)->max('lesson_progress.last_accessed_at');
+        }
+
+        // Quizzes
+        $quizAttemptCount = 0;
+        if (\Schema::hasTable('quiz_attempts') && \Schema::hasTable('quizzes')) {
+            $quizAttemptsQuery = DB::table('quiz_attempts')
+                ->join('quizzes', 'quiz_attempts.quiz_id', '=', 'quizzes.id')
+                ->where('quizzes.course_id', $courseId);
+            
+            $applyDateFilter($quizAttemptsQuery, 'quiz_attempts.started_at');
+            $quizAttemptCount = (clone $quizAttemptsQuery)->count();
+        }
+
+        // Latest activity overall
+        $activities = array_filter([$latestOrderPaidAt, $latestEnrollmentAccessedAt, $latestLessonAccessedAt]);
+        $latestActivityAt = empty($activities) ? null : max($activities);
+
+        return [
+            'course' => [
+                'id' => $course->id,
+                'title' => $course->title,
+                'slug' => $course->slug ?? null,
+                'status' => $course->status ?? null,
+            ],
+            'summary' => [
+                'total_orders' => $totalOrders,
+                'paid_orders' => $paidOrders,
+                'total_revenue' => (float)$totalRevenue,
+                'instructor_revenue' => (float)$instructorRevenue,
+                'platform_fee' => (float)$platformFee,
+                'total_enrollments' => $totalEnrollments,
+                'active_enrollments' => $activeEnrollments,
+                'completed_enrollments' => $completedEnrollments,
+                'completion_rate' => (float)$completionRate,
+                'total_lessons' => $totalLessons,
+                'completed_lesson_progress' => $completedLessonProgress,
+                'quiz_attempt_count' => $quizAttemptCount,
+                'latest_activity_at' => $latestActivityAt,
+            ],
+            'revenue' => [
+                'gross_amount' => (float)$totalRevenue,
+                'instructor_amount' => (float)$instructorRevenue,
+                'platform_fee_amount' => (float)$platformFee,
+            ],
+            'enrollment' => [
+                'total' => $totalEnrollments,
+                'active' => $activeEnrollments,
+                'completed' => $completedEnrollments,
+                'completion_rate' => (float)$completionRate,
+            ],
+            'activity' => [
+                'latest_order_paid_at' => $latestOrderPaidAt,
+                'latest_enrollment_accessed_at' => $latestEnrollmentAccessedAt,
+                'latest_lesson_accessed_at' => $latestLessonAccessedAt,
+            ]
+        ];
+    }
 }
