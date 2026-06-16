@@ -7,6 +7,12 @@ Route::middleware(['auth.session', 'role:instructor'])->prefix('instructor/repor
 });
 
 Route::middleware(['auth.session', 'role:admin'])
+    ->prefix('admin')
+    ->group(function (): void {
+        Route::get('/dashboard', [ReportController::class, 'dashboard']);
+    });
+
+Route::middleware(['auth.session', 'role:admin'])
     ->prefix('admin/reports')
     ->group(function (): void {
         Route::get('/top-courses', [ReportController::class, 'topCourses']);

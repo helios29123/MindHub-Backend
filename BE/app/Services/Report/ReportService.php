@@ -307,4 +307,137 @@ class ReportService
             'paginator' => $paginator,
         ];
     }
+
+    public function getSystemDashboard(array $filters): array
+    {
+        // Setup Date Filters
+        $dateFrom = $filters['date_from'] ?? null;
+        $dateTo = $filters['date_to'] ?? null;
+        $month = $filters['month'] ?? null;
+        $year = $filters['year'] ?? null;
+        $courseId = $filters['course_id'] ?? null;
+
+        $applyDateFilter = function ($query, $column) use ($dateFrom, $dateTo, $month, $year) {
+            if ($dateFrom) $query->whereDate($column, '>=', $dateFrom);
+            if ($dateTo) $query->whereDate($column, '<=', $dateTo);
+            if ($month) $query->whereMonth($column, $month);
+            if ($year) $query->whereYear($column, $year);
+        };
+
+        // Users
+        $userQuery = DB::table('users');
+        $applyDateFilter($userQuery, 'created_at');
+        // Course ID doesn't filter total system users
+
+        $totalUsers = (clone $userQuery)->count();
+        $totalLearners = (clone $userQuery)->where('role', 'learner')->count();
+        $totalInstructors = (clone $userQuery)->where('role', 'instructor')->count();
+        $userStatusCounts = (clone $userQuery)->select('status', DB::raw('count(*) as count'))->groupBy('status')->pluck('count', 'status')->toArray();
+
+        // Courses
+        $courseQuery = DB::table('courses')->whereNull('deleted_at');
+        $applyDateFilter($courseQuery, 'created_at');
+        if ($courseId) $courseQuery->where('id', $courseId);
+
+        $totalCourses = (clone $courseQuery)->count();
+        $totalPublishedCourses = (clone $courseQuery)->where('status', 'published')->count();
+        $courseStatusCounts = (clone $courseQuery)->select('status', DB::raw('count(*) as count'))->groupBy('status')->pluck('count', 'status')->toArray();
+
+        // Orders
+        $orderQuery = DB::table('orders');
+        $applyDateFilter($orderQuery, 'created_at'); // Filter by created_at for total orders
+        if ($courseId) $orderQuery->where('course_id', $courseId);
+
+        $totalOrders = (clone $orderQuery)->count();
+
+        // Paid Orders
+        $paidOrderQuery = DB::table('orders')->where('status', 'paid');
+        $applyDateFilter($paidOrderQuery, 'paid_at');
+        if ($courseId) $paidOrderQuery->where('course_id', $courseId);
+
+        $paidOrders = (clone $paidOrderQuery)->count();
+        
+        // Revenue
+        $revenueQuery = DB::table('revenues');
+        // Only valid revenues
+        // The table might not exist in some states, or might be empty. Fallback to orders
+        $hasRevenues = \Schema::hasTable('revenues') && DB::table('revenues')->exists();
+        
+        if ($hasRevenues) {
+            $applyDateFilter($revenueQuery, 'earned_at');
+            if ($courseId) $revenueQuery->where('course_id', $courseId);
+            
+            $grossAmount = (clone $revenueQuery)->sum('gross_amount');
+            $instructorAmount = (clone $revenueQuery)->sum('instructor_amount');
+            $platformFeeAmount = (clone $revenueQuery)->sum('platform_fee_amount');
+            $totalRevenue = $grossAmount;
+        } else {
+            // Fallback to orders.amount
+            $grossAmount = (clone $paidOrderQuery)->sum('amount');
+            $instructorAmount = 0; // cannot calculate without revenues table reliably
+            $platformFeeAmount = 0;
+            $totalRevenue = $grossAmount;
+        }
+
+        // Enrollments
+        $enrollmentQuery = DB::table('enrollments');
+        $applyDateFilter($enrollmentQuery, 'created_at'); // or enrolled_at if it exists, assume created_at works if enrolled_at is missing, actually ERD has created_at
+        if (\Schema::hasColumn('enrollments', 'enrolled_at')) {
+            // Apply on enrolled_at instead
+            $enrollmentQuery = DB::table('enrollments');
+            $applyDateFilter($enrollmentQuery, 'enrolled_at');
+        }
+        if ($courseId) $enrollmentQuery->where('course_id', $courseId);
+
+        $totalEnrollments = (clone $enrollmentQuery)->count();
+        $completedEnrollments = (clone $enrollmentQuery)->where('status', 'completed')->count();
+        $completionRate = $totalEnrollments > 0 ? round(($completedEnrollments / $totalEnrollments) * 100, 2) : 0;
+
+        // Recent
+        $latestOrdersQuery = DB::table('orders')->orderBy('id', 'desc')->limit(5);
+        if ($courseId) $latestOrdersQuery->where('course_id', $courseId);
+        $latestOrders = $latestOrdersQuery->get();
+
+        $latestCoursesQuery = DB::table('courses')->whereNull('deleted_at')->orderBy('id', 'desc')->limit(5);
+        if ($courseId) $latestCoursesQuery->where('id', $courseId);
+        $latestCourses = $latestCoursesQuery->get();
+
+        return [
+            'summary' => [
+                'total_users' => $totalUsers,
+                'total_learners' => $totalLearners,
+                'total_instructors' => $totalInstructors,
+                'total_courses' => $totalCourses,
+                'total_published_courses' => $totalPublishedCourses,
+                'total_orders' => $totalOrders,
+                'paid_orders' => $paidOrders,
+                'total_revenue' => (float)$totalRevenue,
+                'total_enrollments' => $totalEnrollments,
+                'completed_enrollments' => $completedEnrollments,
+                'completion_rate' => (float)$completionRate,
+            ],
+            'revenue' => [
+                'gross_amount' => (float)$grossAmount,
+                'instructor_amount' => (float)$instructorAmount,
+                'platform_fee_amount' => (float)$platformFeeAmount,
+            ],
+            'course_status' => [
+                'draft' => $courseStatusCounts['draft'] ?? 0,
+                'pending_review' => $courseStatusCounts['pending_review'] ?? 0,
+                'approved' => $courseStatusCounts['approved'] ?? 0,
+                'rejected' => $courseStatusCounts['rejected'] ?? 0,
+                'published' => $courseStatusCounts['published'] ?? 0,
+                'hidden' => $courseStatusCounts['hidden'] ?? 0,
+            ],
+            'user_status' => [
+                'active' => $userStatusCounts['active'] ?? 0,
+                'inactive' => $userStatusCounts['inactive'] ?? 0,
+                'locked' => $userStatusCounts['locked'] ?? 0,
+            ],
+            'recent' => [
+                'latest_orders' => $latestOrders,
+                'latest_courses' => $latestCourses,
+            ]
+        ];
+    }
 }
