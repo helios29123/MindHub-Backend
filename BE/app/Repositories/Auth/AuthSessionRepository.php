@@ -3,6 +3,7 @@ namespace App\Repositories\Auth;
 use App\Models\Session;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 final class AuthSessionRepository
 {
     public function paginateByUserId(
@@ -34,6 +35,36 @@ final class AuthSessionRepository
                 page: $page
             );
     }
+    public function findByRefreshTokenHash(string $refreshTokenHash, bool $lockForUpdate = false): ?Session
+    {
+        $query = Session::query()
+            ->with('user')
+            ->where('refresh_token_hash', $refreshTokenHash);
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+        return $query->first();
+    }
+    public function rotateRefreshToken(
+        Session $session,
+        string $refreshTokenHash,
+        Carbon $expiresAt
+    ): Session {
+        $session->forceFill([
+            'refresh_token_hash' => $refreshTokenHash,
+            'expires_at' => $expiresAt,
+            'revoked_at' => null,
+        ])->save();
+        return $session->refresh();
+    }
+    public function countActiveByUserId(int $userId): int
+    {
+        return Session::query()
+            ->where('user_id', $userId)
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->count();
+    }
     private function applyStatusFilter(Builder $query, string $status): void
     {
         $now = now();
@@ -52,12 +83,5 @@ final class AuthSessionRepository
         if ($status === 'revoked') {
             $query->whereNotNull('revoked_at');
         }
-    }    public function countActiveByUserId(int $userId): int
-    {
-        return Session::query()
-            ->where('user_id', $userId)
-            ->whereNull('revoked_at')
-            ->where('expires_at', '>', now())
-            ->count();
     }
 }
