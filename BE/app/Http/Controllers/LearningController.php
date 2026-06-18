@@ -373,4 +373,28 @@ final class LearningController extends Controller
             'Lấy gợi ý lộ trình học tập thành công.'
         );
     }
+
+    /**
+     * Get dynamic alerts for the authenticated learner.
+     *
+     * @param \App\Http\Requests\Learning\DynamicAlertRequest $request
+     * @param \App\Services\Learning\DynamicAlertService $service
+     * @return JsonResponse
+     */
+    public function dynamicAlerts(\App\Http\Requests\Learning\DynamicAlertRequest $request, \App\Services\Learning\DynamicAlertService $service): JsonResponse
+    {
+        $learnerId = $request->user()->id;
+        $filters = $request->validated();
+        
+        $result = $service->getDynamicAlerts($learnerId, $filters);
+        
+        if (empty($result)) {
+            return ApiResponse::success([], 'Không có cảnh báo mới.');
+        }
+        
+        return ApiResponse::success(
+            \App\Http\Resources\Learning\DynamicAlertResource::collection($result),
+            'Lấy cảnh báo thành công.'
+        );
+    }
 }
