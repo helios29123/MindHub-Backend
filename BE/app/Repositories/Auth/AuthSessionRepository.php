@@ -52,5 +52,12 @@ final class AuthSessionRepository
         if ($status === 'revoked') {
             $query->whereNotNull('revoked_at');
         }
+    }    public function countActiveByUserId(int $userId): int
+    {
+        return Session::query()
+            ->where('user_id', $userId)
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->count();
     }
 }

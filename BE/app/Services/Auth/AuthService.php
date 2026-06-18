@@ -26,7 +26,8 @@ class AuthService
         private readonly UserRepository $userRepository,
         private readonly SessionRepository $sessionRepository,
         private readonly AccessTokenService $accessTokenService,
-        private readonly GoogleTokenVerifier $googleTokenVerifier
+        private readonly GoogleTokenVerifier $googleTokenVerifier,
+        private readonly DeviceLimitService $deviceLimitService
     ) {
     }
 
@@ -334,6 +335,7 @@ class AuthService
      */
     private function createAuthenticatedSession(User $user, ?string $deviceName, Request $request): array
     {
+        $this->deviceLimitService->assertCanCreateSession($user);
         $refreshToken = $this->accessTokenService->createRefreshToken();
 
         $session = $this->sessionRepository->create([
@@ -358,6 +360,7 @@ class AuthService
             'access_token' => $accessToken['token'],
             'refresh_token' => $refreshToken['token'],
             'expires_in' => $accessToken['expires_in'],
+            'device_limit' => $this->deviceLimitService->sessionLimitMeta($user),
             'session' => $session,
         ];
     }
