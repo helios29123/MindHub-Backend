@@ -63,4 +63,12 @@ class LearningRecommendationRepository
 
         return $query;
     }
+
+    public function getLearnerEnrollmentsWithCourse(int $learnerId): \Illuminate\Database\Eloquent\Collection
+    {
+        return Enrollment::where('user_id', $learnerId)
+            ->with(['course.categories'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
 }

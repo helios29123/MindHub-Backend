@@ -349,4 +349,28 @@ final class LearningController extends Controller
             'Lấy gợi ý khóa học thành công.'
         );
     }
+
+    /**
+     * Get next learning path recommendations for the authenticated learner.
+     *
+     * @param \App\Http\Requests\Learning\NextLearningPathRequest $request
+     * @param \App\Services\Learning\NextLearningPathService $service
+     * @return JsonResponse
+     */
+    public function nextLearningPath(\App\Http\Requests\Learning\NextLearningPathRequest $request, \App\Services\Learning\NextLearningPathService $service): JsonResponse
+    {
+        $learnerId = $request->user()->id;
+        $filters = $request->validated();
+        
+        $result = $service->getNextLearningPath($learnerId, $filters);
+        
+        if (empty($result)) {
+            return ApiResponse::success([], 'Chưa có đủ dữ liệu để gợi ý lộ trình.');
+        }
+        
+        return ApiResponse::success(
+            \App\Http\Resources\Learning\NextLearningPathResource::collection($result),
+            'Lấy gợi ý lộ trình học tập thành công.'
+        );
+    }
 }
