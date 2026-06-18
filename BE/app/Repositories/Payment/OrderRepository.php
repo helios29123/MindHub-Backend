@@ -29,6 +29,15 @@ class OrderRepository
             ->first();
     }
 
+    public function findUserOrderWithCourseForUpdate(int $orderId, int $userId): ?Order
+    {
+        return Order::with(['course'])
+            ->where('id', $orderId)
+            ->where('user_id', $userId)
+            ->lockForUpdate()
+            ->first();
+    }
+
     public function findForUpdate(int $orderId): ?Order
     {
         return Order::where('id', $orderId)
