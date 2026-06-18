@@ -13,6 +13,8 @@ Route::middleware(['auth.session', 'role:instructor'])
             ->where('id', '[0-9]+');
         Route::get('/courses/{courseId}/learner-risk', [ReportController::class, 'learnerRisk'])
             ->where('courseId', '[0-9]+');
+        Route::get('/courses/{courseId}/analytics', [ReportController::class, 'courseAnalytics'])
+            ->where('courseId', '[0-9]+');
     });
 
 Route::middleware(['auth.session', 'role:admin'])
