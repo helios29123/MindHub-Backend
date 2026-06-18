@@ -18,4 +18,5 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
     Route::get('/learning-logs/my', [LearningController::class, 'learningLogs']);
     Route::get('/learn/assets/{id}/download', [LearningController::class, 'downloadAsset'])->whereNumber('id');
     Route::get('/learn/lessons/{id}/next', [LearningController::class, 'nextLesson'])->whereNumber('id');
+    Route::get('/me/recommendations/rule-based', [LearningController::class, 'ruleBasedRecommendations']);
 });

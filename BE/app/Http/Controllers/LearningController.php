@@ -314,4 +314,39 @@ final class LearningController extends Controller
             'Thao tác thành công'
         );
     }
+
+    /**
+     * Get rule-based course recommendations for the authenticated learner.
+     *
+     * @param \App\Http\Requests\Learning\RuleBasedRecommendationRequest $request
+     * @param \App\Services\Learning\RuleBasedRecommendationService $service
+     * @return JsonResponse
+     */
+    public function ruleBasedRecommendations(\App\Http\Requests\Learning\RuleBasedRecommendationRequest $request, \App\Services\Learning\RuleBasedRecommendationService $service): JsonResponse
+    {
+        $learnerId = $request->user()->id;
+        $filters = $request->validated();
+        
+        $result = $service->getRuleBasedRecommendations($learnerId, $filters);
+        
+        if ($result instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+            if ($result->isEmpty()) {
+                return ApiResponse::success([], 'Chưa đủ dữ liệu cá nhân hóa, trả gợi ý phổ biến.');
+            }
+            return ApiResponse::paginated(
+                \App\Http\Resources\Learning\RuleBasedRecommendationResource::collection($result),
+                $result,
+                'Lấy gợi ý khóa học thành công.'
+            );
+        }
+        
+        if (empty($result)) {
+            return ApiResponse::success([], 'Chưa đủ dữ liệu cá nhân hóa, trả gợi ý phổ biến.');
+        }
+        
+        return ApiResponse::success(
+            \App\Http\Resources\Learning\RuleBasedRecommendationResource::collection($result),
+            'Lấy gợi ý khóa học thành công.'
+        );
+    }
 }
