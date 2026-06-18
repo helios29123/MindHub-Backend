@@ -176,4 +176,25 @@ final class ReportController extends Controller
             ]
         );
     }
+
+    /**
+     * Get specific analytics for an instructor's course.
+     *
+     * @param \App\Http\Requests\Report\CourseAnalyticsQueryRequest $request
+     * @param mixed $courseId
+     * @param \App\Services\Report\CourseAnalyticsService $service
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function courseAnalytics(\App\Http\Requests\Report\CourseAnalyticsQueryRequest $request, mixed $courseId, \App\Services\Report\CourseAnalyticsService $service): \Illuminate\Http\JsonResponse
+    {
+        $instructorId = $request->user()->id;
+        $filters = $request->validated();
+        
+        $result = $service->getCourseAnalytics($instructorId, (int) $courseId, $filters);
+        
+        return ApiResponse::success(
+            data: new \App\Http\Resources\Report\CourseAnalyticsResource($result),
+            message: 'Lấy phân tích khóa học thành công'
+        );
+    }
 }
