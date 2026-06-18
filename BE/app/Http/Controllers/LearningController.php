@@ -419,4 +419,25 @@ final class LearningController extends Controller
             'Lấy URL bảo mật thành công.'
         );
     }
+
+    /**
+     * Get watermark info for a video lesson.
+     *
+     * @param \App\Http\Requests\Learning\WatermarkInfoRequest $request
+     * @param mixed $lessonId
+     * @param \App\Services\Learning\WatermarkInfoService $service
+     * @return JsonResponse
+     */
+    public function watermarkInfo(\App\Http\Requests\Learning\WatermarkInfoRequest $request, mixed $lessonId, \App\Services\Learning\WatermarkInfoService $service): JsonResponse
+    {
+        $learnerId = $request->user()->id;
+        $filters = $request->validated();
+        
+        $result = $service->getWatermarkInfo($learnerId, (int) $lessonId, $filters);
+        
+        return ApiResponse::success(
+            new \App\Http\Resources\Learning\WatermarkInfoResource($result),
+            'Lấy thông tin watermark thành công.'
+        );
+    }
 }
