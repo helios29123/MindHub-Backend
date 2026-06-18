@@ -11,6 +11,8 @@ Route::middleware(['auth.session', 'role:instructor'])
     ->group(function (): void {
         Route::get('/courses/{id}/dashboard', [ReportController::class, 'courseDashboard'])
             ->where('id', '[0-9]+');
+        Route::get('/courses/{courseId}/learner-risk', [ReportController::class, 'learnerRisk'])
+            ->where('courseId', '[0-9]+');
     });
 
 Route::middleware(['auth.session', 'role:admin'])
