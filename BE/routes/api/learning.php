@@ -23,3 +23,6 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
     Route::get('/me/dynamic-alerts', [LearningController::class, 'dynamicAlerts']);
     Route::post('/learn/assets/{assetId}/signed-url', [LearningController::class, 'signedAssetUrl'])->where('assetId', '[0-9]+');
 });
+Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function () {
+    Route::get('/me/learning-dashboard', [LearningController::class, 'dashboard']);
+});
