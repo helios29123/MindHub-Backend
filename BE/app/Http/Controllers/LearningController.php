@@ -397,4 +397,26 @@ final class LearningController extends Controller
             'Lấy cảnh báo thành công.'
         );
     }
+
+    /**
+     * Generate a signed/temporary URL for a lesson asset.
+     *
+     * @param \App\Http\Requests\Learning\SignedAssetUrlRequest $request
+     * @param int $assetId
+     * @param \App\Services\Learning\SignedAssetUrlService $service
+     * @return JsonResponse
+     */
+    public function signedAssetUrl(\App\Http\Requests\Learning\SignedAssetUrlRequest $request, mixed $assetId, \App\Services\Learning\SignedAssetUrlService $service): JsonResponse
+    {
+        $learnerId = $request->user()->id;
+        $validated = $request->validated();
+        $ttlSeconds = $validated['ttl_seconds'] ?? null;
+        
+        $result = $service->generateSignedAssetUrl($learnerId, (int) $assetId, $ttlSeconds);
+        
+        return ApiResponse::success(
+            new \App\Http\Resources\Learning\SignedAssetUrlResource($result),
+            'Lấy URL bảo mật thành công.'
+        );
+    }
 }
