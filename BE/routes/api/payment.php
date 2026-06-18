@@ -4,6 +4,7 @@ use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function () {
+    Route::patch('/orders/{orderId}/cancel', [PaymentController::class, 'cancelOrder']);
     Route::post('/orders/{orderId}/retry-payment', [PaymentController::class, 'retryPayment']);
 });
 

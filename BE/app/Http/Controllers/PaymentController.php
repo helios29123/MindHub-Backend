@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Payment\ApplyCouponRequest;
+use App\Http\Requests\Payment\CancelOrderRequest;
 use App\Http\Requests\Payment\MyOrderQueryRequest;
 use App\Http\Requests\Payment\PaymentWebhookRequest;
 use App\Http\Requests\Payment\RetryPaymentRequest;
@@ -105,7 +106,18 @@ class PaymentController extends Controller
         );
     }
 
-    public function showOrder(ShowOrderRequest $request, string $id): JsonResponse
+    public function cancelOrder(CancelOrderRequest $request, string $orderId): JsonResponse
+    {
+        $validated = $request->validated();
+        $order = $this->orderService->cancelUserOrder(
+            (int) $validated['orderId'],
+            $request->user()->id
+        );
+        return ApiResponse::success(
+            new OrderResource($order),
+            'Hủy đơn hàng thành công.'
+        );
+    }    public function showOrder(ShowOrderRequest $request, string $id): JsonResponse
     {
         $validated = $request->validated();
 
