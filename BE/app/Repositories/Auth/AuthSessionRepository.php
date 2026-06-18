@@ -35,6 +35,14 @@ final class AuthSessionRepository
                 page: $page
             );
     }
+    public function findByIdAndUserIdForUpdate(int $sessionId, int $userId): ?Session
+    {
+        return Session::query()
+            ->where('id', $sessionId)
+            ->where('user_id', $userId)
+            ->lockForUpdate()
+            ->first();
+    }
     public function findByRefreshTokenHash(string $refreshTokenHash, bool $lockForUpdate = false): ?Session
     {
         $query = Session::query()
@@ -64,6 +72,29 @@ final class AuthSessionRepository
             ->whereNull('revoked_at')
             ->where('expires_at', '>', now())
             ->count();
+    }
+    public function revoke(Session $session): int
+    {
+        if ($session->revoked_at !== null) {
+            return 0;
+        }
+        $session->forceFill([
+            'revoked_at' => now(),
+        ])->save();
+        return 1;
+    }
+    public function revokeActiveByUserId(int $userId, ?int $excludeSessionId = null): int
+    {
+        $query = Session::query()
+            ->where('user_id', $userId)
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now());
+        if ($excludeSessionId !== null) {
+            $query->where('id', '<>', $excludeSessionId);
+        }
+        return $query->update([
+            'revoked_at' => now(),
+        ]);
     }
     private function applyStatusFilter(Builder $query, string $status): void
     {

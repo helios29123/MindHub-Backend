@@ -1,9 +1,7 @@
 <?php
-
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthSessionController;
 use Illuminate\Support\Facades\Route;
-
 Route::prefix('auth')->group(function () {
     Route::middleware('throttle:60,1')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
@@ -12,21 +10,19 @@ Route::prefix('auth')->group(function () {
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
         Route::post('reset-password', [AuthController::class, 'resetPassword']);
     });
-
     Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
         ->name('auth.verify-email');
-
     Route::post('verify-email/resend', [AuthController::class, 'resendVerifyEmail']);
-
     Route::post('google', [AuthController::class, 'googleLogin']);
-
     Route::post('logout', [AuthController::class, 'logout'])
         ->middleware('auth.session');
-
     Route::get('sessions', [AuthSessionController::class, 'index'])
         ->middleware(['auth.session', 'active.user']);
+    Route::delete('sessions/{sessionId}', [AuthSessionController::class, 'revoke'])
+        ->middleware(['auth.session', 'active.user']);
+    Route::post('logout-all', [AuthSessionController::class, 'logoutAll'])
+        ->middleware(['auth.session', 'active.user']);
 });
-
 Route::middleware(['auth.session', 'role:admin'])->get('/admin/test', function () {
     return response()->json([
         'success' => true,
@@ -34,7 +30,6 @@ Route::middleware(['auth.session', 'role:admin'])->get('/admin/test', function (
         'data' => null,
     ]);
 });
-
 Route::middleware(['auth.session', 'role:learner'])->get('/learner/test', function () {
     return response()->json([
         'success' => true,
