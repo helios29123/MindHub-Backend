@@ -24,3 +24,6 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
     Route::post('/learn/assets/{assetId}/signed-url', [LearningController::class, 'signedAssetUrl'])->where('assetId', '[0-9]+');
     Route::get('/learn/lessons/{lessonId}/watermark-info', [LearningController::class, 'watermarkInfo'])->where('lessonId', '[0-9]+');
 });
+Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function () {
+    Route::get('/me/learning-dashboard', [LearningController::class, 'dashboard']);
+});
