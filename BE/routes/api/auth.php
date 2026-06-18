@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AuthSessionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -20,6 +21,9 @@ Route::prefix('auth')->group(function () {
 
     Route::post('logout', [AuthController::class, 'logout'])
         ->middleware('auth.session');
+
+    Route::get('sessions', [AuthSessionController::class, 'index'])
+        ->middleware(['auth.session', 'active.user']);
 });
 
 Route::middleware(['auth.session', 'role:admin'])->get('/admin/test', function () {
