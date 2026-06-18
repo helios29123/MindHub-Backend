@@ -170,4 +170,33 @@ class CoursePublicController extends Controller
             'Lấy danh sách FAQ thành công'
         );
     }
+    public function relatedCourses(\App\Http\Requests\Course\RelatedCourseRequest $request, mixed $id, \App\Services\Course\RelatedCourseService $service): JsonResponse
+    {
+        // Path param courseId validates via regex in route, but we still ensure it's integer here
+        $courseId = (int) $id;
+        
+        $filters = $request->validated();
+        
+        $result = $service->getRelatedCourses($courseId, $filters);
+        
+        if ($result instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+            if ($result->isEmpty()) {
+                return ApiResponse::success([], 'Không có khóa học liên quan.');
+            }
+            return ApiResponse::paginated(
+                \App\Http\Resources\Course\RelatedCourseResource::collection($result),
+                $result,
+                'Lấy khóa học liên quan thành công.'
+            );
+        }
+        
+        if (empty($result)) {
+            return ApiResponse::success([], 'Không có khóa học liên quan.');
+        }
+        
+        return ApiResponse::success(
+            \App\Http\Resources\Course\RelatedCourseResource::collection($result),
+            'Lấy khóa học liên quan thành công.'
+        );
+    }
 }
