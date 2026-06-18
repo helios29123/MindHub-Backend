@@ -147,4 +147,33 @@ final class ReportController extends Controller
             message: 'Lấy dashboard khóa học thành công'
         );
     }
+
+    /**
+     * Get learner risk analytics for an instructor's course.
+     *
+     * @param \App\Http\Requests\Report\LearnerRiskQueryRequest $request
+     * @param int $courseId
+     * @param \App\Services\Report\LearnerRiskService $service
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function learnerRisk(\App\Http\Requests\Report\LearnerRiskQueryRequest $request, mixed $courseId, \App\Services\Report\LearnerRiskService $service): \Illuminate\Http\JsonResponse
+    {
+        $instructorId = $request->user()->id;
+        $filters = $request->validated();
+        
+        $paginator = $service->getLearnerRiskReport($instructorId, (int) $courseId, $filters);
+        
+        return ApiResponse::success(
+            data: [
+                'items' => \App\Http\Resources\Report\LearnerRiskResource::collection($paginator),
+            ],
+            message: 'Lấy phân tích học viên có nguy cơ bỏ học thành công',
+            meta: [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]
+        );
+    }
 }
