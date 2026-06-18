@@ -22,4 +22,5 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
     Route::get('/me/learning-path/next', [LearningController::class, 'nextLearningPath']);
     Route::get('/me/dynamic-alerts', [LearningController::class, 'dynamicAlerts']);
     Route::post('/learn/assets/{assetId}/signed-url', [LearningController::class, 'signedAssetUrl'])->where('assetId', '[0-9]+');
+    Route::get('/learn/lessons/{lessonId}/watermark-info', [LearningController::class, 'watermarkInfo'])->where('lessonId', '[0-9]+');
 });
