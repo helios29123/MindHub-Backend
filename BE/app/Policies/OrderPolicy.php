@@ -11,4 +11,10 @@ class OrderPolicy
     {
         return (int) $order->user_id === (int) $user->id;
     }
+
+    public function retryPayment(User $user, Order $order): bool
+    {
+        return $user->role === 'learner'
+            && (int) $order->user_id === (int) $user->id;
+    }
 }
