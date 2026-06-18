@@ -3,6 +3,7 @@
 namespace App\Repositories\Payment;
 
 use App\Models\Order;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class OrderRepository
@@ -77,5 +78,37 @@ class OrderRepository
         $page = (int) ($filters['page'] ?? 1);
 
         return $query->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    public function findByProviderTransactionId(string $transactionId): ?Order
+    {
+        return Order::with(['course', 'coupon'])
+            ->where('provider_transaction_id', $transactionId)
+            ->first();
+    }
+
+    public function countPendingExpiredOrders(CarbonInterface $expiredBefore): int
+    {
+        return Order::where('status', Order::STATUS_PENDING)
+            ->where('created_at', '<=', $expiredBefore)
+            ->where(function ($query): void {
+                $query->whereNull('payment_status')
+                    ->orWhere('payment_status', '!=', Order::PAYMENT_PAID);
+            })
+            ->count();
+    }
+
+    public function expirePendingOrders(CarbonInterface $expiredBefore): int
+    {
+        return Order::where('status', Order::STATUS_PENDING)
+            ->where('created_at', '<=', $expiredBefore)
+            ->where(function ($query): void {
+                $query->whereNull('payment_status')
+                    ->orWhere('payment_status', '!=', Order::PAYMENT_PAID);
+            })
+            ->update([
+                'status' => Order::STATUS_EXPIRED,
+                'updated_at' => now(),
+            ]);
     }
 }
