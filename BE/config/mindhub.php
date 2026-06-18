@@ -12,4 +12,5 @@ return [
     */
 
     'pending_order_expire_hours' => (int) env('PENDING_ORDER_EXPIRE_HOURS', 24),
+    'max_learner_sessions' => (int) env('MAX_LEARNER_SESSIONS', 2),
 ];
