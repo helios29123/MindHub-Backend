@@ -7,6 +7,7 @@ use App\Mail\VerifyEmailMail;
 use App\Models\AuthSession;
 use App\Models\User;
 use App\Repositories\Auth\SessionRepository;
+use App\Repositories\Auth\AuthSessionRepository;
 use App\Repositories\User\UserRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -25,6 +26,7 @@ class AuthService
     public function __construct(
         private readonly UserRepository $userRepository,
         private readonly SessionRepository $sessionRepository,
+        private readonly AuthSessionRepository $authSessionRepository,
         private readonly AccessTokenService $accessTokenService,
         private readonly GoogleTokenVerifier $googleTokenVerifier,
         private readonly DeviceLimitService $deviceLimitService
@@ -313,6 +315,56 @@ class AuthService
     }
 
     /**
+     * ADD-04: Cấp lại access token bằng refresh token.
+     */
+    public function refresh(array $refreshTokenData): array
+    {
+        $plainRefreshToken = (string) ($refreshTokenData['refresh_token'] ?? '');
+        $refreshTokenHash = hash('sha256', $plainRefreshToken);
+        return DB::transaction(function () use ($refreshTokenHash) {
+            $session = $this->authSessionRepository->findByRefreshTokenHash(
+                $refreshTokenHash,
+                true
+            );
+            if (
+                ! $session ||
+                ! is_string($session->refresh_token_hash) ||
+                ! hash_equals((string) $session->refresh_token_hash, $refreshTokenHash)
+            ) {
+                throw new BusinessException('Refresh token không hợp lệ.', 401);
+            }
+            if (
+                $session->revoked_at !== null ||
+                $session->expires_at === null ||
+                ! $session->expires_at->isFuture()
+            ) {
+                throw new BusinessException('Phiên đăng nhập đã hết hiệu lực.', 401);
+            }
+            $user = $session->user;
+            if (! $user) {
+                throw new BusinessException('Refresh token không hợp lệ.', 401);
+            }
+            if (! $user->isActive() || $user->isLocked()) {
+                throw new BusinessException('Tài khoản không được phép thao tác.', 403);
+            }
+            $accessToken = $this->accessTokenService->createAccessToken(
+                (int) $user->id,
+                (int) $session->id
+            );
+            $newRefreshToken = $this->accessTokenService->createRefreshToken();
+            $this->authSessionRepository->rotateRefreshToken(
+                $session,
+                $newRefreshToken['token_hash'],
+                $newRefreshToken['expires_at']
+            );
+            return [
+                'token_type' => 'Bearer',
+                'access_token' => $accessToken['token'],
+                'refresh_token' => $newRefreshToken['token'],
+                'expires_in' => $accessToken['expires_in'],
+            ];
+        });
+    }    /**
      * AUTH07: Đăng xuất.
      */
     public function logout(AuthSession $session): void

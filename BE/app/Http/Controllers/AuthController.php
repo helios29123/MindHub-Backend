@@ -9,9 +9,11 @@ use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\GoogleLoginRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\RefreshTokenRequest;
 use App\Http\Requests\Auth\ResendVerifyEmailRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\Auth\AuthResource;
+use App\Http\Resources\Auth\TokenResource;
 use App\Http\Resources\User\UserResource;
 use App\Services\Auth\AuthService;
 use Illuminate\Http\JsonResponse;
@@ -166,7 +168,22 @@ class AuthController extends Controller
         }
     }
 
-    public function logout(Request $request): JsonResponse
+    public function refresh(RefreshTokenRequest $request): JsonResponse
+    {
+        try {
+            $tokenData = $this->authService->refresh($request->validated());
+            return ApiResponse::success(
+                'Cấp lại token thành công.',
+                new TokenResource($tokenData)
+            );
+        } catch (BusinessException $exception) {
+            return ApiResponse::error(
+                $exception->getMessage(),
+                $exception->getErrors(),
+                $exception->getStatusCode()
+            );
+        }
+    }    public function logout(Request $request): JsonResponse
     {
         $session = $request->attributes->get('auth_session');
 
