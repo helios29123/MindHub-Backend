@@ -65,12 +65,31 @@ class OrderService
         return $order;
     }
 
-    public function getMyOrders(array $filters, int $userId): LengthAwarePaginator
+    public function cancelUserOrder(int $orderId, int $userId): Order
+    {
+        return DB::transaction(function () use ($orderId, $userId) {
+            $order = $this->orderRepository->findUserOrderForUpdate($orderId, $userId);
+            if (! $order) {
+                throw new BusinessException('Không tìm thấy đơn hàng.', 404);
+            }
+            if (! $this->canCancelOrder($order)) {
+                throw new BusinessException('Đơn hàng không thể hủy ở trạng thái hiện tại.', 409);
+            }
+            $this->orderRepository->cancel($order);
+            $freshOrder = $this->orderRepository->findUserOrder($order->id, $userId);
+            return $freshOrder ?? $order->fresh(['course', 'coupon', 'enrollment']);
+        });
+    }    public function getMyOrders(array $filters, int $userId): LengthAwarePaginator
     {
         return $this->orderRepository->paginateUserOrders($userId, $filters);
     }
 
-    private function generateOrderCode(): string
+    private function canCancelOrder(Order $order): bool
+    {
+        return $order->status === Order::STATUS_PENDING
+            && $order->payment_status === Order::PAYMENT_UNPAID
+            && $order->paid_at === null;
+    }    private function generateOrderCode(): string
     {
         do {
             $orderCode = 'ORD-' . now()->format('Ymd') . '-' . strtoupper(Str::random(8));

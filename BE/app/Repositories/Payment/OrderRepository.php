@@ -13,7 +13,12 @@ class OrderRepository
         return Order::create($orderData);
     }
 
-    public function findUserOrder(int $orderId, int $userId): ?Order
+    public function cancel(Order $order): bool
+    {
+        return $order->update([
+            'status' => Order::STATUS_CANCELLED,
+        ]);
+    }    public function findUserOrder(int $orderId, int $userId): ?Order
     {
         return Order::with(['course', 'coupon', 'enrollment'])
             ->where('id', $orderId)
