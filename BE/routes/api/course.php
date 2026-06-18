@@ -9,4 +9,4 @@ Route::get('/lessons/{id}/preview', [CoursePublicController::class, 'previewLess
 Route::get('/courses/{id}/reviews', [CoursePublicController::class, 'reviews'])->where('id', '[0-9]+');
 Route::get('/instructors/{id}', [CoursePublicController::class, 'showInstructor'])->where('id', '[0-9]+');
 Route::get('/courses/{id}/faqs', [CoursePublicController::class, 'faqs'])->where('id', '[0-9]+');
-
+Route::get('/courses/{courseId}/related', [CoursePublicController::class, 'relatedCourses'])->where('courseId', '[0-9]+');
