@@ -27,3 +27,6 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
 Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function () {
     Route::get('/me/learning-dashboard', [LearningController::class, 'dashboard']);
 });
+Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function () {
+    Route::get('/me/courses/{courseId}/learning-overview', [LearningController::class, 'courseOverview']);
+});
