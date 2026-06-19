@@ -104,3 +104,6 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
     ->where('id', '[0-9]+');
 Route::middleware(['auth.session', 'active.user', 'role:instructor'])
     ->post('/instructor/withdrawals', [InstructorCourseController::class, 'withdraw']);
+Route::middleware(['auth.session', 'active.user', 'role:instructor'])->group(function () {
+    Route::get('/instructor/courses/{courseId}/checklist', [InstructorCourseController::class, 'checklist']);
+});
