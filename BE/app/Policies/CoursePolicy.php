@@ -16,4 +16,9 @@ final class CoursePolicy
     {
         return (int) $course->instructor_id === (int) $user->id;
     }
+    public function viewChecklist(User $user, Course $course): bool
+    {
+        return $user->role === 'admin'
+            || ((int) $course->instructor_id === (int) $user->id);
+    }
 }
