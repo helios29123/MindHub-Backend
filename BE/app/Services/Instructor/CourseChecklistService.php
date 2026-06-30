@@ -127,7 +127,7 @@ class CourseChecklistService
             $missingItems,
             $warnings,
             'course_category',
-            'Danh m盻･c khﾃｳa h盻皇',
+            'Danh mục khóa học',
             $missing,
             []
         );
@@ -155,7 +155,7 @@ class CourseChecklistService
             $missingItems,
             $warnings,
             'course_section',
-            'Section c盻ｧa khﾃｳa h盻皇',
+            'Section chứa khóa học',
             $missing,
             $checkWarnings
         );

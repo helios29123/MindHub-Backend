@@ -6,14 +6,14 @@ use App\Exceptions\BusinessException;
 use App\Mail\VerifyEmailMail;
 use App\Models\AuthSession;
 use App\Models\User;
-use App\Repositories\Auth\SessionRepository;
-use App\Repositories\Auth\AuthSessionRepository;
+use App\Repositories\Instructor\InstructorProfileRepository;
+use App\Repositories\Instructor\PayoutAccountRepository;
 use App\Repositories\User\UserRepository;
+use App\Repositories\User\UserSessionRepository;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -25,35 +25,49 @@ class AuthService
 
     public function __construct(
         private readonly UserRepository $userRepository,
-        private readonly SessionRepository $sessionRepository,
-        private readonly AuthSessionRepository $authSessionRepository,
+        private readonly UserSessionRepository $userSessionRepository,
         private readonly AccessTokenService $accessTokenService,
         private readonly GoogleTokenVerifier $googleTokenVerifier,
-        private readonly DeviceLimitService $deviceLimitService
+        private readonly InstructorProfileRepository $instructorProfileRepository,
+        private readonly PayoutAccountRepository $payoutAccountRepository
     ) {
     }
 
     /**
-     * AUTH01: Đăng ký tài khoản.
-     * Sau khi đăng ký sẽ tạo link xác thực email.
+     * Route cũ /api/auth/register
+     * Mặc định xử lý như đăng ký learner để không làm hỏng frontend cũ.
      */
     public function register(array $registerData): array
     {
-        if ($this->userRepository->existsByEmail($registerData['email'])) {
-            throw new BusinessException('Email đã được sử dụng.', 409, [
-                'email' => ['Email đã được sử dụng.'],
-            ]);
-        }
+        return $this->registerLearner($registerData);
+    }
+
+    /**
+     * AUTH-01: Đăng ký học viên.
+     *
+     * Luồng:
+     * - Check email trùng.
+     * - Check phone trùng.
+     * - Tạo user role=learner, status=inactive.
+     * - Gửi email xác thực.
+     * - Sau khi verify email, learner mới được active.
+     */
+    public function registerLearner(array $registerData): array
+    {
+        $this->ensureEmailAndPhoneAreUnique(
+            $registerData['email'],
+            $registerData['phone']
+        );
 
         return DB::transaction(function () use ($registerData) {
             $user = $this->userRepository->create([
                 'full_name' => $registerData['full_name'],
                 'email' => $registerData['email'],
-                'phone' => $registerData['phone'] ?? null,
+                'phone' => $registerData['phone'],
                 'password_hash' => Hash::make($registerData['password']),
                 'oauth_account_login' => null,
                 'role' => User::ROLE_LEARNER,
-                'status' => User::STATUS_ACTIVE,
+                'status' => User::STATUS_INACTIVE,
                 'locked' => false,
                 'locked_reason' => null,
                 'email_verified_at' => null,
@@ -69,7 +83,67 @@ class AuthService
     }
 
     /**
-     * AUTH02: Tạo link xác thực email.
+     * AUTH-01 mở rộng: Đăng ký giảng viên.
+     *
+     * Luồng:
+     * - Check email trùng.
+     * - Check phone trùng.
+     * - Tạo user role=instructor, status=inactive.
+     * - Tạo instructor_profiles.
+     * - Tạo payout_accounts status=pending_verification.
+     * - Gửi email xác thực.
+     * - Sau khi verify email, instructor vẫn inactive để chờ admin duyệt.
+     */
+    public function registerInstructor(array $registerData): array
+    {
+        $this->ensureEmailAndPhoneAreUnique(
+            $registerData['email'],
+            $registerData['phone']
+        );
+
+        return DB::transaction(function () use ($registerData) {
+            $user = $this->userRepository->create([
+                'full_name' => $registerData['full_name'],
+                'email' => $registerData['email'],
+                'phone' => $registerData['phone'],
+                'password_hash' => Hash::make($registerData['password']),
+                'oauth_account_login' => null,
+                'role' => User::ROLE_INSTRUCTOR,
+                'status' => User::STATUS_INACTIVE,
+                'locked' => false,
+                'locked_reason' => null,
+                'email_verified_at' => null,
+            ]);
+
+            $this->instructorProfileRepository->create([
+                'user_id' => $user->id,
+                'bio' => $registerData['bio'],
+                'expertise' => $registerData['expertise'],
+                'experience_years' => $registerData['experience_years'],
+                'level' => $registerData['level'],
+            ]);
+
+            $this->payoutAccountRepository->create([
+                'user_id' => $user->id,
+                'provider' => $registerData['bank_provider'],
+                'account_number' => $registerData['bank_account_number'],
+                'account_name' => $registerData['bank_account_name'],
+                'connected_at' => null,
+                'status' => 'pending_verification',
+            ]);
+
+            $verifyUrl = $this->sendVerifyEmail($user);
+
+            return [
+                'user' => $user->refresh(),
+                'verify_url' => config('app.debug') ? $verifyUrl : null,
+                'note' => 'Tài khoản giảng viên cần xác thực email và chờ admin duyệt hồ sơ.',
+            ];
+        });
+    }
+
+    /**
+     * AUTH-02: Tạo link xác thực email có chữ ký và thời hạn.
      */
     public function createEmailVerificationUrl(User $user): string
     {
@@ -84,7 +158,10 @@ class AuthService
     }
 
     /**
-     * AUTH02: Gửi mail xác thực email.
+     * AUTH-02: Gửi email xác thực.
+     *
+     * Nếu MAIL_MAILER=log thì email sẽ ghi vào storage/logs/laravel.log.
+     * Nếu MAIL_MAILER=smtp thì gửi mail thật.
      */
     public function sendVerifyEmail(User $user): string
     {
@@ -98,7 +175,15 @@ class AuthService
     }
 
     /**
-     * AUTH02: Xác thực email khi user bấm link.
+     * AUTH-02: Xác thực email.
+     *
+     * Learner:
+     * - email_verified_at = now()
+     * - status = active
+     *
+     * Instructor:
+     * - email_verified_at = now()
+     * - status vẫn inactive để chờ admin duyệt hồ sơ
      */
     public function verifyEmail(int $userId, string $hash): User
     {
@@ -112,15 +197,23 @@ class AuthService
             throw new BusinessException('Link xác thực email không hợp lệ.', 403);
         }
 
-        if (! $user->hasVerifiedEmail()) {
-            $user->markEmailAsVerified();
+        if ($user->hasVerifiedEmail()) {
+            return $user->refresh();
         }
 
-        return $user->refresh();
+        $updateData = [
+            'email_verified_at' => now(),
+        ];
+
+        if ($user->role === User::ROLE_LEARNER) {
+            $updateData['status'] = User::STATUS_ACTIVE;
+        }
+
+        return $this->userRepository->update($user, $updateData);
     }
 
     /**
-     * AUTH02: Gửi lại link xác thực email.
+     * AUTH-02: Gửi lại link xác thực email.
      */
     public function resendVerifyEmail(array $data): array
     {
@@ -146,7 +239,7 @@ class AuthService
     }
 
     /**
-     * AUTH03: Đăng nhập bằng email/password.
+     * AUTH-03: Đăng nhập bằng email/password.
      */
     public function login(array $loginData, Request $request): array
     {
@@ -178,7 +271,16 @@ class AuthService
     }
 
     /**
-     * AUTH04: Đăng nhập Google.
+     * AUTH-04: Đăng nhập Google.
+     *
+     * Nếu user chưa tồn tại:
+     * - Tạo learner active.
+     * - email_verified_at = now().
+     *
+     * Nếu user đã tồn tại:
+     * - Check locked/inactive.
+     * - Gắn oauth_account_login.
+     * - Cập nhật email_verified_at nếu còn null.
      */
     public function googleLogin(array $googleLoginData, Request $request): array
     {
@@ -198,7 +300,7 @@ class AuthService
             }
 
             if ($user) {
-                $this->ensureUserCanLogin($user);
+                $this->ensureUserCanLoginForGoogle($user);
 
                 $user = $this->userRepository->update($user, [
                     'oauth_account_login' => json_encode([
@@ -236,7 +338,7 @@ class AuthService
     }
 
     /**
-     * AUTH05: Quên mật khẩu.
+     * AUTH-05: Quên mật khẩu.
      */
     public function forgotPassword(array $data): array
     {
@@ -259,16 +361,14 @@ class AuthService
             ], JSON_THROW_ON_ERROR),
         ]);
 
-        Log::info("Reset password token for {$user->email}: {$plainResetToken}");
-
         return [
-            'reset_token' => null,
-            'expires_at' => $expiresAt->toISOString(),
+            'reset_token' => config('app.debug') ? $plainResetToken : null,
+            'expires_at' => config('app.debug') ? $expiresAt->toISOString() : null,
         ];
     }
 
     /**
-     * AUTH06: Đặt lại mật khẩu.
+     * AUTH-06: Đặt lại mật khẩu.
      */
     public function resetPassword(array $resetPasswordData): void
     {
@@ -310,87 +410,87 @@ class AuthService
                 'password_reset' => null,
             ]);
 
-            $this->sessionRepository->revokeAllByUserId((int) $user->id);
+            $this->userSessionRepository->revokeAllByUserId((int) $user->id);
         });
     }
 
     /**
-     * ADD-04: Cấp lại access token bằng refresh token.
-     */
-    public function refresh(array $refreshTokenData): array
-    {
-        $plainRefreshToken = (string) ($refreshTokenData['refresh_token'] ?? '');
-        $refreshTokenHash = hash('sha256', $plainRefreshToken);
-        return DB::transaction(function () use ($refreshTokenHash) {
-            $session = $this->authSessionRepository->findByRefreshTokenHash(
-                $refreshTokenHash,
-                true
-            );
-            if (
-                ! $session ||
-                ! is_string($session->refresh_token_hash) ||
-                ! hash_equals((string) $session->refresh_token_hash, $refreshTokenHash)
-            ) {
-                throw new BusinessException('Refresh token không hợp lệ.', 401);
-            }
-            if (
-                $session->revoked_at !== null ||
-                $session->expires_at === null ||
-                ! $session->expires_at->isFuture()
-            ) {
-                throw new BusinessException('Phiên đăng nhập đã hết hiệu lực.', 401);
-            }
-            $user = $session->user;
-            if (! $user) {
-                throw new BusinessException('Refresh token không hợp lệ.', 401);
-            }
-            if (! $user->isActive() || $user->isLocked()) {
-                throw new BusinessException('Tài khoản không được phép thao tác.', 403);
-            }
-            $accessToken = $this->accessTokenService->createAccessToken(
-                (int) $user->id,
-                (int) $session->id
-            );
-            $newRefreshToken = $this->accessTokenService->createRefreshToken();
-            $this->authSessionRepository->rotateRefreshToken(
-                $session,
-                $newRefreshToken['token_hash'],
-                $newRefreshToken['expires_at']
-            );
-            return [
-                'token_type' => 'Bearer',
-                'access_token' => $accessToken['token'],
-                'refresh_token' => $newRefreshToken['token'],
-                'expires_in' => $accessToken['expires_in'],
-            ];
-        });
-    }    /**
-     * AUTH07: Đăng xuất.
+     * AUTH-07: Logout.
      */
     public function logout(AuthSession $session): void
     {
-        $this->sessionRepository->revoke($session);
+        $this->userSessionRepository->revoke($session);
     }
 
     /**
-     * Kiểm tra user có được phép đăng nhập không.
+     * Check email và số điện thoại không trùng.
+     */
+    private function ensureEmailAndPhoneAreUnique(string $email, string $phone): void
+    {
+        if ($this->userRepository->existsByEmail($email)) {
+            throw new BusinessException('Email đã được sử dụng.', 409, [
+                'email' => ['Email đã được sử dụng.'],
+            ]);
+        }
+
+        if ($this->userRepository->existsByPhone($phone)) {
+            throw new BusinessException('Số điện thoại đã được sử dụng.', 409, [
+                'phone' => ['Số điện thoại đã được sử dụng.'],
+            ]);
+        }
+    }
+
+    /**
+     * Login thường bắt buộc:
+     * - active
+     * - không locked
+     * - đã xác thực email
      */
     private function ensureUserCanLogin(User $user): void
     {
         if (! $user->isActive() || $user->isLocked()) {
             throw new BusinessException('Tài khoản không được phép đăng nhập.', 403);
         }
+
+        if (! $user->hasVerifiedEmail()) {
+            throw new BusinessException('Vui lòng xác thực email trước khi đăng nhập.', 403);
+        }
     }
 
     /**
-     * Tạo access_token, refresh_token và session.
+     * Google login:
+     * - locked thì chặn
+     * - instructor inactive thì chặn vì đang chờ admin duyệt
+     * - learner inactive thì có thể active vì Google đã xác thực email
+     */
+    private function ensureUserCanLoginForGoogle(User $user): void
+    {
+        if ($user->isLocked()) {
+            throw new BusinessException('Tài khoản không được phép đăng nhập.', 403);
+        }
+
+        if ($user->role === User::ROLE_INSTRUCTOR && ! $user->isActive()) {
+            throw new BusinessException('Tài khoản giảng viên đang chờ admin duyệt.', 403);
+        }
+
+        if ($user->role !== User::ROLE_INSTRUCTOR && ! $user->isActive()) {
+            $this->userRepository->update($user, [
+                'status' => User::STATUS_ACTIVE,
+                'email_verified_at' => $user->email_verified_at ?? now(),
+            ]);
+        }
+    }
+
+    /**
+     * Tạo session đăng nhập:
+     * - refresh_token lưu hash trong bảng sessions
+     * - access_token trả về cho client
      */
     private function createAuthenticatedSession(User $user, ?string $deviceName, Request $request): array
     {
-        $this->deviceLimitService->assertCanCreateSession($user);
         $refreshToken = $this->accessTokenService->createRefreshToken();
 
-        $session = $this->sessionRepository->create([
+        $session = $this->userSessionRepository->create([
             'user_id' => $user->id,
             'refresh_token_hash' => $refreshToken['token_hash'],
             'device_name' => $deviceName ?: 'api_client',
@@ -412,7 +512,6 @@ class AuthService
             'access_token' => $accessToken['token'],
             'refresh_token' => $refreshToken['token'],
             'expires_in' => $accessToken['expires_in'],
-            'device_limit' => $this->deviceLimitService->sessionLimitMeta($user),
             'session' => $session,
         ];
     }

@@ -75,6 +75,22 @@ class CouponApplyService
 
         return min((float) $coupon->discount_value, $price);
     }
+    public function apply(array $data, int $userId): object|array
+{
+    if (method_exists($this, 'applyCoupon')) {
+        return $this->applyCoupon($data, $userId);
+    }
 
-    
+    if (method_exists($this, 'applyToOrder')) {
+        return $this->applyToOrder($data, $userId);
+    }
+
+    if (method_exists($this, 'handle')) {
+        return $this->handle($data, $userId);
+    }
+
+    throw new \RuntimeException('CouponApplyService chưa có hàm xử lý apply coupon.');
+}
+
+
 }

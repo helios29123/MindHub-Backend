@@ -3,60 +3,81 @@
 namespace App\Services\Payment;
 
 use App\Exceptions\BusinessException;
-use App\Models\Course;
 use App\Models\Order;
 use App\Repositories\Payment\EnrollmentRepository;
 use App\Repositories\Payment\OrderRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
 
 class OrderService
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
-        private readonly EnrollmentRepository $enrollmentRepository
+        private readonly EnrollmentRepository $enrollmentRepository,
+        private readonly CoursePurchaseGuardService $coursePurchaseGuardService
     ) {
     }
 
-    public function createOrder(array $orderData, int $userId): Order
+    public function createOrder(array $data, int $userId): object
     {
-        return DB::transaction(function () use ($orderData, $userId) {
-            $course = Course::where('id', $orderData['course_id'])->first();
+        return DB::transaction(function () use ($data, $userId): object {
+            $courseId = (int) $data['course_id'];
 
-            if (! $course) {
-                throw new BusinessException('Không tìm thấy khóa học.', 404);
-            }
+            $course = $this->coursePurchaseGuardService->assertCanBuyCourse($userId, $courseId);
 
-            if ($course->status !== 'published') {
-                throw new BusinessException('Khóa học chưa mở bán.', 403);
-            }
+            $regularPrice = (float) ($course->price ?? 0);
+            $salePrice = $course->sale_price ?? null;
 
-            if ($this->enrollmentRepository->findByUserAndCourse($userId, $course->id)) {
-                throw new BusinessException('Bạn đã sở hữu khóa học này.', 409);
-            }
+            $price = ($salePrice !== null && (float) $salePrice > 0)
+                ? (float) $salePrice
+                : $regularPrice;
 
-            if ($this->orderRepository->existsActiveOrder($userId, $course->id)) {
-                throw new BusinessException('Bạn đã có đơn hàng cho khóa học này.', 409);
-            }
-
-            $priceSnapshot = $course->sale_price ?? $course->price;
-
-            return $this->orderRepository->create([
+            $insertData = [
+                'order_type' => Order::TYPE_COURSE_PURCHASE,
+                'coupon_id' => null,
+                'course_id' => $courseId,
                 'user_id' => $userId,
-                'course_id' => $course->id,
                 'order_code' => $this->generateOrderCode(),
                 'status' => Order::STATUS_PENDING,
                 'payment_status' => Order::PAYMENT_UNPAID,
-                'price_snapshot' => $priceSnapshot,
-                'amount' => $priceSnapshot,
-            ]);
+                'payment_method' => null,
+                'provider_transaction_id' => null,
+                'paid_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            if (Schema::hasColumn('orders', 'price')) {
+                $insertData['price'] = $price;
+            }
+
+            if (Schema::hasColumn('orders', 'price_snapshot')) {
+                $insertData['price_snapshot'] = $price;
+            }
+
+            if (Schema::hasColumn('orders', 'amount')) {
+                $insertData['amount'] = $price;
+            }
+
+            if (Schema::hasColumn('orders', 'final_amount')) {
+                $insertData['final_amount'] = $price;
+            }
+
+            if (Schema::hasColumn('orders', 'discount_amount')) {
+                $insertData['discount_amount'] = 0;
+            }
+
+            return $this->orderRepository->create($insertData);
         });
     }
 
-    public function showUserOrder(int $orderId, int $userId): Order
+    public function showUserOrder(int $orderId, int $userId): object
     {
-        $order = $this->orderRepository->findUserOrder($orderId, $userId);
+        $order = DB::table('orders')
+            ->where('id', $orderId)
+            ->where('user_id', $userId)
+            ->first();
 
         if (! $order) {
             throw new BusinessException('Không tìm thấy đơn hàng.', 404);
@@ -65,36 +86,85 @@ class OrderService
         return $order;
     }
 
-    public function cancelUserOrder(int $orderId, int $userId): Order
+    public function cancelUserOrder(int $orderId, int $userId): object
     {
-        return DB::transaction(function () use ($orderId, $userId) {
-            $order = $this->orderRepository->findUserOrderForUpdate($orderId, $userId);
+        return DB::transaction(function () use ($orderId, $userId): object {
+            $order = DB::table('orders')
+                ->where('id', $orderId)
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->first();
+
             if (! $order) {
                 throw new BusinessException('Không tìm thấy đơn hàng.', 404);
             }
+
             if (! $this->canCancelOrder($order)) {
-                throw new BusinessException('Đơn hàng không thể hủy ở trạng thái hiện tại.', 409);
+                throw new BusinessException('Đơn hàng không thể hủy.', 400);
             }
-            $this->orderRepository->cancel($order);
-            $freshOrder = $this->orderRepository->findUserOrder($order->id, $userId);
-            return $freshOrder ?? $order->fresh(['course', 'coupon', 'enrollment']);
+
+            DB::table('orders')
+                ->where('id', $orderId)
+                ->update([
+                    'status' => Order::STATUS_CANCELLED,
+                    'updated_at' => now(),
+                ]);
+
+            return DB::table('orders')
+                ->where('id', $orderId)
+                ->first();
         });
-    }    public function getMyOrders(array $filters, int $userId): LengthAwarePaginator
-    {
-        return $this->orderRepository->paginateUserOrders($userId, $filters);
     }
 
-    private function canCancelOrder(Order $order): bool
+    public function getMyOrders(int $userId, array $filters = []): LengthAwarePaginator
     {
-        return $order->status === Order::STATUS_PENDING
-            && $order->payment_status === Order::PAYMENT_UNPAID
-            && $order->paid_at === null;
-    }    private function generateOrderCode(): string
-    {
-        do {
-            $orderCode = 'ORD-' . now()->format('Ymd') . '-' . strtoupper(Str::random(8));
-        } while (Order::where('order_code', $orderCode)->exists());
+        $query = DB::table('orders')
+            ->where('orders.user_id', $userId)
+            ->leftJoin('courses', 'courses.id', '=', 'orders.course_id')
+            ->select([
+                'orders.*',
+                'courses.title as course_title',
+                'courses.slug as course_slug',
+                'courses.thumbnail_url as course_thumbnail_url',
+            ])
+            ->orderByDesc('orders.id');
 
-        return $orderCode;
+        if (! empty($filters['status'])) {
+            $query->where('orders.status', $filters['status']);
+        }
+
+        if (! empty($filters['payment_status'])) {
+            $query->where('orders.payment_status', $filters['payment_status']);
+        }
+
+        if (! empty($filters['order_type']) && Schema::hasColumn('orders', 'order_type')) {
+            $query->where('orders.order_type', $filters['order_type']);
+        }
+
+        $perPage = (int) ($filters['per_page'] ?? 10);
+        $perPage = max(1, min($perPage, 50));
+
+        return $query->paginate($perPage);
+    }
+
+    private function canCancelOrder(object $order): bool
+    {
+        $status = (string) ($order->status ?? '');
+        $paymentStatus = (string) ($order->payment_status ?? '');
+
+        if ($status !== Order::STATUS_PENDING) {
+            return false;
+        }
+
+        if ($paymentStatus === Order::PAYMENT_PAID) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function generateOrderCode(): string
+    {
+        return 'ORD-' . now()->format('YmdHis') . random_int(1000, 9999);
     }
 }

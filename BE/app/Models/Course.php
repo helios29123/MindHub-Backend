@@ -109,5 +109,24 @@ class Course extends Model
     {
         return $this->hasMany(Wishlist::class);
     }
+   public function scopePubliclyAvailable($query)
+{
+    return $query
+        ->where('status', 'published')
+        ->whereHas('instructor', function ($q) {
+            $q->where('status', 'active')
+                ->whereNull('deleted_at')
+                ->where(function ($sub) {
+                    $sub->whereNull('locked')
+                        ->orWhere('locked', 0);
+                });
+        });
+}
+
+public function scopePurchasable($query)
+{
+    return $query->publiclyAvailable();
+}
+
 
 }

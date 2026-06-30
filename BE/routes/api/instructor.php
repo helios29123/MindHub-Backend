@@ -1,109 +1,155 @@
 <?php
+
 use App\Http\Controllers\InstructorCourseController;
+use App\Http\Controllers\InstructorCreditController;
+use App\Http\Controllers\InstructorUpgradeController;
 use Illuminate\Support\Facades\Route;
-Route::middleware(["auth.session", "role:instructor"])
-    ->prefix("instructor")
+
+/*
+|--------------------------------------------------------------------------
+| Instructor routes
+|--------------------------------------------------------------------------
+| Tất cả route dành cho instructor gom chung vào 1 group:
+| /api/instructor/...
+|
+| Có active.user để chặn instructor inactive/locked thao tác.
+*/
+
+Route::middleware(['auth.session', 'active.user', 'role:instructor'])
+    ->prefix('instructor')
     ->group(function (): void {
-        Route::post("/courses", [InstructorCourseController::class, "store"]);
-        Route::get("/lessons", [
-            InstructorCourseController::class,
-            "indexLessons",
-        ]);
-        Route::post("/lessons", [
-            InstructorCourseController::class,
-            "storeLesson",
-        ]);
-        Route::get("/lessons/{id}", [
-            InstructorCourseController::class,
-            "showLesson",
-        ])->whereNumber("id");
-        Route::patch("/lessons/{id}/preview", [
-            InstructorCourseController::class,
-            "togglePreview",
-        ])->whereNumber("id");
-        Route::match(["put", "patch"], "/lessons/{id}", [
-            InstructorCourseController::class,
-            "updateLesson",
-        ])->whereNumber("id");
-        Route::delete("/lessons/{id}", [
-            InstructorCourseController::class,
-            "destroyLesson",
-        ])->whereNumber("id");
-        Route::post("/lessons/{id}/video", [
-            InstructorCourseController::class,
-            "uploadVideo",
-        ])->whereNumber("id");
-        Route::post("/lessons/{id}/assets", [
-            InstructorCourseController::class,
-            "uploadAsset",
-        ])->whereNumber("id");
-        Route::patch("/courses/{id}", [
-            InstructorCourseController::class,
-            "update",
-        ])->where("id", "[0-9]+");
+        /*
+        |--------------------------------------------------------------------------
+        | Credit packages / course credits
+        |--------------------------------------------------------------------------
+        | Giảng viên xem gói lượt, số dư lượt, lịch sử lượt và tạo đơn mua gói lượt.
+        */
 
-        Route::get("/profile", [
-            InstructorCourseController::class,
-            "profile",
-        ]);
+        Route::get('/credit-packages', [InstructorCreditController::class, 'packages']);
 
-        Route::patch("/profile", [
-            InstructorCourseController::class,
-            "updateProfile",
-        ]);
-        Route::get("/sections", [
-            InstructorCourseController::class,
-            "sections",
-        ]);
-        Route::post("/sections", [
-            InstructorCourseController::class,
-            "storeSection",
-        ]);
+        Route::get('/course-credits', [InstructorCreditController::class, 'balance']);
 
-        Route::get("/sections/{id}", [
-            InstructorCourseController::class,
-            "showSection",
-        ])->where("id", "[0-9]+");
+        Route::get('/credit-transactions', [InstructorCreditController::class, 'transactions']);
 
-        Route::put("/sections/{id}", [
-            InstructorCourseController::class,
-            "updateSection",
-        ])->where("id", "[0-9]+");
+        Route::post('/credit-orders', [InstructorCreditController::class, 'createOrder']);
 
-        Route::patch("/sections/{id}", [
-            InstructorCourseController::class,
-            "updateSection",
-        ])->where("id", "[0-9]+");
+        /*
+        |--------------------------------------------------------------------------
+        | Courses
+        |--------------------------------------------------------------------------
+        */
 
-        Route::delete("/sections/{id}", [
-            InstructorCourseController::class,
-            "deleteSection",
-        ])->where("id", "[0-9]+");
-        
+        Route::post('/courses', [InstructorCourseController::class, 'store']);
+
+        Route::patch('/courses/{id}', [InstructorCourseController::class, 'update'])
+            ->whereNumber('id');
+
+        Route::post('/courses/{id}/submit', [InstructorCourseController::class, 'submitForReview'])
+            ->whereNumber('id');
+
+        Route::get('/courses/{id}/review-notes', [InstructorCourseController::class, 'reviewNotes'])
+            ->whereNumber('id');
+
         Route::get('/courses/{id}/learners', [InstructorCourseController::class, 'learners'])
-            ->where('id', '[0-9]+');
+            ->whereNumber('id');
+
+        Route::get('/courses/{courseId}/checklist', [InstructorCourseController::class, 'checklist'])
+            ->whereNumber('courseId');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lessons
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/lessons', [InstructorCourseController::class, 'indexLessons']);
+
+        Route::post('/lessons', [InstructorCourseController::class, 'storeLesson']);
+
+        Route::get('/lessons/{id}', [InstructorCourseController::class, 'showLesson'])
+            ->whereNumber('id');
+
+        Route::patch('/lessons/{id}/preview', [InstructorCourseController::class, 'togglePreview'])
+            ->whereNumber('id');
+
+        Route::match(['put', 'patch'], '/lessons/{id}', [InstructorCourseController::class, 'updateLesson'])
+            ->whereNumber('id');
+
+        Route::delete('/lessons/{id}', [InstructorCourseController::class, 'destroyLesson'])
+            ->whereNumber('id');
+
+        Route::post('/lessons/{id}/video', [InstructorCourseController::class, 'uploadVideo'])
+            ->whereNumber('id');
+
+        Route::post('/lessons/{id}/assets', [InstructorCourseController::class, 'uploadAsset'])
+            ->whereNumber('id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sections
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/sections', [InstructorCourseController::class, 'sections']);
+
+        Route::post('/sections', [InstructorCourseController::class, 'storeSection']);
+
+        Route::get('/sections/{id}', [InstructorCourseController::class, 'showSection'])
+            ->whereNumber('id');
+
+        Route::put('/sections/{id}', [InstructorCourseController::class, 'updateSection'])
+            ->whereNumber('id');
+
+        Route::patch('/sections/{id}', [InstructorCourseController::class, 'updateSection'])
+            ->whereNumber('id');
+
+        Route::delete('/sections/{id}', [InstructorCourseController::class, 'deleteSection'])
+            ->whereNumber('id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Profile
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/profile', [InstructorCourseController::class, 'profile']);
+
+        Route::patch('/profile', [InstructorCourseController::class, 'updateProfile']);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Revenue / withdrawals
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/revenue', [InstructorCourseController::class, 'revenue']);
+
+        Route::post('/withdrawals', [InstructorCourseController::class, 'withdraw']);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Quizzes
+        |--------------------------------------------------------------------------
+        */
+
+        Route::match(['get', 'post'], '/quizzes', [InstructorCourseController::class, 'manageQuizzes']);
+
+        Route::match(['get', 'put', 'patch', 'delete'], '/quizzes/{id}', [InstructorCourseController::class, 'manageQuizzes'])
+            ->whereNumber('id');
     });
 
-Route::middleware(["auth.session", "active.user", "role:instructor"])
-    ->post("/instructor/courses/{id}/submit", [
-        \App\Http\Controllers\InstructorCourseController::class,
-        "submitForReview",
-    ])
-    ->whereNumber("id");
-Route::middleware(["auth.session", "active.user", "role:instructor"])->get(
-    "/instructor/courses/{id}/review-notes",
-    [\App\Http\Controllers\InstructorCourseController::class, "reviewNotes"],
-);
-Route::get('/instructor/revenue', [InstructorCourseController::class, 'revenue'])
-    ->middleware(['auth.session', 'role:instructor']);
-Route::middleware(['auth.session', 'active.user', 'role:instructor'])
-    ->match(['get', 'post'], '/instructor/quizzes', [InstructorCourseController::class, 'manageQuizzes']);
+/*
+|--------------------------------------------------------------------------
+| Learner instructor upgrade routes
+|--------------------------------------------------------------------------
+| Learner gửi yêu cầu nâng cấp lên instructor.
+*/
 
-Route::middleware(['auth.session', 'active.user', 'role:instructor'])
-    ->match(['get', 'put', 'patch', 'delete'], '/instructor/quizzes/{id}', [InstructorCourseController::class, 'manageQuizzes'])
-    ->where('id', '[0-9]+');
-Route::middleware(['auth.session', 'active.user', 'role:instructor'])
-    ->post('/instructor/withdrawals', [InstructorCourseController::class, 'withdraw']);
-Route::middleware(['auth.session', 'active.user', 'role:instructor'])->group(function () {
-    Route::get('/instructor/courses/{courseId}/checklist', [InstructorCourseController::class, 'checklist']);
-});
+Route::middleware(['auth.session', 'active.user', 'role:learner'])
+    ->group(function (): void {
+        Route::get('/me/instructor-upgrade', [InstructorUpgradeController::class, 'myApplication']);
+
+        Route::post('/me/instructor-upgrade', [InstructorUpgradeController::class, 'store']);
+
+        Route::put('/me/instructor-upgrade', [InstructorUpgradeController::class, 'update']);
+    });

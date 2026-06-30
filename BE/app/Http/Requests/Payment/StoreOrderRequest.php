@@ -21,8 +21,8 @@ class StoreOrderRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'course_id.required' => 'Vui lﾃｲng ch盻肱 khﾃｳa h盻皇.',
-            'course_id.exists' => 'Khﾃｳa h盻皇 khﾃｴng t盻渡 t蘯｡i.',
+            'course_id.required' => 'Vui lòng chọn khóa học.',
+            'course_id.exists' => 'Khóa học không thể thêm vào đơn hàng.',
         ];
     }
 }
