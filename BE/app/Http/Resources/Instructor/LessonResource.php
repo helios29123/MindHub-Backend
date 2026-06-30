@@ -10,6 +10,7 @@ class LessonResource extends JsonResource
     public function toArray(Request $request): array
     {
         $hasAccess = $this->resource->is_preview || ($this->additional['has_access'] ?? false);
+        $hasVideo = $this->lesson_type === 'video' && !empty($this->video_url);
 
         return [
             'id' => $this->id,
@@ -21,7 +22,15 @@ class LessonResource extends JsonResource
             'sort_order' => (int) $this->sort_order,
             'video_duration_seconds' => $this->video_duration_seconds !== null ? (int) $this->video_duration_seconds : null,
             'content' => $hasAccess ? $this->content : null,
-            'video_url' => $hasAccess ? $this->video_url : null,
+
+            /*
+             * Do not expose the raw video path/URL.
+             * For protected playback, the frontend must use the signed stream
+             * endpoint that will be added in VIDEO-SEC-03/04.
+             */
+            'video_url' => null,
+            'has_video' => $hasVideo,
+            'video_access_type' => $hasVideo ? 'private_stream' : null,
         ];
     }
 }
