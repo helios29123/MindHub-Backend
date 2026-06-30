@@ -456,4 +456,37 @@ final class LearningController extends Controller
             'Lấy thông tin watermark thành công.'
         );
     }
-}
+    /**
+     * Generate a signed temporary stream URL for a private lesson video.
+     */
+    public function signedLessonVideoUrl(
+        \App\Http\Requests\Learning\SignedLessonVideoUrlRequest $request,
+        mixed $id,
+        \App\Services\Learning\LessonVideoAccessService $service
+    ): \Illuminate\Http\JsonResponse {
+        $validated = $request->validated();
+        $result = $service->generateSignedStreamUrl(
+            (int) $request->user()->id,
+            (int) $id,
+            $validated['ttl_seconds'] ?? null,
+            $request
+        );
+        return \App\Support\ApiResponse::success(
+            new \App\Http\Resources\Learning\SignedLessonVideoUrlResource($result),
+            'Tạo link xem video thành công.'
+        );
+    }
+    /**
+     * Stream a private lesson video after validating signed URL and enrollment.
+     */
+    public function streamLessonVideo(
+        \App\Http\Requests\Learning\StreamLessonVideoRequest $request,
+        mixed $id,
+        \App\Services\Learning\LessonVideoAccessService $service
+    ): \Symfony\Component\HttpFoundation\StreamedResponse {
+        return $service->streamVideo(
+            (int) $request->user()->id,
+            (int) $id,
+            $request
+        );
+    }}

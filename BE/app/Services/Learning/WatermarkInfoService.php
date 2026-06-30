@@ -1,71 +1,60 @@
 <?php
-
 namespace App\Services\Learning;
-
+use App\Exceptions\BusinessException;
 use App\Models\Lesson;
-use App\Models\Enrollment;
 use App\Models\User;
-
-class WatermarkInfoService
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+final class WatermarkInfoService
 {
     public function getWatermarkInfo(int $learnerId, int $lessonId, array $filters): array
     {
-        $lesson = Lesson::with('course')->find($lessonId);
-
-        if (!$lesson) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy bài học.', 404);
+        $lesson = Lesson::query()
+            ->with('course')
+            ->whereKey($lessonId)
+            ->first();
+        if (!$lesson || !$lesson->course) {
+            throw new BusinessException('Không tìm thấy bài học.', 404);
         }
-
-        $course = $lesson->course;
-
-        // Verify access via enrollment or preview
-        $hasAccess = false;
-        
-        if ($lesson->is_preview && $lesson->status === 'published' && $course->status === 'published') {
-            $hasAccess = true;
-        } else {
-            $enrollment = Enrollment::where('user_id', $learnerId)
-                ->where('course_id', $course->id)
-                ->first();
-
-            if ($enrollment && in_array($enrollment->status, ['active', 'completed'])) {
-                $hasAccess = true;
-            }
-            
-            // Check if user is instructor
-            if ((int) $course->instructor_id === $learnerId) {
-                $hasAccess = true;
-            }
+        if ((string) $lesson->status !== 'published' || (string) $lesson->course->status !== 'published') {
+            throw new BusinessException('Nội dung chưa khả dụng.', 403);
         }
-
-        if (!$hasAccess) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập bài học này.', 403);
+        if (!$this->hasEnrollment($learnerId, (int) $lesson->course_id)) {
+            throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
         }
-
-        $user = User::find($learnerId);
-        
-        // Mask email
-        $emailParts = explode('@', $user->email);
-        $maskedEmail = $emailParts[0];
-        if (strlen($maskedEmail) > 3) {
-            $maskedEmail = substr($maskedEmail, 0, 3) . '***';
-        } else {
-            $maskedEmail = $maskedEmail . '***';
+        $user = User::query()->find($learnerId);
+        if (!$user) {
+            throw new BusinessException('Không tìm thấy người dùng.', 404);
         }
-        if (isset($emailParts[1])) {
-            $maskedEmail .= '@' . $emailParts[1];
-        }
-
-        $text = $maskedEmail . ' - ID ' . $user->id;
-        $mode = $filters['mode'] ?? 'moving';
-
+        $mode = (string) ($filters['mode'] ?? 'moving');
         return [
-            'text' => $text,
+            'text' => $this->maskEmail((string) $user->email) . ' - ID ' . $user->id,
             'mode' => $mode,
             'opacity' => 0.25,
             'refresh_seconds' => $mode === 'moving' ? 30 : 0,
-            'position_rule' => $mode === 'moving' ? 'random' : 'corners',
+            'position_rule' => $mode === 'moving' ? 'random' : 'bottom-right',
             'generated_at' => now()->toIso8601String(),
         ];
+    }
+    private function hasEnrollment(int $learnerId, int $courseId): bool
+    {
+        $query = DB::table('enrollments')
+            ->where('user_id', $learnerId)
+            ->where('course_id', $courseId)
+            ->whereIn('status', ['active', 'completed']);
+        if (Schema::hasColumn('enrollments', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+        return $query->exists();
+    }
+    private function maskEmail(string $email): string
+    {
+        if (!str_contains($email, '@')) {
+            return 'user***';
+        }
+        [$local, $domain] = explode('@', $email, 2);
+        $prefixLength = strlen($local) <= 3 ? 1 : 3;
+        $prefix = substr($local, 0, $prefixLength);
+        return $prefix . '***@' . $domain;
     }
 }

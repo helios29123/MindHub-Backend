@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Requests\Learning;
 use Illuminate\Foundation\Http\FormRequest;
-final class WatermarkInfoRequest extends FormRequest
+final class StreamLessonVideoRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -10,14 +10,15 @@ final class WatermarkInfoRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'lesson_id' => $this->route('lessonId'),
+            'lesson_id' => $this->route('id'),
         ]);
     }
     public function rules(): array
     {
         return [
             'lesson_id' => ['required', 'integer', 'min:1'],
-            'mode' => ['sometimes', 'nullable', 'string', 'in:static,moving'],
+            'u' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            's' => ['sometimes', 'nullable', 'integer', 'min:0'],
         ];
     }
     public function messages(): array
@@ -26,8 +27,8 @@ final class WatermarkInfoRequest extends FormRequest
             'lesson_id.required' => 'Bài học là bắt buộc.',
             'lesson_id.integer' => 'Bài học không hợp lệ.',
             'lesson_id.min' => 'Bài học không hợp lệ.',
-            'mode.string' => 'Chế độ watermark không hợp lệ.',
-            'mode.in' => 'Chế độ watermark chỉ hỗ trợ static hoặc moving.',
+            'u.integer' => 'Thông tin người dùng trong link không hợp lệ.',
+            's.integer' => 'Thông tin phiên đăng nhập trong link không hợp lệ.',
         ];
     }
 }
