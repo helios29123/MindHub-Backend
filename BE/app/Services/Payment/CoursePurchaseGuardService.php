@@ -5,11 +5,10 @@ namespace App\Services\Payment;
 use App\Exceptions\BusinessException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use stdClass;
 
 class CoursePurchaseGuardService
 {
-    public function assertCanBuyCourse(int $userId, int $courseId): stdClass
+    public function assertCanBuyCourse(int $userId, int $courseId): object
     {
         $courseQuery = DB::table('courses')
             ->where('id', $courseId);
@@ -18,19 +17,25 @@ class CoursePurchaseGuardService
             $courseQuery->whereNull('deleted_at');
         }
 
-        /** @var stdClass|null $course */
         $course = $courseQuery->first();
 
         if (! $course) {
             throw new BusinessException('Không tìm thấy khóa học.', 404);
         }
 
-        if (($course->status ?? null) !== 'published') {
-            throw new BusinessException('Khóa học không thể thêm vào đơn hàng.', 422);
+        if ((string) ($course->status ?? '') !== 'published') {
+            throw new BusinessException('Khóa học chưa được xuất bản.', 403);
         }
 
-        if ((int) $course->instructor_id === $userId) {
-            throw new BusinessException('Giảng viên không thể mua khóa học của chính mình.', 403);
+        /*
+        |--------------------------------------------------------------------------
+        | Instructor mua khóa học của instructor khác
+        |--------------------------------------------------------------------------
+        | User không được mua khóa học do chính mình tạo.
+        | Rule này áp dụng cho cả instructor để tránh tự mua khóa của mình.
+        */
+        if ((int) ($course->instructor_id ?? 0) === $userId) {
+            throw new BusinessException('Bạn không thể mua khóa học của chính mình.', 409);
         }
 
         $enrollmentQuery = DB::table('enrollments')
@@ -48,10 +53,7 @@ class CoursePurchaseGuardService
         $paidOrderQuery = DB::table('orders')
             ->where('user_id', $userId)
             ->where('course_id', $courseId)
-            ->where(function ($query): void {
-                $query->where('status', 'paid')
-                    ->orWhere('payment_status', 'paid');
-            });
+            ->where('payment_status', 'paid');
 
         if (Schema::hasColumn('orders', 'deleted_at')) {
             $paidOrderQuery->whereNull('deleted_at');

@@ -74,12 +74,28 @@ class PaymentService
             $orderType = $this->resolveOrderType($order);
             $role = (string) ($user->role ?? '');
 
-            if ($role === 'instructor' && $orderType !== Order::TYPE_INSTRUCTOR_CREDIT) {
-                throw new BusinessException('Giảng viên chỉ được thanh toán đơn mua lượt tạo khóa học.', 403);
-            }
-
+            /*
+            |--------------------------------------------------------------------------
+            | Payment permission by role + order type
+            |--------------------------------------------------------------------------
+            | learner/member:
+            | - Chỉ được thanh toán đơn mua khóa học.
+            |
+            | instructor:
+            | - Được thanh toán đơn mua gói lượt tạo khóa học.
+            | - Được thanh toán đơn mua khóa học của giảng viên khác.
+            | - Không được thanh toán khóa học của chính mình.
+            */
             if (in_array($role, ['learner', 'member'], true) && $orderType !== Order::TYPE_COURSE_PURCHASE) {
                 throw new BusinessException('Học viên chỉ được thanh toán đơn mua khóa học.', 403);
+            }
+
+            if ($role === 'instructor' && ! in_array($orderType, [Order::TYPE_COURSE_PURCHASE, Order::TYPE_INSTRUCTOR_CREDIT], true)) {
+                throw new BusinessException('Giảng viên không được thanh toán loại đơn hàng này.', 403);
+            }
+
+            if ($role === 'instructor' && $orderType === Order::TYPE_COURSE_PURCHASE) {
+                $this->assertInstructorCanPayCourseOrder($order, $userId);
             }
 
             $amount = $this->getOrderAmount($order);
@@ -94,7 +110,7 @@ class PaymentService
             |--------------------------------------------------------------------------
             | Không update payment_status = processing
             |--------------------------------------------------------------------------
-            | DB hiện tại đang nhận unpaid/paid/failed.
+            | DB hiện tại đang dùng unpaid/paid/failed.
             | Vì vậy tạo link VNPAY chỉ lưu payment_method và provider_transaction_id.
             | payment_status vẫn giữ unpaid cho đến khi VNPAY return/callback thành công.
             */
@@ -162,10 +178,17 @@ class PaymentService
                     $this->applyPaidSideEffects($paidOrder);
                 }
 
+                $latestOrder = DB::table('orders')
+                    ->where('id', $order->id)
+                    ->first();
+
                 return [
                     'success' => true,
                     'message' => 'Thanh toán VNPAY thành công.',
                     'order_id' => (int) $order->id,
+                    'order_code' => $order->order_code ?? null,
+                    'order_type' => $this->resolveOrderType($order),
+                    'order' => $latestOrder,
                     'vnpay' => $params,
                 ];
             }
@@ -178,10 +201,17 @@ class PaymentService
                     'updated_at' => now(),
                 ]);
 
+            $latestOrder = DB::table('orders')
+                ->where('id', $order->id)
+                ->first();
+
             return [
                 'success' => false,
                 'message' => 'Thanh toán VNPAY thất bại.',
                 'order_id' => (int) $order->id,
+                'order_code' => $order->order_code ?? null,
+                'order_type' => $this->resolveOrderType($order),
+                'order' => $latestOrder,
                 'vnpay' => $params,
             ];
         });
@@ -229,12 +259,6 @@ class PaymentService
             throw new BusinessException('Đơn hàng đã thanh toán thất bại, vui lòng tạo đơn mới.', 409);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Chỉ chặn processing nếu DB thật sự đang lưu processing.
-        | Không chặn unpaid.
-        |--------------------------------------------------------------------------
-        */
         if ($paymentStatus === Order::PAYMENT_PROCESSING) {
             throw new BusinessException('Đơn hàng đang được xử lý thanh toán.', 409);
         }
@@ -263,6 +287,30 @@ class PaymentService
 
         if (! in_array($paymentStatus, [Order::PAYMENT_UNPAID, Order::PAYMENT_PROCESSING, ''], true)) {
             throw new BusinessException('Trạng thái thanh toán của đơn hàng không hợp lệ.', 409);
+        }
+    }
+
+    private function assertInstructorCanPayCourseOrder(object $order, int $userId): void
+    {
+        if (empty($order->course_id)) {
+            throw new BusinessException('Đơn mua khóa học không hợp lệ.', 422);
+        }
+
+        $courseQuery = DB::table('courses')
+            ->where('id', $order->course_id);
+
+        if (Schema::hasColumn('courses', 'deleted_at')) {
+            $courseQuery->whereNull('deleted_at');
+        }
+
+        $course = $courseQuery->first();
+
+        if (! $course) {
+            throw new BusinessException('Không tìm thấy khóa học.', 404);
+        }
+
+        if ((int) ($course->instructor_id ?? 0) === $userId) {
+            throw new BusinessException('Bạn không thể thanh toán khóa học của chính mình.', 409);
         }
     }
 
@@ -374,125 +422,152 @@ class PaymentService
     }
 
     private function createEnrollmentAfterCourseOrderPaid(object $order): void
-    {
-        if (empty($order->course_id)) {
-            return;
-        }
-
-        $query = DB::table('enrollments')
-            ->where('user_id', $order->user_id)
-            ->where('course_id', $order->course_id);
-
-        if (Schema::hasColumn('enrollments', 'deleted_at')) {
-            $query->whereNull('deleted_at');
-        }
-
-        if ($query->exists()) {
-            return;
-        }
-
-        $insertData = [
-            'user_id' => $order->user_id,
-            'course_id' => $order->course_id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ];
-
-        if (Schema::hasColumn('enrollments', 'status')) {
-            $insertData['status'] = 'active';
-        }
-
-        if (Schema::hasColumn('enrollments', 'progress_percent')) {
-            $insertData['progress_percent'] = 0;
-        }
-
-        DB::table('enrollments')->insert($insertData);
+{
+    if (empty($order->course_id)) {
+        return;
     }
 
-    private function createRevenueAfterCourseOrderPaid(object $order): void
-    {
-        if (! Schema::hasTable('revenues')) {
-            return;
-        }
+    $query = DB::table('enrollments')
+        ->where('user_id', $order->user_id)
+        ->where('course_id', $order->course_id);
 
-        if (empty($order->course_id)) {
-            return;
-        }
-
-        $course = DB::table('courses')
-            ->where('id', $order->course_id)
-            ->first();
-
-        if (! $course) {
-            return;
-        }
-
-        if (Schema::hasColumn('revenues', 'order_id')) {
-            $exists = DB::table('revenues')
-                ->where('order_id', $order->id)
-                ->exists();
-
-            if ($exists) {
-                return;
-            }
-        }
-
-        $amount = $this->getOrderAmount($order);
-
-        $insertData = [
-            'created_at' => now(),
-            'updated_at' => now(),
-        ];
-
-        if (Schema::hasColumn('revenues', 'order_id')) {
-            $insertData['order_id'] = $order->id;
-        }
-
-        if (Schema::hasColumn('revenues', 'course_id')) {
-            $insertData['course_id'] = $order->course_id;
-        }
-
-        if (Schema::hasColumn('revenues', 'instructor_id')) {
-            $insertData['instructor_id'] = $course->instructor_id;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Rule mới:
-        | Course sale revenue thuộc 100% instructor.
-        | Platform fee = 0.
-        |--------------------------------------------------------------------------
-        */
-        if (Schema::hasColumn('revenues', 'gross_amount')) {
-            $insertData['gross_amount'] = $amount;
-        }
-
-        if (Schema::hasColumn('revenues', 'amount')) {
-            $insertData['amount'] = $amount;
-        }
-
-        if (Schema::hasColumn('revenues', 'platform_fee_percent')) {
-            $insertData['platform_fee_percent'] = 0;
-        }
-
-        if (Schema::hasColumn('revenues', 'platform_fee_amount')) {
-            $insertData['platform_fee_amount'] = 0;
-        }
-
-        if (Schema::hasColumn('revenues', 'platform_revenue')) {
-            $insertData['platform_revenue'] = 0;
-        }
-
-        if (Schema::hasColumn('revenues', 'instructor_amount')) {
-            $insertData['instructor_amount'] = $amount;
-        }
-
-        if (Schema::hasColumn('revenues', 'instructor_revenue')) {
-            $insertData['instructor_revenue'] = $amount;
-        }
-
-        DB::table('revenues')->insert($insertData);
+    if (Schema::hasColumn('enrollments', 'deleted_at')) {
+        $query->whereNull('deleted_at');
     }
+
+    if ($query->exists()) {
+        return;
+    }
+
+    $insertData = [
+        'user_id' => $order->user_id,
+        'course_id' => $order->course_id,
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | DB của bạn yêu cầu enrollments.order_id NOT NULL
+    |--------------------------------------------------------------------------
+    | Vì vậy khi thanh toán thành công phải lưu order_id để biết enrollment
+    | được tạo từ đơn hàng nào.
+    */
+    if (Schema::hasColumn('enrollments', 'order_id')) {
+        $insertData['order_id'] = $order->id;
+    }
+
+    if (Schema::hasColumn('enrollments', 'status')) {
+        $insertData['status'] = 'active';
+    }
+
+    if (Schema::hasColumn('enrollments', 'progress_percent')) {
+        $insertData['progress_percent'] = 0;
+    }
+
+    if (Schema::hasColumn('enrollments', 'created_at')) {
+        $insertData['created_at'] = now();
+    }
+
+    if (Schema::hasColumn('enrollments', 'updated_at')) {
+        $insertData['updated_at'] = now();
+    }
+
+    DB::table('enrollments')->insert($insertData);
+}
+
+   private function createRevenueAfterCourseOrderPaid(object $order): void
+{
+    if (! Schema::hasTable('revenues')) {
+        return;
+    }
+
+    if (empty($order->course_id)) {
+        return;
+    }
+
+    $course = DB::table('courses')
+        ->where('id', $order->course_id)
+        ->first();
+
+    if (! $course) {
+        return;
+    }
+
+    if (Schema::hasColumn('revenues', 'order_id')) {
+        $exists = DB::table('revenues')
+            ->where('order_id', $order->id)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+    }
+
+    $amount = $this->getOrderAmount($order);
+
+    $insertData = [];
+
+    if (Schema::hasColumn('revenues', 'order_id')) {
+        $insertData['order_id'] = $order->id;
+    }
+
+    if (Schema::hasColumn('revenues', 'course_id')) {
+        $insertData['course_id'] = $order->course_id;
+    }
+
+    if (Schema::hasColumn('revenues', 'instructor_id')) {
+        $insertData['instructor_id'] = $course->instructor_id;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rule hiện tại
+    |--------------------------------------------------------------------------
+    | Học viên/giảng viên mua khóa học thì doanh thu khóa học thuộc 100%
+    | về instructor sở hữu khóa học.
+    | Platform fee = 0.
+    */
+    if (Schema::hasColumn('revenues', 'gross_amount')) {
+        $insertData['gross_amount'] = $amount;
+    }
+
+    if (Schema::hasColumn('revenues', 'amount')) {
+        $insertData['amount'] = $amount;
+    }
+
+    if (Schema::hasColumn('revenues', 'platform_fee_percent')) {
+        $insertData['platform_fee_percent'] = 0;
+    }
+
+    if (Schema::hasColumn('revenues', 'platform_fee_amount')) {
+        $insertData['platform_fee_amount'] = 0;
+    }
+
+    if (Schema::hasColumn('revenues', 'platform_revenue')) {
+        $insertData['platform_revenue'] = 0;
+    }
+
+    if (Schema::hasColumn('revenues', 'instructor_amount')) {
+        $insertData['instructor_amount'] = $amount;
+    }
+
+    if (Schema::hasColumn('revenues', 'instructor_revenue')) {
+        $insertData['instructor_revenue'] = $amount;
+    }
+
+    if (Schema::hasColumn('revenues', 'status')) {
+        $insertData['status'] = 'pending';
+    }
+
+    if (Schema::hasColumn('revenues', 'created_at')) {
+        $insertData['created_at'] = now();
+    }
+
+    if (Schema::hasColumn('revenues', 'updated_at')) {
+        $insertData['updated_at'] = now();
+    }
+
+    DB::table('revenues')->insert($insertData);
+}
 
     private function resolveOrderType(object $order): string
     {
@@ -558,13 +633,6 @@ class PaymentService
 
         ksort($vnpParams);
 
-        /*
-        |--------------------------------------------------------------------------
-        | VNPAY secure hash
-        |--------------------------------------------------------------------------
-        | Không dùng urldecode(http_build_query()).
-        | Build hash data bằng urlencode từng key/value để tránh lỗi sai chữ ký.
-        */
         $hashData = $this->buildVnpayHashData($vnpParams);
         $secureHash = hash_hmac('sha512', $hashData, $hashSecret);
 

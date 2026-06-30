@@ -5,27 +5,13 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Learner order actions
+| Order APIs
 |--------------------------------------------------------------------------
-| Chỉ learner được hủy đơn / retry thanh toán đơn mua khóa học.
+| learner/member/instructor đều có thể tạo order mua khóa học.
+| Instructor được mua khóa học của giảng viên khác.
+| Instructor không được mua khóa học của chính mình, rule này xử lý trong service.
 */
-Route::middleware(['auth.session', 'active.user', 'role:learner'])
-    ->group(function (): void {
-        Route::patch('/orders/{orderId}/cancel', [PaymentController::class, 'cancelOrder'])
-            ->whereNumber('orderId');
-
-        Route::post('/orders/{orderId}/retry-payment', [PaymentController::class, 'retryPayment'])
-            ->whereNumber('orderId');
-    });
-
-/*
-|--------------------------------------------------------------------------
-| Course purchase order APIs
-|--------------------------------------------------------------------------
-| Learner/member tạo đơn mua khóa học, xem đơn, áp coupon.
-| Không mở POST /orders cho instructor để tránh instructor mua khóa học qua flow learner.
-*/
-Route::middleware(['auth.session', 'active.user', 'role:learner,member'])
+Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructor'])
     ->group(function (): void {
         Route::post('/orders', [PaymentController::class, 'storeOrder']);
 
@@ -37,19 +23,19 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,member'])
 
         Route::get('/orders/{id}', [PaymentController::class, 'showOrder'])
             ->whereNumber('id');
+
+        Route::patch('/orders/{orderId}/cancel', [PaymentController::class, 'cancelOrder'])
+            ->whereNumber('orderId');
+
+        Route::post('/orders/{orderId}/retry-payment', [PaymentController::class, 'retryPayment'])
+            ->whereNumber('orderId');
     });
 
 /*
 |--------------------------------------------------------------------------
 | VNPAY create payment URL
 |--------------------------------------------------------------------------
-| Cho learner/member thanh toán order mua khóa học.
-| Cho instructor thanh toán order mua gói lượt tạo khóa học.
-|
-| Lưu ý:
-| - Controller/Service vẫn phải kiểm tra order thuộc user hiện tại.
-| - Learner chỉ nên thanh toán order_type = course_purchase.
-| - Instructor chỉ nên thanh toán order_type = instructor_credit.
+| learner/member/instructor đều được tạo URL thanh toán cho order của chính mình.
 */
 Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructor'])
     ->group(function (): void {
@@ -70,6 +56,5 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
 |--------------------------------------------------------------------------
 | VNPAY return URL
 |--------------------------------------------------------------------------
-| VNPAY redirect về URL này nên để public.
 */
 Route::get('/payments/vnpay-return', [PaymentController::class, 'vnpayReturn']);
