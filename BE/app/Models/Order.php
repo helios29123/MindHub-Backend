@@ -67,4 +67,9 @@ class Order extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

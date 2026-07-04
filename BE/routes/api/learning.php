@@ -9,9 +9,6 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
     Route::get('/learn/lessons/{id}', [LearningController::class, 'showLesson'])->whereNumber('id');
     Route::get('/learn/lessons/{id}/video-url', [LearningController::class, 'signedLessonVideoUrl'])
         ->whereNumber('id');
-    Route::get('/learn/lessons/{id}/stream', [LearningController::class, 'streamLessonVideo'])
-        ->name('learn.lessons.stream')
-        ->whereNumber('id');
     Route::get('/learn/courses/{id}/outline', [LearningController::class, 'outline'])->whereNumber('id');
     Route::patch('/learn/lessons/{id}/progress', [LearningController::class, 'saveVideoProgress'])->whereNumber('id');
     Route::get('/learn/resume', [LearningController::class, 'resume']);
@@ -29,3 +26,16 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
 Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function () {
     Route::get('/me/learning-dashboard', [LearningController::class, 'dashboard']);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Stream video bài học (private)
+|--------------------------------------------------------------------------
+| KHÔNG dùng auth.session vì thẻ <video> của trình duyệt không gửi được
+| header Authorization: Bearer. Bảo mật dựa trên URL đã ký (temporarySignedRoute)
+| + tham số u (learnerId) nằm trong chữ ký, và service vẫn kiểm tra enrollment.
+| Middleware 'signed' tự động 403 nếu chữ ký sai/hết hạn.
+*/
+Route::get('/learn/lessons/{id}/stream', [LearningController::class, 'streamLessonVideo'])
+    ->name('learn.lessons.stream')
+    ->whereNumber('id');

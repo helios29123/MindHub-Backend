@@ -39,6 +39,10 @@ class CatalogCourseRepository
             $query->where('courses.level', $filters['level']);
         }
 
+        if (! empty($filters['instructor_id'])) {
+            $query->where('courses.instructor_id', (int) $filters['instructor_id']);
+        }
+
         if (! empty($filters['language'])) {
             $query->where('courses.language', $filters['language']);
         }

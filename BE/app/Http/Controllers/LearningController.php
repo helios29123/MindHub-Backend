@@ -484,8 +484,12 @@ final class LearningController extends Controller
         mixed $id,
         \App\Services\Learning\LessonVideoAccessService $service
     ): \Symfony\Component\HttpFoundation\StreamedResponse {
+        // Route stream không qua auth.session -> user() thường null.
+        // learnerId lấy từ tham số 'u' (đã nằm trong chữ ký URL, không thể giả mạo);
+        // service.streamVideo vẫn kiểm tra chữ ký + enrollment của learnerId này.
+        $learnerId = (int) ($request->user()?->id ?? $request->query('u', 0));
         return $service->streamVideo(
-            (int) $request->user()->id,
+            $learnerId,
             (int) $id,
             $request
         );

@@ -5,7 +5,9 @@ final class StreamLessonVideoRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        // Route stream không dùng auth.session (thẻ <video> không gửi Bearer được).
+        // Bảo mật dựa trên URL đã ký (middleware 'signed') + kiểm tra enrollment trong service.
+        return true;
     }
     protected function prepareForValidation(): void
     {

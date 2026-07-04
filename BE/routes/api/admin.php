@@ -19,6 +19,12 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         */
         Route::get('/orders', [AdminController::class, 'orders']);
 
+        // Health-check kết nối admin (frontend: ApiService.verifyAdminAuthConnection)
+        Route::get('/test', fn () => response()->json([
+            'success' => true,
+            'data' => ['authenticated' => true, 'system_healthy' => true],
+        ]));
+
         /*
         |--------------------------------------------------------------------------
         | Course moderation / review
