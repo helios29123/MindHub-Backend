@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\InstructorCourseController;
+use App\Http\Controllers\InstructorLearnerController;
 use App\Http\Controllers\InstructorCreditController;
 use App\Http\Controllers\InstructorUpgradeController;
 use Illuminate\Support\Facades\Route;
@@ -107,6 +108,17 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
             ->whereNumber('id');
 
         /*
+        |--------------------------------------------------------------------------
+        | Learners management
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/learners/summary', [InstructorLearnerController::class, 'summary']);
+        Route::get('/learners', [InstructorLearnerController::class, 'index']);
+        Route::get('/learners/course-options', [InstructorLearnerController::class, 'courseOptions']);
+        Route::get('/enrollments/{id}', [InstructorLearnerController::class, 'show'])
+            ->whereNumber('id');
+        Route::get('/enrollments/{id}/lesson-progress', [InstructorLearnerController::class, 'lessonProgress'])
+            ->whereNumber('id');        /*
         |--------------------------------------------------------------------------
         | Profile
         |--------------------------------------------------------------------------
