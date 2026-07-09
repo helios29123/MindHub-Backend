@@ -8,7 +8,7 @@ Route::middleware(['auth.session', 'role:learner'])
         Route::post('/courses/{id}/reviews', [InteractionController::class, 'storeReview'])
             ->where('id', '[0-9]+');
     });
-Route::middleware(['auth.session', 'role:instructor'])
+Route::middleware(['auth.session', 'active.user', 'role:instructor'])
     ->group(function (): void {
         Route::post('/comments/{id}/replies', [InteractionController::class, 'replyComment'])
             ->where('id', '[0-9]+');
