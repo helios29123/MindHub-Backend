@@ -1,5 +1,6 @@
 <?php
 use App\Http\Controllers\InstructorCourseController;
+use App\Http\Controllers\InstructorWithdrawalController;
 use App\Http\Controllers\InstructorCreditController;
 use App\Http\Controllers\InstructorUpgradeController;
 use App\Http\Controllers\InteractionController;
@@ -100,7 +101,12 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         |--------------------------------------------------------------------------
         */
         Route::get('/revenue', [InstructorCourseController::class, 'revenue']);
-        Route::post('/withdrawals', [InstructorCourseController::class, 'withdraw']);
+        Route::get('/withdrawals/summary', [InstructorWithdrawalController::class, 'summary']);
+        Route::get('/withdrawals', [InstructorWithdrawalController::class, 'index']);
+        Route::post('/withdrawals', [InstructorWithdrawalController::class, 'store']);
+        Route::get('/withdrawals/{id}', [InstructorWithdrawalController::class, 'show'])
+            ->whereNumber('id');
+        Route::get('/payout-accounts', [InstructorWithdrawalController::class, 'payoutAccounts']);
         /*
         |--------------------------------------------------------------------------
         | Quizzes

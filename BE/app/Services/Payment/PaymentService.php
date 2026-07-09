@@ -555,7 +555,7 @@ class PaymentService
     }
 
     if (Schema::hasColumn('revenues', 'status')) {
-        $insertData['status'] = 'pending';
+        $insertData['status'] = 'available';
     }
 
     if (Schema::hasColumn('revenues', 'created_at')) {
