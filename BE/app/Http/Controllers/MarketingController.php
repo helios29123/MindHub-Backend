@@ -2,15 +2,22 @@
 namespace App\Http\Controllers;
 use App\Exceptions\BusinessException;
 use App\Http\Requests\Marketing\BannerRequest;
-use App\Http\Requests\Marketing\CouponQueryRequest;
 use App\Http\Requests\Marketing\CourseAnnouncementRequest;
-use App\Http\Requests\Marketing\StoreCouponRequest;
-use App\Http\Requests\Marketing\UpdateCouponRequest;
+use App\Http\Requests\Marketing\InstructorCouponCourseOptionRequest;
+use App\Http\Requests\Marketing\InstructorCouponIndexRequest;
+use App\Http\Requests\Marketing\InstructorCouponStatusRequest;
+use App\Http\Requests\Marketing\InstructorCouponStoreRequest;
+use App\Http\Requests\Marketing\InstructorCouponSummaryRequest;
+use App\Http\Requests\Marketing\InstructorCouponUpdateRequest;
 use App\Http\Resources\Admin\BannerResource;
 use App\Http\Resources\Marketing\CourseAnnouncementResource;
-use App\Http\Resources\Marketing\CouponResource;
+use App\Http\Resources\Marketing\InstructorCouponCourseOptionResource;
+use App\Http\Resources\Marketing\InstructorCouponDeleteResource;
+use App\Http\Resources\Marketing\InstructorCouponDetailResource;
+use App\Http\Resources\Marketing\InstructorCouponResource;
+use App\Http\Resources\Marketing\InstructorCouponSummaryResource;
 use App\Models\Course;
-use App\Services\Marketing\CouponService;
+use App\Services\Marketing\InstructorCouponService;
 use App\Services\Marketing\MarketingService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +27,7 @@ class MarketingController extends Controller
 {
     public function __construct(
         private readonly MarketingService $marketingService,
-        private readonly CouponService $couponService
+        private readonly InstructorCouponService $instructorCouponService
     ) {
     }
     public function courseAnnouncements(CourseAnnouncementRequest $request): JsonResponse
@@ -39,69 +46,103 @@ class MarketingController extends Controller
             'data' => (new CourseAnnouncementResource(null))->resolve(),
         ], 501);
     }
-    public function indexCoupons(CouponQueryRequest $request): JsonResponse
+    public function instructorCouponSummary(InstructorCouponSummaryRequest $request): JsonResponse
     {
-        $coupons = $this->couponService->paginateForInstructor(
-            (int) $request->user()->id,
+        $summary = $this->instructorCouponService->getSummary(
+            $request->user(),
             $request->validated()
         );
-        return ApiResponse::paginated(
-            CouponResource::collection($coupons),
-            $coupons,
-            'Thao tác coupon thành công.'
-        );
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy tổng quan mã giảm giá thành công.',
+            'data' => (new InstructorCouponSummaryResource($summary))->resolve($request),
+        ]);
     }
-    public function storeCoupon(StoreCouponRequest $request): JsonResponse
+    public function instructorCoupons(InstructorCouponIndexRequest $request): JsonResponse
     {
-        $coupon = $this->couponService->createForInstructor(
-            (int) $request->user()->id,
+        $coupons = $this->instructorCouponService->paginateCoupons(
+            $request->user(),
             $request->validated()
         );
-        return ApiResponse::success(
-            new CouponResource($coupon),
-            'Thao tác coupon thành công.',
-            201
-        );
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy danh sách mã giảm giá thành công.',
+            'data' => InstructorCouponResource::collection($coupons->items())->resolve($request),
+            'meta' => [
+                'current_page' => $coupons->currentPage(),
+                'last_page' => $coupons->lastPage(),
+                'per_page' => $coupons->perPage(),
+                'total' => $coupons->total(),
+            ],
+        ]);
     }
-    public function showCoupon(Request $request, int $id): JsonResponse
+    public function storeInstructorCoupon(InstructorCouponStoreRequest $request): JsonResponse
     {
-        $coupon = $this->couponService->getForInstructor(
-            (int) $request->user()->id,
-            $id
+        $coupon = $this->instructorCouponService->createCoupon(
+            $request->user(),
+            $request->validated()
         );
-        return ApiResponse::success(
-            new CouponResource($coupon),
-            'Thao tác coupon thành công.',
-            200
-        );
+        return response()->json([
+            'success' => true,
+            'message' => 'Tạo mã giảm giá thành công.',
+            'data' => (new InstructorCouponResource($coupon))->resolve($request),
+        ], 201);
     }
-    public function updateCoupon(UpdateCouponRequest $request, int $id): JsonResponse
+    public function showInstructorCoupon(Request $request, int $id): JsonResponse
     {
-        $coupon = $this->couponService->updateForInstructor(
-            (int) $request->user()->id,
+        $coupon = $this->instructorCouponService->showCoupon($request->user(), $id);
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy chi tiết mã giảm giá thành công.',
+            'data' => (new InstructorCouponDetailResource($coupon))->resolve($request),
+        ]);
+    }
+    public function updateInstructorCoupon(InstructorCouponUpdateRequest $request, int $id): JsonResponse
+    {
+        $coupon = $this->instructorCouponService->updateCoupon(
+            $request->user(),
             $id,
             $request->validated()
         );
-        return ApiResponse::success(
-            new CouponResource($coupon),
-            'Thao tác coupon thành công.',
-            200
-        );
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật mã giảm giá thành công.',
+            'data' => (new InstructorCouponResource($coupon))->resolve($request),
+        ]);
     }
-    public function destroyCoupon(Request $request, int $id): JsonResponse
+    public function updateInstructorCouponStatus(InstructorCouponStatusRequest $request, int $id): JsonResponse
     {
-        $coupon = $this->couponService->deleteForInstructor(
-            (int) $request->user()->id,
-            $id
+        $coupon = $this->instructorCouponService->updateCouponStatus(
+            $request->user(),
+            $id,
+            (string) $request->validated('status')
         );
-        return ApiResponse::success(
-            [
-                'coupon_id' => $coupon->id,
-                'code' => $coupon->code,
-            ],
-            'Thao tác coupon thành công.',
-            200
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật trạng thái mã giảm giá thành công.',
+            'data' => (new InstructorCouponResource($coupon))->resolve($request),
+        ]);
+    }
+    public function destroyInstructorCoupon(Request $request, int $id): JsonResponse
+    {
+        $result = $this->instructorCouponService->deleteCoupon($request->user(), $id);
+        return response()->json([
+            'success' => true,
+            'message' => 'Xóa mã giảm giá thành công.',
+            'data' => (new InstructorCouponDeleteResource($result))->resolve($request),
+        ]);
+    }
+    public function couponCourseOptions(InstructorCouponCourseOptionRequest $request): JsonResponse
+    {
+        $courses = $this->instructorCouponService->courseOptions(
+            $request->user(),
+            $request->validated()
         );
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy danh sách khóa học cho mã giảm giá thành công.',
+            'data' => InstructorCouponCourseOptionResource::collection($courses)->resolve($request),
+        ]);
     }
     public function banners(Request $request, mixed $id = null): JsonResponse
     {
