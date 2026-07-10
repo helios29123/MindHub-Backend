@@ -29,6 +29,6 @@ class InstructorQuestionResource extends JsonResource
             ],
             'reply_count' => (int) $this->reply_count,
             'instructor_reply_count' => (int) $this->instructor_reply_count,
-        ];
+     ];
     }
 }

@@ -12,13 +12,26 @@ class InstructorWithdrawalService
     ) {
     }
 
-    public function getSummary(int $instructorId, array $filters = []): array
+    public function summary(int $instructorId, array $filters = []): array
     {
         return $this->repository->getSummary($instructorId);
     }
 
-    public function paginateWithdrawals(int $instructorId, array $filters): LengthAwarePaginator
+    public function paginate(int $instructorId, array $filters): LengthAwarePaginator
     {
         return $this->repository->paginateWithdrawals($instructorId, $filters);
     }
+    public function show(int $instructorId, int $withdrawalId): ?array
+    {
+        return $this->repository->getWithdrawalDetail($instructorId, $withdrawalId);
+    }
+    public function store(int $instructorId, array $data): ?array
+    {
+        return $this->repository->createWithdrawal($instructorId, $data);
+    }
+    public function payoutAccounts(int $instructorId): ?array
+    {
+        return $this->repository->getPayoutAccount($instructorId);
+    }
+
 }

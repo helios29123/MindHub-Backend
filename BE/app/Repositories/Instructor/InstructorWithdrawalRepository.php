@@ -99,4 +99,75 @@ class InstructorWithdrawalRepository
     {
         return number_format((float) $amount, 2, '.', '');
     }
+    public function getWithdrawalDetail(int $instructorId, int $withdrawalId): ?array
+    {
+        $withdrawal = DB::table('withdraw_requests')
+            ->where('user_id', $instructorId)
+            ->where('id', $withdrawalId)
+            ->select([
+                'id',
+                'amount',
+                'status',
+                'requested_at',
+                'approved_at',
+                'paid_at',
+                'rejected_reason',
+                'provider_payout_id',
+                'account_number_snapshot',
+                'account_name_snapshot',
+            ])
+            ->first();
+
+        if (!$withdrawal) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $withdrawal->id,
+            'amount' => $this->money($withdrawal->amount),
+            'status' => $withdrawal->status,
+            'requested_at' => $withdrawal->requested_at,
+            'approved_at' => $withdrawal->approved_at,
+            'paid_at' => $withdrawal->paid_at,
+            'rejected_reason' => $withdrawal->rejected_reason,
+            'provider_payout_id' => $withdrawal->provider_payout_id,
+            'account_number_masked' => $this->maskAccount((string) $withdrawal->account_number_snapshot),
+            'account_name' => $withdrawal->account_name_snapshot,
+        ];
+    }
+    public function createWithdrawal(int $instructorId, array $data): ?array
+    {
+        $withdrawalId = DB::table('withdraw_requests')->insertGetId([
+            'user_id' => $instructorId,
+            'amount' => $data['amount'],
+            'status' => 'pending',
+            'requested_at' => now(),
+            'account_number_snapshot' => $data['account_number'],
+            'account_name_snapshot' => $data['account_name'],
+        ]);
+
+        return $this->getWithdrawalDetail($instructorId, (int) $withdrawalId);
+    }
+    public function getPayoutAccount(int $instructorId): ?array
+    {
+        $payoutAccount = DB::table('payout_accounts')
+            ->where('user_id', $instructorId)
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if (!$payoutAccount) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $payoutAccount->id,
+            'provider' => $payoutAccount->provider,
+            'account_number_masked' => $this->maskAccount((string) $payoutAccount->account_number),
+            'account_name' => $payoutAccount->account_name,
+            'status' => $payoutAccount->status,
+        ];
+    }
+
 }
