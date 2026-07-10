@@ -209,7 +209,7 @@ final class InstructorCourseService
             $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
             if ($isPreview && $lesson->status === "hidden") {
                 throw new BusinessException(
-                    "B繝ｻ繝ｻ・｣・ｰi h騾ｶ・ｻ騾ｧ繝ｻ繝ｻ繝ｻ魄ｪng 髯ゑｽｯ繝ｻ・ｩn kh繝ｻ繝ｻ・ｽ・ｴng th騾ｶ・ｻ郢晢ｽｻb髯ゑｽｯ繝ｻ・ｭt preview mi騾ｶ・ｻ郢晢ｽｻ ph繝ｻ繝ｻ・ｽ・ｭ.",
+                    "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
                     400,
                 );
             }
@@ -288,17 +288,17 @@ final class InstructorCourseService
                 $courseId,
             );
             if (!$course) {
-                throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
+                throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
             }
             if ((int) $course->instructor_id !== (int) $instructor->id) {
                 throw new BusinessException(
-                    "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
+                    "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
                     403,
                 );
             }
             if (!$this->courseCanBeSubmitted($course)) {
                 throw new BusinessException(
-                    "Kh繝ｻ繝ｻ・ｽ・ｳa h騾ｶ・ｻ騾ｧ繝ｻch繝ｻ繝ｻ・ｽ・ｰa 繝ｻ繝ｻ・ｻ蟷｢・ｽ・ｻ繝ｻ・ｧ 繝ｻ繝ｻ・ｨ・ｴ騾ｶ・ｻ邵ｲ繝ｻki騾ｶ・ｻ郢ｻ・ｻ g騾ｶ・ｻ繝ｻ・ｭi duy騾ｶ・ｻ郢ｽ繝ｻ",
+                    "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
                     400,
                 );
             }
@@ -315,16 +315,16 @@ final class InstructorCourseService
             $courseId,
         );
         if (!$course) {
-            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
+            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new BusinessException(
-                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
+                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
                 403,
             );
         }
         if ($course->status !== "rejected") {
-            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
+            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
         }
         return $course;
     }
@@ -371,14 +371,14 @@ final class InstructorCourseService
             $lessonId,
         );
         if (!$lesson) {
-            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
+            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
         }
         if (
             !$lesson->course ||
             (int) $lesson->course->instructor_id !== (int) $instructor->id
         ) {
             throw new AccessDeniedHttpException(
-                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
+                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
             );
         }
         return $lesson->load(["course", "section", "assets"]);
@@ -389,11 +389,11 @@ final class InstructorCourseService
     ): Course {
         $course = $this->instructorLessonRepository->findCourseById($courseId);
         if (!$course) {
-            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
+            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new AccessDeniedHttpException(
-                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
+                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
             );
         }
         return $course;
@@ -404,7 +404,7 @@ final class InstructorCourseService
             $sectionId,
         );
         if (!$section) {
-            throw new NotFoundHttpException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.");
+            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
         }
         return $section;
     }
@@ -413,7 +413,7 @@ final class InstructorCourseService
         Course $course,
     ): void {
         if ((int) $section->course_id !== (int) $course->id) {
-            throw new HttpException(422, "Tham s騾ｶ・ｻ郢晢ｽｻkh繝ｻ繝ｻ・ｽ・ｴng h騾ｶ・ｻ繝ｻ・｣p l騾ｶ・ｻ郢晢ｽｻ");
+            throw new HttpException(422, "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
         }
     }
     private function makeUniqueLessonSlug(
@@ -445,12 +445,12 @@ final class InstructorCourseService
         $course = Course::query()->where("id", $courseId)->first();
 
         if (!$course) {
-            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
+            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
+                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
                 403,
             );
         }
@@ -498,7 +498,7 @@ final class InstructorCourseService
             (float) $effectiveSalePrice > (float) $effectivePrice
         ) {
             throw new BusinessException(
-                "Gi繝ｻ繝ｻ・ｽ・｡ khuy髯ゑｽｯ繝ｻ・ｿn m繝ｻ繝ｻ・ｽ・｣i kh繝ｻ繝ｻ・ｽ・ｴng 繝ｻ繝ｻ豌医・・ｰ騾ｶ・ｻ繝ｻ・｣c l騾ｶ・ｻ陞ｫ・ｾ h繝ｻ繝ｻ・ｽ・｡n gi繝ｻ繝ｻ・ｽ・｡ g騾ｶ・ｻ騾ｾ繝ｻ",
+                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
                 422,
             );
         }
@@ -517,7 +517,7 @@ final class InstructorCourseService
             ->count();
 
         if ($validCategoryCount !== count(array_unique($categoryIds))) {
-            throw new BusinessException("Danh m騾ｶ・ｻ繝ｻ・･c kh繝ｻ繝ｻ・ｽ・ｴng h騾ｶ・ｻ繝ｻ・｣p l騾ｶ・ｻ郢晢ｽｻ", 422);
+            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 422);
         }
     }
 
@@ -648,12 +648,12 @@ final class InstructorCourseService
         $course = Course::query()->find($courseId);
 
         if (!$course) {
-            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
+            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
+                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
                 403,
             );
         }
@@ -670,16 +670,16 @@ final class InstructorCourseService
             ->find($sectionId);
 
         if (!$section) {
-            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
+            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 404);
         }
 
         if (!$section->course) {
-            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
+            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 404);
         }
 
         if ((int) $section->course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "B髯ゑｽｯ繝ｻ・｡n kh繝ｻ繝ｻ・ｽ・ｴng c繝ｻ繝ｻ・ｽ・ｳ quy騾ｶ・ｻ繝ｻ・ｽ thao t繝ｻ繝ｻ・ｽ・｡c t繝ｻ繝ｻ・｣・ｰi nguy繝ｻ繝ｻ・ｽ・ｪn n繝ｻ繝ｻ・｣・ｰy.",
+                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
                 403,
             );
         }
@@ -715,7 +715,7 @@ final class InstructorCourseService
             ->first();
 
         if (!$profile) {
-            throw new BusinessException("Kh繝ｻ繝ｻ・ｽ・ｴng t繝ｻ繝ｻ・ｽ・ｬm th髯ゑｽｯ繝ｻ・･y d騾ｶ・ｻ繝ｻ・ｯ li騾ｶ・ｻ邱包ｽ｡.", 404);
+            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 404);
         }
 
         return $profile;
@@ -747,11 +747,11 @@ final class InstructorCourseService
             $courseId = (int) $filters['course_id'];
 
             if (!$repository->courseExists($courseId)) {
-                throw new \App\Exceptions\BusinessException('Kh・・ｽｴng t・・ｽｬm th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡.', 404);
+                throw new \App\Exceptions\BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 404);
             }
 
             if (!$repository->instructorOwnsCourse((int) $instructor->id, $courseId)) {
-                throw new \App\Exceptions\BusinessException('B陂ｯ・｡n kh・・ｽｴng c・・ｽｳ quy逶ｻ・ｽ xem d逶ｻ・ｯ li逶ｻ緕｡ kh・・ｽｳa h逶ｻ逧・n・・｣ｰy.', 403);
+                throw new \App\Exceptions\BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 403);
             }
         }
 
@@ -770,11 +770,11 @@ final class InstructorCourseService
             $lesson = $repository->findLessonWithCourse((int) $filters['lesson_id']);
 
             if (!$lesson || !$lesson->course) {
-                throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
+                throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 404);
             }
 
             if ((int) $lesson->course->instructor_id !== (int) $instructor->id) {
-                throw new BusinessException('B蘯｡n khﾃｴng ﾄ柁ｰ盻｣c thao tﾃ｡c quiz c盻ｧa khﾃｳa h盻皇 nﾃy.', 403);
+                throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 403);
             }
         }
 
@@ -788,7 +788,7 @@ final class InstructorCourseService
         $quiz = $repository->findOwnedQuiz((int) $instructor->id, $quizId);
 
         if (!$quiz) {
-            throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
+            throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 404);
         }
 
         return $quiz;
@@ -876,11 +876,11 @@ final class InstructorCourseService
         $lesson = $repository->findLessonWithCourse($lessonId);
 
         if (!$lesson || !$lesson->course) {
-            throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
+            throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 404);
         }
 
         if ((int) $lesson->course->instructor_id !== $instructorId) {
-            throw new BusinessException('B蘯｡n khﾃｴng ﾄ柁ｰ盻｣c thao tﾃ｡c quiz c盻ｧa khﾃｳa h盻皇 nﾃy.', 403);
+            throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 403);
         }
 
         return $lesson;
@@ -892,7 +892,7 @@ final class InstructorCourseService
             ->contains(fn (array $option): bool => (bool) ($option['is_correct'] ?? false));
 
         if (!$hasCorrectOption) {
-            throw new BusinessException('M盻擁 cﾃ｢u h盻淑 ph蘯｣i cﾃｳ ﾃｭt nh蘯･t m盻冲 ﾄ妥｡p ﾃ｡n ﾄ妥ｺng.', 422);
+            throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 422);
         }
     }
 
@@ -945,7 +945,7 @@ final class InstructorCourseService
             );
 
             if (!$payoutAccount) {
-                throw new BusinessException('Tài khoản nhận tiền không hợp lệ.', 403);
+                throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 403);
             }
 
             $availableRevenueAmount = $repository->getAvailableRevenueAmount((int) $instructor->id);
@@ -954,8 +954,8 @@ final class InstructorCourseService
             $amount = (float) $data['amount'];
 
             if ($amount > $availableBalance) {
-                throw new BusinessException('Số tiền yêu cầu vượt số dư khả dụng.', 422, [
-                    'amount' => ['Số tiền yêu cầu vượt số dư khả dụng.'],
+                throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 422, [
+                    'amount' => ['D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・'],
                 ]);
             }
 
@@ -992,11 +992,11 @@ final class InstructorCourseService
         $course = \DB::table('courses')->where('id', $courseId)->whereNull('deleted_at')->first();
 
         if (!$course) {
-            throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Không tìm thấy dữ liệu.');
+            throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・');
         }
 
         if ($course->instructor_id !== $instructorId) {
-            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Bạn không có quyền xem dữ liệu khóa học này.');
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・');
         }
 
         $query = \DB::table('enrollments')
@@ -1083,5 +1083,10 @@ final class InstructorCourseService
         $perPage = $filters['per_page'] ?? 15;
         
         return $query->paginate($perPage);
+    }
+
+public function paginateCourses(int $instructorId, array $filters): LengthAwarePaginator
+    {
+        return $this->instructorCourseRepository->paginateCourses($instructorId, $filters);
     }
 }

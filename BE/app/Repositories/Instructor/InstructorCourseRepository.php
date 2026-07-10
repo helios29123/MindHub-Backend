@@ -2,6 +2,8 @@
 
 namespace App\Repositories\Instructor;
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use App\Models\Course;
 
 final class InstructorCourseRepository
@@ -183,5 +185,42 @@ final class InstructorCourseRepository
             ->orderBy('qq.sort_order')
             ->orderBy('qq.id')
             ->get();
+    }
+
+public function paginateCourses(int $instructorId, array $filters): LengthAwarePaginator
+    {
+        $page = max((int) ($filters['page'] ?? 1), 1);
+        $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 50);
+
+        $query = DB::table('courses')
+            ->where('instructor_id', $instructorId)
+            ->whereNull('deleted_at');
+
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (!empty($filters['search'])) {
+            $search = '%' . $filters['search'] . '%';
+            $query->where('title', 'like', $search);
+        }
+
+        match ($filters['sort'] ?? 'newest') {
+            'oldest' => $query->orderBy('created_at'),
+            'title_asc' => $query->orderBy('title'),
+            'title_desc' => $query->orderByDesc('title'),
+            default => $query->orderByDesc('created_at'),
+        };
+
+        return $query->paginate($perPage, ['*'], 'page', $page);
+    }
+
+public function instructorOwnsCourse(int $instructorId, int $courseId): bool
+    {
+        return DB::table('courses')
+            ->where('id', $courseId)
+            ->where('instructor_id', $instructorId)
+            ->whereNull('deleted_at')
+            ->exists();
     }
 }

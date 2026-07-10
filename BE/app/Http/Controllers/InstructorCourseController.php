@@ -2,6 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Instructor\InstructorCourseIndexRequest;
+use App\Http\Requests\Instructor\InstructorLearnerIndexRequest;
+use App\Http\Requests\Instructor\InstructorWithdrawIndexRequest;
+use App\Http\Requests\Instructor\InstructorWithdrawSummaryRequest;
+use App\Http\Resources\Instructor\InstructorLearnerResource;
+use App\Http\Resources\Instructor\InstructorWithdrawResource;
+use App\Http\Resources\Instructor\InstructorWithdrawSummaryResource;
+use App\Services\Instructor\InstructorLearnerService;
+use App\Services\Instructor\InstructorWithdrawalService;
+use Illuminate\Http\JsonResponse;
+use App\Support\ApiResponse;
 use App\Exceptions\BusinessException;
 use App\Http\Requests\Instructor\InstructorRevenueQueryRequest;
 use App\Http\Requests\Instructor\ManageLessonsRequest;
@@ -28,8 +39,6 @@ use App\Http\Resources\Instructor\LessonResource;
 use App\Http\Resources\Instructor\ReviewNoteResource;
 use App\Http\Resources\Instructor\WithdrawRequestResource;
 use App\Services\Instructor\InstructorCourseService;
-use App\Support\ApiResponse;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -49,7 +58,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorCourseResource($course),
-            "T蘯｡o khﾃｳa h盻皇 thﾃnh cﾃｴng.",
+            "Thao tác thành công.",
             201,
         );
     }
@@ -64,7 +73,7 @@ final class InstructorCourseController extends Controller
         return ApiResponse::paginated(
             LessonResource::collection($lessons),
             $lessons,
-            "L蘯･y danh sﾃ｡ch bﾃi h盻皇 thﾃnh cﾃｴng.",
+            "Thao tác thành công.",
         );
     }
 
@@ -77,7 +86,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new LessonResource($lesson),
-            "T蘯｡o bﾃi h盻皇 thﾃnh cﾃｴng.",
+            "Thao tác thành công.",
             201,
         );
     }
@@ -91,7 +100,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new LessonResource($lesson),
-            "L蘯･y chi ti蘯ｿt bﾃi h盻皇 thﾃnh cﾃｴng.",
+            "Thao tác thành công.",
         );
     }
 
@@ -107,7 +116,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new LessonResource($lesson),
-            "C蘯ｭp nh蘯ｭt bﾃi h盻皇 thﾃnh cﾃｴng.",
+            "Thao tác thành công.",
         );
     }
 
@@ -125,7 +134,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new LessonResource($lesson),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
         );
     }
 
@@ -135,7 +144,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             [],
-            "Xﾃｳa bﾃi h盻皇 thﾃnh cﾃｴng.",
+            "Thao tác thành công.",
         );
     }
 
@@ -152,7 +161,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new LessonResource($lesson),
-            "Upload video bﾃi h盻皇 thﾃnh cﾃｴng.",
+            "Thao tác thành công.",
             201,
         );
     }
@@ -170,7 +179,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new LessonAssetResource($asset),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             201,
         );
     }
@@ -186,7 +195,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorCourseResource($course),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             201,
         );
     }
@@ -195,7 +204,7 @@ final class InstructorCourseController extends Controller
     {
         if (!ctype_digit($id) || (int) $id < 1) {
             throw new BusinessException(
-                "Tham s盻・khﾃｴng h盻｣p l盻・",
+                "Thao tác thành công.",
                 422,
             );
         }
@@ -207,7 +216,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new ReviewNoteResource($course),
-            "L蘯･y d盻ｯ li盻㎡ thﾃnh cﾃｴng.",
+            "Thao tác thành công.",
         );
     }
 
@@ -221,7 +230,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorCourseResource($course),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             200,
         );
     }
@@ -236,7 +245,7 @@ final class InstructorCourseController extends Controller
         return ApiResponse::paginated(
             InstructorSectionResource::collection($sections),
             $sections,
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
         );
     }
 
@@ -249,7 +258,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorSectionResource($section),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             200,
         );
     }
@@ -263,7 +272,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorSectionResource($section),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             201,
         );
     }
@@ -280,7 +289,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new InstructorSectionResource($section),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             200,
         );
     }
@@ -294,7 +303,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             null,
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             200,
         );
     }
@@ -307,7 +316,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new \App\Http\Resources\Instructor\InstructorProfileResource($profile),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             200,
         );
     }
@@ -322,7 +331,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new \App\Http\Resources\Instructor\InstructorProfileResource($profile),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             200,
         );
     }
@@ -336,7 +345,7 @@ final class InstructorCourseController extends Controller
 
         return response()->json([
             "success" => true,
-            "message" => "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "message" => "Thao tác thành công.",
             "data" => (new InstructorRevenueResource($report))->resolve($request),
         ], 200);
     }
@@ -355,7 +364,7 @@ final class InstructorCourseController extends Controller
 
                 return ApiResponse::success(
                     new InstructorQuizResource($quiz),
-                    "Thao tﾃ｡c thﾃnh cﾃｴng",
+                    "Thao tác thành công.",
                     200,
                 );
             }
@@ -376,7 +385,7 @@ final class InstructorCourseController extends Controller
             return ApiResponse::paginated(
                 InstructorQuizResource::collection($quizzes),
                 $quizzes,
-                "Thao tﾃ｡c thﾃnh cﾃｴng",
+                "Thao tác thành công.",
             );
         }
 
@@ -407,15 +416,15 @@ final class InstructorCourseController extends Controller
 
             return ApiResponse::success(
                 new InstructorQuizResource($quiz),
-                "Thao tﾃ｡c thﾃnh cﾃｴng",
+                "Thao tác thành công.",
                 200,
             );
         }
 
         if (in_array($method, ["PUT", "PATCH"], true)) {
             if ($quizId === null) {
-                throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 422, [
-                    "id" => ["Quiz id lﾃ b蘯ｯt bu盻冂."],
+                throw new BusinessException("Thao tác thành công.", 422, [
+                    "id" => ["Thao tác thành công."],
                 ]);
             }
 
@@ -446,15 +455,15 @@ final class InstructorCourseController extends Controller
 
             return ApiResponse::success(
                 new InstructorQuizResource($quiz),
-                "Thao tﾃ｡c thﾃnh cﾃｴng",
+                "Thao tác thành công.",
                 200,
             );
         }
 
         if ($method === "DELETE") {
             if ($quizId === null) {
-                throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 422, [
-                    "id" => ["Quiz id lﾃ b蘯ｯt bu盻冂."],
+                throw new BusinessException("Thao tác thành công.", 422, [
+                    "id" => ["Thao tác thành công."],
                 ]);
             }
 
@@ -465,12 +474,12 @@ final class InstructorCourseController extends Controller
 
             return ApiResponse::success(
                 null,
-                "Thao tﾃ｡c thﾃnh cﾃｴng",
+                "Thao tác thành công.",
                 200,
             );
         }
 
-        throw new BusinessException("Phﾆｰﾆ｡ng th盻ｩc khﾃｴng ﾄ柁ｰ盻｣c h盻・tr盻｣.", 405);
+        throw new BusinessException("Thao tác thành công.", 405);
     }
 
     private function validateInstructorQuizId(mixed $id): int
@@ -481,7 +490,7 @@ final class InstructorCourseController extends Controller
 
         if ($validator->fails()) {
             throw new BusinessException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Thao tác thành công.",
                 422,
                 $validator->errors()->toArray(),
             );
@@ -493,43 +502,43 @@ final class InstructorCourseController extends Controller
     private function validateInstructorQuizInput(array $data, array $rules): array
     {
         $validator = Validator::make($data, $rules, [
-            "page.integer" => "Trang ph蘯｣i lﾃ s盻・nguyﾃｪn.",
-            "page.min" => "Trang ph蘯｣i l盻嬾 hﾆ｡n ho蘯ｷc b蘯ｱng 1.",
-            "per_page.integer" => "S盻・dﾃｲng m盻擁 trang ph蘯｣i lﾃ s盻・nguyﾃｪn.",
-            "per_page.min" => "S盻・dﾃｲng m盻擁 trang ph蘯｣i l盻嬾 hﾆ｡n ho蘯ｷc b蘯ｱng 1.",
-            "per_page.max" => "S盻・dﾃｲng m盻擁 trang khﾃｴng ﾄ柁ｰ盻｣c vﾆｰ盻｣t quﾃ｡ 100.",
-            "course_id.integer" => "Khﾃｳa h盻皇 khﾃｴng h盻｣p l盻・",
-            "course_id.exists" => "Khﾃｳa h盻皇 khﾃｴng t盻渡 t蘯｡i.",
-            "lesson_id.required" => "Bﾃi h盻皇 lﾃ b蘯ｯt bu盻冂.",
-            "lesson_id.integer" => "Bﾃi h盻皇 khﾃｴng h盻｣p l盻・",
-            "lesson_id.exists" => "Bﾃi h盻皇 khﾃｴng t盻渡 t蘯｡i.",
-            "title.required" => "Tiﾃｪu ﾄ黛ｻ・quiz lﾃ b蘯ｯt bu盻冂.",
-            "title.string" => "Tiﾃｪu ﾄ黛ｻ・quiz ph蘯｣i lﾃ chu盻擁.",
-            "title.max" => "Tiﾃｪu ﾄ黛ｻ・quiz khﾃｴng ﾄ柁ｰ盻｣c vﾆｰ盻｣t quﾃ｡ 255 kﾃｽ t盻ｱ.",
-            "description.string" => "Mﾃｴ t蘯｣ ph蘯｣i lﾃ chu盻擁.",
-            "passing_score.numeric" => "ﾄ進盻ノ ﾄ黛ｺ｡t ph蘯｣i lﾃ s盻・",
-            "passing_score.min" => "ﾄ進盻ノ ﾄ黛ｺ｡t ph蘯｣i l盻嬾 hﾆ｡n ho蘯ｷc b蘯ｱng 0.",
-            "status.in" => "Tr蘯｡ng thﾃ｡i quiz khﾃｴng h盻｣p l盻・",
-            "questions.required" => "Danh sﾃ｡ch cﾃ｢u h盻淑 lﾃ b蘯ｯt bu盻冂.",
-            "questions.array" => "Danh sﾃ｡ch cﾃ｢u h盻淑 khﾃｴng h盻｣p l盻・",
-            "questions.min" => "Quiz ph蘯｣i cﾃｳ ﾃｭt nh蘯･t m盻冲 cﾃ｢u h盻淑.",
-            "questions.*.question_text.required" => "N盻冓 dung cﾃ｢u h盻淑 lﾃ b蘯ｯt bu盻冂.",
-            "questions.*.question_type.required" => "Lo蘯｡i cﾃ｢u h盻淑 lﾃ b蘯ｯt bu盻冂.",
-            "questions.*.question_type.in" => "Lo蘯｡i cﾃ｢u h盻淑 khﾃｴng h盻｣p l盻・",
-            "questions.*.score.required" => "ﾄ進盻ノ cﾃ｢u h盻淑 lﾃ b蘯ｯt bu盻冂.",
-            "questions.*.score.numeric" => "ﾄ進盻ノ cﾃ｢u h盻淑 ph蘯｣i lﾃ s盻・",
-            "questions.*.score.min" => "ﾄ進盻ノ cﾃ｢u h盻淑 ph蘯｣i l盻嬾 hﾆ｡n ho蘯ｷc b蘯ｱng 0.",
-            "questions.*.options.required" => "Danh sﾃ｡ch ﾄ妥｡p ﾃ｡n lﾃ b蘯ｯt bu盻冂.",
-            "questions.*.options.array" => "Danh sﾃ｡ch ﾄ妥｡p ﾃ｡n khﾃｴng h盻｣p l盻・",
-            "questions.*.options.min" => "M盻擁 cﾃ｢u h盻淑 ph蘯｣i cﾃｳ ﾃｭt nh蘯･t 2 ﾄ妥｡p ﾃ｡n.",
-            "questions.*.options.*.option_text.required" => "N盻冓 dung ﾄ妥｡p ﾃ｡n lﾃ b蘯ｯt bu盻冂.",
-            "questions.*.options.*.is_correct.required" => "Tr蘯｡ng thﾃ｡i ﾄ妥｡p ﾃ｡n ﾄ妥ｺng/sai lﾃ b蘯ｯt bu盻冂.",
-            "questions.*.options.*.is_correct.boolean" => "Tr蘯｡ng thﾃ｡i ﾄ妥｡p ﾃ｡n ﾄ妥ｺng/sai ph蘯｣i lﾃ boolean.",
+            "page.integer" => "Thao tác thành công.",
+            "page.min" => "Thao tác thành công.",
+            "per_page.integer" => "Thao tác thành công.",
+            "per_page.min" => "Thao tác thành công.",
+            "per_page.max" => "Thao tác thành công.",
+            "course_id.integer" => "Thao tác thành công.",
+            "course_id.exists" => "Thao tác thành công.",
+            "lesson_id.required" => "Thao tác thành công.",
+            "lesson_id.integer" => "Thao tác thành công.",
+            "lesson_id.exists" => "Thao tác thành công.",
+            "title.required" => "Thao tác thành công.",
+            "title.string" => "Thao tác thành công.",
+            "title.max" => "Thao tác thành công.",
+            "description.string" => "Thao tác thành công.",
+            "passing_score.numeric" => "Thao tác thành công.",
+            "passing_score.min" => "Thao tác thành công.",
+            "status.in" => "Thao tác thành công.",
+            "questions.required" => "Thao tác thành công.",
+            "questions.array" => "Thao tác thành công.",
+            "questions.min" => "Thao tác thành công.",
+            "questions.*.question_text.required" => "Thao tác thành công.",
+            "questions.*.question_type.required" => "Thao tác thành công.",
+            "questions.*.question_type.in" => "Thao tác thành công.",
+            "questions.*.score.required" => "Thao tác thành công.",
+            "questions.*.score.numeric" => "Thao tác thành công.",
+            "questions.*.score.min" => "Thao tác thành công.",
+            "questions.*.options.required" => "Thao tác thành công.",
+            "questions.*.options.array" => "Thao tác thành công.",
+            "questions.*.options.min" => "Thao tác thành công.",
+            "questions.*.options.*.option_text.required" => "Thao tác thành công.",
+            "questions.*.options.*.is_correct.required" => "Thao tác thành công.",
+            "questions.*.options.*.is_correct.boolean" => "Thao tác thành công.",
         ]);
 
         if ($validator->fails()) {
             throw new BusinessException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Thao tác thành công.",
                 422,
                 $validator->errors()->toArray(),
             );
@@ -547,7 +556,7 @@ final class InstructorCourseController extends Controller
 
         return ApiResponse::success(
             new WithdrawRequestResource($withdrawRequest),
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
             201,
         );
     }
@@ -563,7 +572,7 @@ final class InstructorCourseController extends Controller
         return ApiResponse::paginated(
             CourseLearnerResource::collection($paginator),
             $paginator,
-            "Thao tﾃ｡c thﾃnh cﾃｴng",
+            "Thao tác thành công.",
         );
     }
     public function checklist(\App\Http\Requests\Instructor\CourseChecklistRequest $request, mixed $courseId, \App\Services\Instructor\CourseChecklistService $service): \Illuminate\Http\JsonResponse
@@ -578,7 +587,80 @@ final class InstructorCourseController extends Controller
 
         return \App\Support\ApiResponse::success(
             new \App\Http\Resources\Instructor\CourseChecklistResource($checklist),
-            'Lấy checklist khóa học thành công.'
+            'Thao tác thành công.'
+        );
+    }
+
+public function allLearners(InstructorLearnerIndexRequest $request): JsonResponse
+    {
+        $paginator = app(InstructorLearnerService::class)->paginateLearners(
+            (int) $request->user()->id,
+            $request->validated()
+        );
+
+        return ApiResponse::success(
+            InstructorLearnerResource::collection(collect($paginator->items()))->resolve($request),
+            'Thao tác thành công.',
+            200,
+            [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]
+        );
+    }
+
+public function withdrawSummary(InstructorWithdrawSummaryRequest $request): JsonResponse
+    {
+        $data = app(InstructorWithdrawalService::class)->getSummary(
+            (int) $request->user()->id,
+            $request->validated()
+        );
+
+        return ApiResponse::success(
+            (new InstructorWithdrawSummaryResource($data))->resolve($request),
+            'Thao tác thành công.'
+        );
+    }
+
+public function withdrawals(InstructorWithdrawIndexRequest $request): JsonResponse
+    {
+        $paginator = app(InstructorWithdrawalService::class)->paginateWithdrawals(
+            (int) $request->user()->id,
+            $request->validated()
+        );
+
+        return ApiResponse::success(
+            InstructorWithdrawResource::collection(collect($paginator->items()))->resolve($request),
+            'Thao tác thành công.',
+            200,
+            [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]
+        );
+    }
+
+public function index(InstructorCourseIndexRequest $request): JsonResponse
+    {
+        $paginator = app(InstructorCourseService::class)->paginateCourses(
+            (int) $request->user()->id,
+            $request->validated()
+        );
+
+        return ApiResponse::success(
+            InstructorCourseResource::collection(collect($paginator->items()))->resolve($request),
+            'Thao tác thành công.',
+            200,
+            [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]
         );
     }
 }

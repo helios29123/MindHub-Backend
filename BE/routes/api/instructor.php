@@ -1,30 +1,28 @@
 <?php
 
-use App\Http\Controllers\InstructorCourseController;
 use App\Http\Controllers\InstructorCreditController;
+use App\Http\Controllers\InstructorCourseController;
 use App\Http\Controllers\InstructorUpgradeController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\InteractionController;
+use App\Http\Controllers\MarketingController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Instructor routes
+| Ghi chú
 |--------------------------------------------------------------------------
-| Tất cả route dành cho instructor gom chung vào 1 group:
-| /api/instructor/...
-|
-| Có active.user để chặn instructor inactive/locked thao tác.
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
 */
-
 Route::middleware(['auth.session', 'active.user', 'role:instructor'])
     ->prefix('instructor')
     ->group(function (): void {
         /*
-        |--------------------------------------------------------------------------
-        | Credit packages / course credits
-        |--------------------------------------------------------------------------
-        | Giảng viên xem gói lượt, số dư lượt, lịch sử lượt và tạo đơn mua gói lượt.
-        */
-
+|--------------------------------------------------------------------------
+| Ghi chú
+|--------------------------------------------------------------------------
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
+*/
         Route::get('/credit-packages', [InstructorCreditController::class, 'packages']);
 
         Route::get('/course-credits', [InstructorCreditController::class, 'balance']);
@@ -34,11 +32,11 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         Route::post('/credit-orders', [InstructorCreditController::class, 'createOrder']);
 
         /*
-        |--------------------------------------------------------------------------
-        | Courses
-        |--------------------------------------------------------------------------
-        */
-
+|--------------------------------------------------------------------------
+| Ghi chú
+|--------------------------------------------------------------------------
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
+*/
         Route::post('/courses', [InstructorCourseController::class, 'store']);
 
         Route::patch('/courses/{id}', [InstructorCourseController::class, 'update'])
@@ -57,11 +55,11 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
             ->whereNumber('courseId');
 
         /*
-        |--------------------------------------------------------------------------
-        | Lessons
-        |--------------------------------------------------------------------------
-        */
-
+|--------------------------------------------------------------------------
+| Ghi chú
+|--------------------------------------------------------------------------
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
+*/
         Route::get('/lessons', [InstructorCourseController::class, 'indexLessons']);
 
         Route::post('/lessons', [InstructorCourseController::class, 'storeLesson']);
@@ -85,11 +83,11 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
             ->whereNumber('id');
 
         /*
-        |--------------------------------------------------------------------------
-        | Sections
-        |--------------------------------------------------------------------------
-        */
-
+|--------------------------------------------------------------------------
+| Ghi chú
+|--------------------------------------------------------------------------
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
+*/
         Route::get('/sections', [InstructorCourseController::class, 'sections']);
 
         Route::post('/sections', [InstructorCourseController::class, 'storeSection']);
@@ -107,31 +105,31 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
             ->whereNumber('id');
 
         /*
-        |--------------------------------------------------------------------------
-        | Profile
-        |--------------------------------------------------------------------------
-        */
-
+|--------------------------------------------------------------------------
+| Ghi chú
+|--------------------------------------------------------------------------
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
+*/
         Route::get('/profile', [InstructorCourseController::class, 'profile']);
 
         Route::patch('/profile', [InstructorCourseController::class, 'updateProfile']);
 
         /*
-        |--------------------------------------------------------------------------
-        | Revenue / withdrawals
-        |--------------------------------------------------------------------------
-        */
-
+|--------------------------------------------------------------------------
+| Ghi chú
+|--------------------------------------------------------------------------
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
+*/
         Route::get('/revenue', [InstructorCourseController::class, 'revenue']);
 
         Route::post('/withdrawals', [InstructorCourseController::class, 'withdraw']);
 
         /*
-        |--------------------------------------------------------------------------
-        | Quizzes
-        |--------------------------------------------------------------------------
-        */
-
+|--------------------------------------------------------------------------
+| Ghi chú
+|--------------------------------------------------------------------------
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
+*/
         Route::match(['get', 'post'], '/quizzes', [InstructorCourseController::class, 'manageQuizzes']);
 
         Route::match(['get', 'put', 'patch', 'delete'], '/quizzes/{id}', [InstructorCourseController::class, 'manageQuizzes'])
@@ -140,11 +138,10 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
 
 /*
 |--------------------------------------------------------------------------
-| Learner instructor upgrade routes
+| Ghi chú
 |--------------------------------------------------------------------------
-| Learner gửi yêu cầu nâng cấp lên instructor.
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
 */
-
 Route::middleware(['auth.session', 'active.user', 'role:learner'])
     ->group(function (): void {
         Route::get('/me/instructor-upgrade', [InstructorUpgradeController::class, 'myApplication']);
@@ -152,4 +149,49 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])
         Route::post('/me/instructor-upgrade', [InstructorUpgradeController::class, 'store']);
 
         Route::put('/me/instructor-upgrade', [InstructorUpgradeController::class, 'update']);
+    });
+/*
+|--------------------------------------------------------------------------
+| Ghi chú
+|--------------------------------------------------------------------------
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
+*/
+Route::middleware(['auth.session', 'active.user', 'role:instructor'])
+    ->prefix('instructor')
+    ->group(function (): void {
+        /*
+|--------------------------------------------------------------------------
+| Ghi chú
+|--------------------------------------------------------------------------
+| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
+*/
+        Route::get('/dashboard', [ReportController::class, 'instructorDashboard'])
+            ->name('instructor.dashboard');
+
+        Route::get('/courses', [InstructorCourseController::class, 'index'])
+            ->name('instructor.courses.index');
+
+        Route::get('/learners', [InstructorCourseController::class, 'allLearners'])
+            ->name('instructor.learners.index');
+
+        Route::get('/reports/revenue-chart', [ReportController::class, 'instructorRevenueChart'])
+            ->name('instructor.reports.revenue-chart');
+
+        Route::get('/reports/enrollment-chart', [ReportController::class, 'instructorEnrollmentChart'])
+            ->name('instructor.reports.enrollment-chart');
+
+        Route::get('/reports/top-courses', [ReportController::class, 'instructorTopCourses'])
+            ->name('instructor.reports.top-courses');
+
+        Route::get('/withdrawals/summary', [InstructorCourseController::class, 'withdrawSummary'])
+            ->name('instructor.withdrawals.summary');
+
+        Route::get('/withdrawals', [InstructorCourseController::class, 'withdrawals'])
+            ->name('instructor.withdrawals.index');
+
+        Route::get('/questions', [InteractionController::class, 'instructorQuestions'])
+            ->name('instructor.questions.index');
+
+        Route::get('/dashboard/alerts', [ReportController::class, 'instructorDashboardAlerts'])
+            ->name('instructor.dashboard.alerts');
     });

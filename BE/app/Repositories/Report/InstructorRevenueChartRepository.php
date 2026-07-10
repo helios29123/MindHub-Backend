@@ -1,0 +1,53 @@
+<?php
+
+namespace App\Repositories\Report;
+
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+
+class InstructorRevenueChartRepository
+{
+    public function getChart(int $instructorId, array $filters): array
+    {
+        [$startDate, $endDate] = $this->resolveDateRange($filters);
+        $groupBy = $filters['group_by'] ?? 'day';
+        $format = $groupBy === 'month' ? '%Y-%m' : '%Y-%m-%d';
+
+        $query = DB::table('revenues')
+            ->where('instructor_id', $instructorId)
+            ->whereBetween('earned_at', [$startDate->startOfDay(), $endDate->endOfDay()])
+            ->whereIn('status', ['available', 'withdrawn'])
+            ->selectRaw("
+                DATE_FORMAT(earned_at, '$format') as period,
+                COALESCE(SUM(gross_amount), 0) as gross_amount,
+                COALESCE(SUM(instructor_amount), 0) as instructor_amount,
+                COALESCE(SUM(platform_fee_amount), 0) as platform_fee_amount
+            ")
+            ->groupBy('period')
+            ->orderBy('period');
+
+        if (!empty($filters['course_id'])) {
+            $query->where('course_id', (int) $filters['course_id']);
+        }
+
+        return $query->get()->map(fn ($row) => [
+            'period' => $row->period,
+            'gross_amount' => $this->money($row->gross_amount),
+            'instructor_amount' => $this->money($row->instructor_amount),
+            'platform_fee_amount' => $this->money($row->platform_fee_amount),
+        ])->all();
+    }
+
+    private function resolveDateRange(array $filters): array
+    {
+        return [
+            !empty($filters['date_from']) ? Carbon::parse($filters['date_from']) : now()->subDays(29),
+            !empty($filters['date_to']) ? Carbon::parse($filters['date_to']) : now(),
+        ];
+    }
+
+    private function money(mixed $amount): string
+    {
+        return number_format((float) $amount, 2, '.', '');
+    }
+}
