@@ -223,4 +223,90 @@ public function instructorOwnsCourse(int $instructorId, int $courseId): bool
             ->whereNull('deleted_at')
             ->exists();
     }
+
+
+    public function findOwnedCourseForDetail(int $courseId, int $instructorId): ?Course
+    {
+        $course = Course::query()
+            ->with(['categories'])
+            ->where('id', $courseId)
+            ->where('instructor_id', $instructorId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$course) {
+            return null;
+        }
+
+        $course->setAttribute('section_count', (int) DB::table('course_sections')
+            ->where('course_id', $courseId)
+            ->whereNull('deleted_at')
+            ->count());
+
+        $course->setAttribute('lesson_count', (int) DB::table('lessons')
+            ->where('course_id', $courseId)
+            ->whereNull('deleted_at')
+            ->count());
+
+        $course->setAttribute('asset_count', (int) DB::table('lesson_assets as la')
+            ->join('lessons as l', 'l.id', '=', 'la.lesson_id')
+            ->where('l.course_id', $courseId)
+            ->whereNull('l.deleted_at')
+            ->whereNull('la.deleted_at')
+            ->count());
+
+        $course->setAttribute('preview_lesson_count', (int) DB::table('lessons')
+            ->where('course_id', $courseId)
+            ->whereNull('deleted_at')
+            ->where('is_preview', true)
+            ->count());
+
+        $course->setAttribute('enrollment_count', (int) DB::table('enrollments')
+            ->where('course_id', $courseId)
+            ->count());
+
+        $course->setAttribute('revenue_amount', (float) DB::table('revenues')
+            ->where('course_id', $courseId)
+            ->sum('instructor_amount'));
+
+        return $course;
+    }
+
+    public function findOwnedCourseForContent(int $courseId, int $instructorId): ?Course
+    {
+        return Course::query()
+            ->with([
+                'sections' => function ($query): void {
+                    $query->whereNull('deleted_at')
+                        ->orderBy('sort_order')
+                        ->orderBy('id');
+                },
+                'sections.lessons' => function ($query): void {
+                    $query->whereNull('deleted_at')
+                        ->orderBy('sort_order')
+                        ->orderBy('id');
+                },
+                'sections.lessons.assets' => function ($query): void {
+                    $query->whereNull('deleted_at')
+                        ->orderBy('id');
+                },
+            ])
+            ->where('id', $courseId)
+            ->where('instructor_id', $instructorId)
+            ->whereNull('deleted_at')
+            ->first();
+    }
+
+    public function updateCourseWithCategories(Course $course, array $data, ?array $categoryIds = null): Course
+    {
+        $course->fill($data);
+        $course->save();
+
+        if ($categoryIds !== null) {
+            $course->categories()->sync($categoryIds);
+        }
+
+        return $course->refresh()->load('categories');
+    }
+
 }

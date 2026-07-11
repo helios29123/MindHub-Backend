@@ -32,7 +32,16 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
 |--------------------------------------------------------------------------
 | Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
 */
+        Route::post('/courses/draft', [InstructorCourseController::class, 'storeDraft']);
         Route::post('/courses', [InstructorCourseController::class, 'store']);
+        Route::get('/courses/{id}', [InstructorCourseController::class, 'show'])
+            ->whereNumber('id');
+
+        Route::get('/courses/{id}/content', [InstructorCourseController::class, 'content'])
+            ->whereNumber('id');
+
+        Route::patch('/courses/{id}/draft', [InstructorCourseController::class, 'updateDraft'])
+            ->whereNumber('id');
         Route::patch('/courses/{id}', [InstructorCourseController::class, 'update'])
             ->whereNumber('id');
         Route::post('/courses/{id}/submit', [InstructorCourseController::class, 'submitForReview'])
