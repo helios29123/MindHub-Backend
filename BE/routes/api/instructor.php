@@ -5,6 +5,7 @@ use App\Http\Controllers\InstructorUpgradeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\InstructorWithdrawalController;
+use App\Http\Controllers\InstructorProfileController;
 use App\Http\Controllers\MarketingController;
 use Illuminate\Support\Facades\Route;
 /*
@@ -105,14 +106,22 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
 |--------------------------------------------------------------------------
 | Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
 */
-        Route::get('/profile', [InstructorCourseController::class, 'profile']);
-        Route::patch('/profile', [InstructorCourseController::class, 'updateProfile']);
         /*
 |--------------------------------------------------------------------------
 | Ghi chú
 |--------------------------------------------------------------------------
 | Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
 */
+        /*
+        |--------------------------------------------------------------------------
+        | Instructor profile management
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/profile', [InstructorProfileController::class, 'show']);
+        Route::patch('/profile/account', [InstructorProfileController::class, 'updateAccount']);
+        Route::patch('/profile/introduction', [InstructorProfileController::class, 'updateIntroduction']);
+        Route::patch('/profile/expertise', [InstructorProfileController::class, 'updateExpertise']);
+        Route::get('/profile/completion', [InstructorProfileController::class, 'completion']);
         Route::get('/revenue', [InstructorCourseController::class, 'revenue']);
         Route::get('/withdrawals/summary', [InstructorWithdrawalController::class, 'summary']);
         Route::get('/withdrawals', [InstructorWithdrawalController::class, 'index']);
