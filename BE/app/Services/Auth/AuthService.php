@@ -56,14 +56,14 @@ class AuthService
     {
         $this->ensureEmailAndPhoneAreUnique(
             $registerData['email'],
-            $registerData['phone']
+            $registerData['phone'] ?? null
         );
 
         return DB::transaction(function () use ($registerData) {
             $user = $this->userRepository->create([
                 'full_name' => $registerData['full_name'],
                 'email' => $registerData['email'],
-                'phone' => $registerData['phone'],
+                'phone' => $registerData['phone'] ?? null,
                 'password_hash' => Hash::make($registerData['password']),
                 'oauth_account_login' => null,
                 'role' => User::ROLE_LEARNER,
@@ -98,14 +98,14 @@ class AuthService
     {
         $this->ensureEmailAndPhoneAreUnique(
             $registerData['email'],
-            $registerData['phone']
+            $registerData['phone'] ?? null
         );
 
         return DB::transaction(function () use ($registerData) {
             $user = $this->userRepository->create([
                 'full_name' => $registerData['full_name'],
                 'email' => $registerData['email'],
-                'phone' => $registerData['phone'],
+                'phone' => $registerData['phone'] ?? null,
                 'password_hash' => Hash::make($registerData['password']),
                 'oauth_account_login' => null,
                 'role' => User::ROLE_INSTRUCTOR,
@@ -117,20 +117,20 @@ class AuthService
 
             $this->instructorProfileRepository->create([
                 'user_id' => $user->id,
-                'bio' => $registerData['bio'],
-                'expertise' => $registerData['expertise'],
-                'experience_years' => $registerData['experience_years'],
-                'level' => $registerData['level'],
+                'bio' => $registerData['bio'] ?? null,
+                'expertise' => $registerData['expertise'] ?? null,
+                'experience_years' => $registerData['experience_years'] ?? 0,
+                'level' => $registerData['level'] ?? null,
             ]);
 
-            $this->payoutAccountRepository->create([
-                'user_id' => $user->id,
-                'provider' => $registerData['bank_provider'],
-                'account_number' => $registerData['bank_account_number'],
-                'account_name' => $registerData['bank_account_name'],
-                'connected_at' => null,
-                'status' => 'pending_verification',
-            ]);
+            // $this->payoutAccountRepository->create([
+            //     'user_id' => $user->id,
+            //     'provider' => $registerData['bank_provider'] ?? 'Chưa cập nhật',
+            //     'account_number' => $registerData['bank_account_number'] ?? 'Chưa cập nhật',
+            //     'account_name' => $registerData['bank_account_name'] ?? 'Chưa cập nhật',
+            //     'connected_at' => null,
+            //     'status' => 'pending_verification',
+            // ]);
 
             $verifyUrl = $this->sendVerifyEmail($user);
 
@@ -425,7 +425,7 @@ class AuthService
     /**
      * Check email và số điện thoại không trùng.
      */
-    private function ensureEmailAndPhoneAreUnique(string $email, string $phone): void
+    private function ensureEmailAndPhoneAreUnique(string $email, ?string $phone): void
     {
         if ($this->userRepository->existsByEmail($email)) {
             throw new BusinessException('Email đã được sử dụng.', 409, [
@@ -433,7 +433,7 @@ class AuthService
             ]);
         }
 
-        if ($this->userRepository->existsByPhone($phone)) {
+        if ($phone !== null && $this->userRepository->existsByPhone($phone)) {
             throw new BusinessException('Số điện thoại đã được sử dụng.', 409, [
                 'phone' => ['Số điện thoại đã được sử dụng.'],
             ]);
