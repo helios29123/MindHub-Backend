@@ -28,32 +28,36 @@ final class InstructorCourseService
     ) {}
     public function createCourse(User $instructor, array $validatedData): Course
     {
-        return DB::transaction(function () use (
-            $instructor,
-            $validatedData,
-        ): Course {
-            $categoryIds = $validatedData["category_ids"] ?? [];
-            unset($validatedData["category_ids"]);
+        return DB::transaction(function () use ($instructor, $validatedData): Course {
+            $categoryIds = $validatedData['category_ids'] ?? [];
+            unset($validatedData['category_ids']);
+
+            $this->removeForbiddenFields($validatedData);
+            $this->validateCategoryIds($categoryIds);
+
+            $title = trim((string) $validatedData['title']);
+            $slugSource = $validatedData['slug'] ?? $title;
+
             $courseData = array_merge($validatedData, [
-                "instructor_id" => $instructor->id,
-                "status" => "draft",
-                "is_featured" => false,
-                "total_duration_seconds" => 0,
-                "published_at" => null,
-                "admin_reject_reason" => null,
-                "language" => $validatedData["language"] ?? "vi",
-                "level" => $validatedData["level"] ?? "beginner",
+                'instructor_id' => $instructor->id,
+                'title' => $title,
+                'slug' => $this->makeUniqueCourseSlug((string) $slugSource),
+                'status' => 'draft',
+                'is_featured' => false,
+                'total_duration_seconds' => 0,
+                'published_at' => null,
+                'admin_reject_reason' => null,
+                'language' => $validatedData['language'] ?? 'vi',
+                'level' => $validatedData['level'] ?? 'beginner',
             ]);
+
             $course = $this->instructorCourseRepository->create($courseData);
+
             if (!empty($categoryIds)) {
-                $this->instructorCourseRepository->syncCategories(
-                    $course,
-                    $categoryIds,
-                );
+                $this->instructorCourseRepository->syncCategories($course, $categoryIds);
             }
-            return $this->instructorCourseRepository->findWithCategories(
-                $course->id,
-            );
+
+            return $this->instructorCourseRepository->findWithCategories((int) $course->id);
         });
     }
     public function paginateLessons(
@@ -1089,4 +1093,153 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
     {
         return $this->instructorCourseRepository->paginateCourses($instructorId, $filters);
     }
+
+
+    public function createDraftCourse(User $instructor, array $data): Course
+    {
+        return DB::transaction(function () use ($instructor, $data): Course {
+            $categoryIds = $data['category_ids'] ?? [];
+            unset($data['category_ids']);
+
+            $this->removeForbiddenFields($data);
+            $this->validateCategoryIds($categoryIds);
+
+            $title = trim((string) ($data['title'] ?? ''));
+
+            if ($title === '') {
+                $title = 'Khóa học chưa đặt tên';
+            }
+
+            $slugSource = $data['slug'] ?? ($title . '-' . uniqid());
+
+            $courseData = array_merge($data, [
+                'instructor_id' => $instructor->id,
+                'title' => $title,
+                'slug' => $this->makeUniqueCourseSlug((string) $slugSource),
+                'price' => $data['price'] ?? 0,
+                'status' => 'draft',
+                'is_featured' => false,
+                'total_duration_seconds' => 0,
+                'published_at' => null,
+                'admin_reject_reason' => null,
+                'language' => $data['language'] ?? 'vi',
+                'level' => $data['level'] ?? 'beginner',
+            ]);
+
+            $course = $this->instructorCourseRepository->create($courseData);
+
+            if (!empty($categoryIds)) {
+                $this->instructorCourseRepository->syncCategories($course, $categoryIds);
+            }
+
+            return $this->instructorCourseRepository->findWithCategories((int) $course->id);
+        });
+    }
+
+    public function getCourseDetail(User $instructor, int $courseId): Course
+    {
+        $course = $this->instructorCourseRepository->findOwnedCourseForDetail(
+            $courseId,
+            (int) $instructor->id
+        );
+
+        if (!$course) {
+            throw new BusinessException('Không tìm thấy khóa học hoặc bạn không có quyền xem.', 404);
+        }
+
+        return $course;
+    }
+
+    public function getCourseContent(User $instructor, int $courseId): Course
+    {
+        $course = $this->instructorCourseRepository->findOwnedCourseForContent(
+            $courseId,
+            (int) $instructor->id
+        );
+
+        if (!$course) {
+            throw new BusinessException('Không tìm thấy khóa học hoặc bạn không có quyền xem.', 404);
+        }
+
+        return $course;
+    }
+
+    public function updateCourseDraft(User $instructor, int $courseId, array $data): Course
+    {
+        $course = Course::query()
+            ->where('id', $courseId)
+            ->where('instructor_id', (int) $instructor->id)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$course) {
+            throw new BusinessException('Không tìm thấy khóa học hoặc bạn không có quyền cập nhật.', 404);
+        }
+
+        if (!in_array($course->status, ['draft', 'rejected'], true)) {
+            throw new BusinessException('Chỉ được lưu nháp khóa học đang hoàn thiện hoặc bị từ chối.', 409);
+        }
+
+        $categoryIds = null;
+
+        if (array_key_exists('category_ids', $data)) {
+            $categoryIds = $data['category_ids'] ?? [];
+            unset($data['category_ids']);
+            $this->validateCategoryIds($categoryIds);
+        }
+
+        $this->removeForbiddenFields($data);
+
+        if (array_key_exists('title', $data)) {
+            $title = trim((string) $data['title']);
+
+            if ($title !== '') {
+                $data['title'] = $title;
+            } else {
+                unset($data['title']);
+            }
+        }
+
+        if (array_key_exists('slug', $data) && trim((string) $data['slug']) !== '') {
+            $data['slug'] = $this->makeUniqueCourseSlug((string) $data['slug'], (int) $course->id);
+        } elseif (array_key_exists('slug', $data)) {
+            unset($data['slug']);
+        }
+
+        $this->validateSalePrice($course, $data);
+
+        return DB::transaction(function () use ($course, $data, $categoryIds): Course {
+            return $this->instructorCourseRepository->updateCourseWithCategories(
+                $course,
+                $data,
+                $categoryIds
+            );
+        });
+    }
+
+    private function makeUniqueCourseSlug(string $source, ?int $ignoreCourseId = null): string
+    {
+        $base = Str::slug($source);
+
+        if ($base === '') {
+            $base = 'khoa-hoc';
+        }
+
+        $slug = $base;
+        $counter = 1;
+
+        while (
+            Course::query()
+                ->where('slug', $slug)
+                ->whereNull('deleted_at')
+                ->when($ignoreCourseId !== null, fn ($query) => $query->where('id', '!=', $ignoreCourseId))
+                ->exists()
+        ) {
+            $counter++;
+            $slug = $base . '-' . $counter;
+        }
+
+        return $slug;
+    }
+
 }

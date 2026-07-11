@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Instructor\InstructorCourseIndexRequest;
+use App\Http\Requests\Instructor\InstructorCourseDraftRequest;
 use App\Http\Requests\Instructor\InstructorLearnerIndexRequest;
 use App\Http\Requests\Instructor\InstructorWithdrawIndexRequest;
 use App\Http\Requests\Instructor\InstructorWithdrawSummaryRequest;
@@ -29,6 +30,8 @@ use App\Http\Requests\Instructor\UploadLessonAssetRequest;
 use App\Http\Requests\Instructor\UploadLessonVideoRequest;
 use App\Http\Requests\Instructor\WithdrawRequest as InstructorWithdrawRequest;
 use App\Http\Resources\Instructor\InstructorCourseResource;
+use App\Http\Resources\Instructor\InstructorCourseDetailResource;
+use App\Http\Resources\Instructor\InstructorCourseContentResource;
 use App\Http\Resources\Instructor\InstructorQuizResource;
 use App\Http\Resources\Instructor\InstructorRevenueResource;
 use App\Http\Requests\Instructor\CourseLearnerQueryRequest;
@@ -220,6 +223,63 @@ final class InstructorCourseController extends Controller
         );
     }
 
+
+    public function storeDraft(InstructorCourseDraftRequest $request): JsonResponse
+    {
+        $course = $this->instructorCourseService->createDraftCourse(
+            $request->user(),
+            $request->validated()
+        );
+
+        return ApiResponse::success(
+            new InstructorCourseResource($course),
+            'Lưu nháp khóa học thành công.',
+            201
+        );
+    }
+
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $course = $this->instructorCourseService->getCourseDetail(
+            $request->user(),
+            $id
+        );
+
+        return ApiResponse::success(
+            new InstructorCourseDetailResource($course),
+            'Lấy chi tiết khóa học thành công.',
+            200
+        );
+    }
+
+    public function content(Request $request, int $id): JsonResponse
+    {
+        $course = $this->instructorCourseService->getCourseContent(
+            $request->user(),
+            $id
+        );
+
+        return ApiResponse::success(
+            new InstructorCourseContentResource($course),
+            'Lấy nội dung khóa học thành công.',
+            200
+        );
+    }
+
+    public function updateDraft(InstructorCourseDraftRequest $request, int $id): JsonResponse
+    {
+        $course = $this->instructorCourseService->updateCourseDraft(
+            $request->user(),
+            $id,
+            $request->validated()
+        );
+
+        return ApiResponse::success(
+            new InstructorCourseResource($course),
+            'Lưu nháp khóa học thành công.',
+            200
+        );
+    }
     public function update(UpdateCourseRequest $request, int $id): JsonResponse
     {
         $course = $this->instructorCourseService->updateCourse(
