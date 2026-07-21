@@ -50,6 +50,8 @@ class Order extends Model
         'payment_method',
         'provider_transaction_id',
         'paid_at',
+        'sale_source',
+        'commission_rule_id',
     ];
 
     protected $casts = [
@@ -58,6 +60,7 @@ class Order extends Model
         'coupon_id' => 'integer',
         'credit_package_id' => 'integer',
         'package_snapshot_credits' => 'integer',
+        'commission_rule_id' => 'integer',
         'price' => 'decimal:2',
         'price_snapshot' => 'decimal:2',
         'amount' => 'decimal:2',
@@ -71,5 +74,20 @@ class Order extends Model
     public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function course(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function coupon(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
+    }
+
+    public function revenue(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Revenue::class);
     }
 }

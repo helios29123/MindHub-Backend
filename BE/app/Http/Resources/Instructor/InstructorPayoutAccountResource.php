@@ -14,6 +14,7 @@ final class InstructorPayoutAccountResource extends JsonResource
             'account_number_masked' => $this->maskAccountNumber($this->account_number),
             'status' => $this->status,
             'status_label' => $this->statusLabel($this->status),
+            'is_default' => (bool) $this->is_default,
         ];
     }
     private function providerLabel(?string $provider): string

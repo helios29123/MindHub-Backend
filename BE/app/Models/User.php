@@ -29,6 +29,7 @@ class User extends Authenticatable
     protected $table = 'users';
 
     protected $fillable = [
+        'name',
         'full_name',
         'email',
         'password_hash',
@@ -41,6 +42,8 @@ class User extends Authenticatable
         'locked',
         'locked_reason',
         'password_reset',
+        'avatar_url',
+        'settings',
     ];
 
     protected $hidden = [
@@ -55,10 +58,37 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'locked' => 'boolean',
+            'settings' => 'array',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function (User $user) {
+            if (empty($user->name) && !empty($user->full_name)) {
+                $user->name = $user->full_name;
+            } elseif (empty($user->full_name) && !empty($user->name)) {
+                $user->full_name = $user->name;
+            }
+
+            if (!empty($user->name) && !empty($user->full_name) && $user->name !== $user->full_name) {
+                if ($user->isDirty('full_name') && !$user->isDirty('name')) {
+                    $user->name = $user->full_name;
+                } else {
+                    $user->full_name = $user->name;
+                }
+            }
+        });
+    }
+
+    public function setPasswordAttribute($value)
+    {
+        $this->attributes['password_hash'] = (is_string($value) && (str_starts_with($value, '$2y$') || str_starts_with($value, '$2a$') || strlen($value) === 60)) ? $value : \Illuminate\Support\Facades\Hash::make($value);
     }
 
     public function getAuthPassword(): string

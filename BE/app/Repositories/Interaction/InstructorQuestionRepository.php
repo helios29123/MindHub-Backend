@@ -92,6 +92,12 @@ class InstructorQuestionRepository
             $query->havingRaw('COUNT(DISTINCT instructor_replies.id) = 0');
         }
 
-        return $query->orderByDesc('q.created_at')->paginate($perPage, ['*'], 'page', $page);
+        if (($filters['sort'] ?? null) === 'oldest') {
+            $query->orderBy('q.created_at', 'asc');
+        } else {
+            $query->orderBy('q.created_at', 'desc');
+        }
+
+        return $query->paginate($perPage, ['*'], 'page', $page);
     }
 }

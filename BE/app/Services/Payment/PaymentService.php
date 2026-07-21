@@ -474,100 +474,23 @@ class PaymentService
     DB::table('enrollments')->insert($insertData);
 }
 
-   private function createRevenueAfterCourseOrderPaid(object $order): void
-{
-    if (! Schema::hasTable('revenues')) {
-        return;
-    }
-
-    if (empty($order->course_id)) {
-        return;
-    }
-
-    $course = DB::table('courses')
-        ->where('id', $order->course_id)
-        ->first();
-
-    if (! $course) {
-        return;
-    }
-
-    if (Schema::hasColumn('revenues', 'order_id')) {
-        $exists = DB::table('revenues')
-            ->where('order_id', $order->id)
-            ->exists();
-
-        if ($exists) {
+    private function createRevenueAfterCourseOrderPaid(object $order): void
+    {
+        if (! Schema::hasTable('revenues')) {
             return;
         }
+
+        if (empty($order->course_id)) {
+            return;
+        }
+
+        $orderModel = Order::query()->find($order->id);
+        if (!$orderModel) {
+            return;
+        }
+
+        app(RevenueShareService::class)->createRevenueForPaidOrder($orderModel);
     }
-
-    $amount = $this->getOrderAmount($order);
-
-    $insertData = [];
-
-    if (Schema::hasColumn('revenues', 'order_id')) {
-        $insertData['order_id'] = $order->id;
-    }
-
-    if (Schema::hasColumn('revenues', 'course_id')) {
-        $insertData['course_id'] = $order->course_id;
-    }
-
-    if (Schema::hasColumn('revenues', 'instructor_id')) {
-        $insertData['instructor_id'] = $course->instructor_id;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Rule hiện tại
-    |--------------------------------------------------------------------------
-    | Học viên/giảng viên mua khóa học thì doanh thu khóa học thuộc 100%
-    | về instructor sở hữu khóa học.
-    | Platform fee = 0.
-    */
-    if (Schema::hasColumn('revenues', 'gross_amount')) {
-        $insertData['gross_amount'] = $amount;
-    }
-
-    if (Schema::hasColumn('revenues', 'amount')) {
-        $insertData['amount'] = $amount;
-    }
-
-    if (Schema::hasColumn('revenues', 'platform_fee_percent')) {
-        $insertData['platform_fee_percent'] = 0;
-    }
-
-    if (Schema::hasColumn('revenues', 'platform_fee_amount')) {
-        $insertData['platform_fee_amount'] = 0;
-    }
-
-    if (Schema::hasColumn('revenues', 'platform_revenue')) {
-        $insertData['platform_revenue'] = 0;
-    }
-
-    if (Schema::hasColumn('revenues', 'instructor_amount')) {
-        $insertData['instructor_amount'] = $amount;
-    }
-
-    if (Schema::hasColumn('revenues', 'instructor_revenue')) {
-        $insertData['instructor_revenue'] = $amount;
-    }
-
-    if (Schema::hasColumn('revenues', 'status')) {
-        $insertData['status'] = 'available';
-    }
-
-    if (Schema::hasColumn('revenues', 'created_at')) {
-        $insertData['created_at'] = now();
-    }
-
-    if (Schema::hasColumn('revenues', 'updated_at')) {
-        $insertData['updated_at'] = now();
-    }
-
-    DB::table('revenues')->insert($insertData);
-}
 
     private function resolveOrderType(object $order): string
     {

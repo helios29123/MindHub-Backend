@@ -26,14 +26,14 @@ class QuizController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', $validator->errors()->toArray(), 422);
+            return ApiResponse::error('Dữ liệu không hợp lệ.', $validator->errors()->toArray(), 422);
         }
 
         $attempt = $this->quizService->storeAttempt((int) $id, $request->validated(), $request->user());
 
         return ApiResponse::success(
             new QuizAttemptResource($attempt),
-            'Thao tﾃ｡c thﾃnh cﾃｴng',
+            'Thao tác thành công',
             201
         );
     }

@@ -18,7 +18,8 @@ final class InstructorWithdrawalController extends Controller
     }
     public function summary(Request $request): JsonResponse
     {
-        $summary = $this->withdrawalService->summary($request->user());
+        $instructorId = (int) $request->user()->id;
+        $summary = $this->withdrawalService->summary($instructorId);
         return response()->json([
             'success' => true,
             'message' => 'Lấy tổng quan rút tiền thành công.',
@@ -27,8 +28,9 @@ final class InstructorWithdrawalController extends Controller
     }
     public function index(InstructorWithdrawalIndexRequest $request): JsonResponse
     {
+        $instructorId = (int) $request->user()->id;
         $withdrawals = $this->withdrawalService->paginate(
-            $request->user(),
+            $instructorId,
             $request->validated()
         );
         return response()->json([
@@ -45,7 +47,14 @@ final class InstructorWithdrawalController extends Controller
     }
     public function show(Request $request, int $id): JsonResponse
     {
-        $withdrawal = $this->withdrawalService->show($request->user(), $id);
+        $instructorId = (int) $request->user()->id;
+        $withdrawal = $this->withdrawalService->show($instructorId, $id);
+        if (!$withdrawal) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy yêu cầu rút tiền.',
+            ], 404);
+        }
         return response()->json([
             'success' => true,
             'message' => 'Lấy chi tiết yêu cầu rút tiền thành công.',
@@ -54,8 +63,9 @@ final class InstructorWithdrawalController extends Controller
     }
     public function store(InstructorWithdrawalStoreRequest $request): JsonResponse
     {
+        $instructorId = (int) $request->user()->id;
         $withdrawal = $this->withdrawalService->store(
-            $request->user(),
+            $instructorId,
             $request->validated()
         );
         return response()->json([
@@ -66,14 +76,34 @@ final class InstructorWithdrawalController extends Controller
     }
     public function payoutAccounts(InstructorPayoutAccountIndexRequest $request): JsonResponse
     {
-        $accounts = $this->withdrawalService->payoutAccounts(
-            $request->user(),
-            $request->validated()
-        );
+        $instructorId = (int) $request->user()->id;
+        $accounts = $this->withdrawalService->payoutAccounts($instructorId, $request->validated());
         return response()->json([
             'success' => true,
             'message' => 'Lấy danh sách tài khoản nhận tiền thành công.',
             'data' => InstructorPayoutAccountResource::collection($accounts)->resolve($request),
         ]);
+    }
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        try {
+            $instructorId = (int) $request->user()->id;
+            $success = $this->withdrawalService->cancel($instructorId, $id);
+            if (!$success) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy yêu cầu rút tiền.',
+                ], 404);
+            }
+            return response()->json([
+                'success' => true,
+                'message' => 'Hủy yêu cầu rút tiền thành công.',
+            ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], $exception->getStatusCode());
+        }
     }
 }

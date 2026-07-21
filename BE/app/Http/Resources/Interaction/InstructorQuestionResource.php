@@ -11,8 +11,11 @@ class InstructorQuestionResource extends JsonResource
     {
         return [
             'id' => (int) $this->id,
+            'comment_id' => (int) $this->id,
             'content' => $this->content,
             'status' => $this->question_status,
+            'is_answered' => $this->question_status === 'answered',
+            'status_label' => $this->question_status === 'answered' ? 'Đã trả lời' : 'Chưa trả lời',
             'created_at' => $this->created_at,
             'learner' => [
                 'id' => (int) $this->learner_id,
@@ -29,6 +32,7 @@ class InstructorQuestionResource extends JsonResource
             ],
             'reply_count' => (int) $this->reply_count,
             'instructor_reply_count' => (int) $this->instructor_reply_count,
-     ];
+            'answer_count' => (int) $this->instructor_reply_count,
+        ];
     }
 }

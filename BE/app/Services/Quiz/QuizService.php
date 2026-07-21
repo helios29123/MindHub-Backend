@@ -16,40 +16,40 @@ class QuizService
 {
     public function storeAttempt(int $quizId, array $data, User $user): QuizAttempt
     {
-        // 1. Tﾃｬm quiz status=published vﾃ course/lesson liﾃｪn quan.
+        // 1. Tìm quiz status=published và course/lesson liên quan.
         $quiz = Quiz::with(['course', 'lesson'])->find($quizId);
 
         if (!$quiz) {
-            throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
+            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
         // Check quiz status
         if ($quiz->status !== 'published') {
-            throw new BusinessException('N盻冓 dung chﾆｰa kh蘯｣ d盻･ng.', 403);
+            throw new BusinessException('Nội dung chưa khả dụng.', 403);
         }
 
         // Check course status
         $course = $quiz->course;
         if (!$course || $course->status !== 'published') {
-            throw new BusinessException('N盻冓 dung chﾆｰa kh蘯｣ d盻･ng.', 403);
+            throw new BusinessException('Nội dung chưa khả dụng.', 403);
         }
 
         // Check lesson status if linked to a lesson
         if ($quiz->lesson_id) {
             $lesson = $quiz->lesson;
             if (!$lesson || $lesson->status !== 'published') {
-                throw new BusinessException('N盻冓 dung chﾆｰa kh蘯｣ d盻･ng.', 403);
+                throw new BusinessException('Nội dung chưa khả dụng.', 403);
             }
         }
 
-        // 2. Ki盻ノ tra learner cﾃｳ enrollment active/completed trong quiz.course_id.
+        // 2. Kiểm tra learner có enrollment active/completed trong quiz.course_id.
         $enrollment = Enrollment::where('user_id', $user->id)
             ->where('course_id', $quiz->course_id)
             ->whereIn('status', ['active', 'completed'])
             ->first();
 
         if (!$enrollment) {
-            throw new BusinessException('B蘯｡n chﾆｰa cﾃｳ quy盻］ truy c蘯ｭp n盻冓 dung nﾃy.', 403);
+            throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
         }
 
         // 3. Validate options and questions:
@@ -65,18 +65,18 @@ class QuizService
             $optId = $ans['option_id'];
 
             if (in_array($qId, $answeredQuestionIds)) {
-                throw new BusinessException('ﾄ静｡p ﾃ｡n khﾃｴng h盻｣p l盻・cho cﾃ｢u h盻淑.', 422);
+                throw new BusinessException('Đáp án không hợp lệ cho câu hỏi.', 422);
             }
             $answeredQuestionIds[] = $qId;
 
             $question = $questionsMap->get($qId);
             if (!$question) {
-                throw new BusinessException('ﾄ静｡p ﾃ｡n khﾃｴng h盻｣p l盻・cho cﾃ｢u h盻淑.', 422);
+                throw new BusinessException('Đáp án không hợp lệ cho câu hỏi.', 422);
             }
 
             $option = $question->options->firstWhere('id', $optId);
             if (!$option) {
-                throw new BusinessException('ﾄ静｡p ﾃ｡n khﾃｴng h盻｣p l盻・cho cﾃ｢u h盻淑.', 422);
+                throw new BusinessException('Đáp án không hợp lệ cho câu hỏi.', 422);
             }
         }
 
@@ -138,7 +138,7 @@ class QuizService
                 return $attempt;
             } catch (QueryException $e) {
                 if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'Duplicate entry')) {
-                    throw new BusinessException('B蘯｡n ﾄ妥｣ n盻冪 attempt nﾃy.', 409);
+                    throw new BusinessException('Bạn đã nộp attempt này.', 409);
                 }
                 throw $e;
             }

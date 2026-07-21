@@ -26,4 +26,7 @@ Route::prefix('auth')->group(function () {
 
     Route::post('logout', [AuthController::class, 'logout'])
         ->middleware('auth.session');
+
+    Route::get('me', [AuthController::class, 'me'])
+        ->middleware('auth.session');
 });

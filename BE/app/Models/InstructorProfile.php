@@ -16,10 +16,12 @@ class InstructorProfile extends Model
         'expertise',
         'experience_years',
         'level',
+        'social_links',
     ];
 
     protected $casts = [
         'experience_years' => 'integer',
+        'social_links' => 'array',
     ];
 
     public function user(): BelongsTo

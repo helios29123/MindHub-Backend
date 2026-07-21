@@ -149,4 +149,20 @@ class AuthController extends Controller
             'Đăng xuất thành công.'
         );
     }
+
+    public function me(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return ApiResponse::error('Unauthenticated.', [], 401);
+        }
+
+        return ApiResponse::success(
+            [
+                'user' => new UserResource($user),
+            ],
+            'Lấy thông tin người dùng thành công.'
+        );
+    }
 }

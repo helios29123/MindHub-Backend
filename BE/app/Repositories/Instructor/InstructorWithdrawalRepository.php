@@ -2,41 +2,51 @@
 
 namespace App\Repositories\Instructor;
 
+use App\Models\WithdrawRequest;
+use App\Models\PayoutAccount;
+use App\Models\Revenue;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class InstructorWithdrawalRepository
 {
     public function getSummary(int $instructorId): array
     {
-        $availableRevenue = (float) DB::table('revenues')
-            ->where('instructor_id', $instructorId)
+        $availableRevenue = (float) Revenue::where('instructor_id', $instructorId)
             ->where('status', 'available')
             ->sum('instructor_amount');
 
-        $pendingWithdrawAmount = (float) DB::table('withdraw_requests')
-            ->where('user_id', $instructorId)
-            ->whereIn('status', ['pending', 'approved'])
+        $pendingWithdrawAmount = (float) WithdrawRequest::where('user_id', $instructorId)
+            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED])
             ->sum('amount');
 
-        $payoutAccount = DB::table('payout_accounts')
-            ->where('user_id', $instructorId)
-            ->where('status', 'active')
-            ->whereNull('deleted_at')
+        $paidWithdrawAmount = (float) WithdrawRequest::where('user_id', $instructorId)
+            ->where('status', WithdrawRequest::STATUS_PAID)
+            ->sum('amount');
+
+        $availableBalance = max($availableRevenue - $pendingWithdrawAmount, 0);
+
+        $payoutAccount = PayoutAccount::where('user_id', $instructorId)
+            ->where('status', PayoutAccount::STATUS_ACTIVE)
             ->orderByDesc('updated_at')
             ->first();
 
+        $hasActivePayoutAccount = ($payoutAccount !== null);
+        $canCreateWithdrawal = $hasActivePayoutAccount && ($availableBalance >= 200000);
+
+        $notice = null;
+        if (!$hasActivePayoutAccount) {
+            $notice = 'Bạn cần thêm tài khoản nhận tiền trước khi tạo yêu cầu rút.';
+        }
+
         return [
-            'available_revenue' => $this->money($availableRevenue),
-            'pending_withdraw_amount' => $this->money($pendingWithdrawAmount),
-            'available_balance' => $this->money(max($availableRevenue - $pendingWithdrawAmount, 0)),
-            'payout_account' => $payoutAccount ? [
-                'id' => (int) $payoutAccount->id,
-                'provider' => $payoutAccount->provider,
-                'account_number_masked' => $this->maskAccount((string) $payoutAccount->account_number),
-                'account_name' => $payoutAccount->account_name,
-                'status' => $payoutAccount->status,
-            ] : null,
+            'available_revenue' => $availableRevenue,
+            'pending_withdraw_amount' => $pendingWithdrawAmount,
+            'paid_withdraw_amount' => $paidWithdrawAmount,
+            'available_balance' => $availableBalance,
+            'can_create_withdrawal' => $canCreateWithdrawal,
+            'payout_account' => $payoutAccount,
+            'notice' => $notice,
         ];
     }
 
@@ -45,22 +55,9 @@ class InstructorWithdrawalRepository
         $page = max((int) ($filters['page'] ?? 1), 1);
         $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 50);
 
-        $query = DB::table('withdraw_requests')
-            ->where('user_id', $instructorId)
-            ->select([
-                'id',
-                'amount',
-                'status',
-                'requested_at',
-                'approved_at',
-                'paid_at',
-                'rejected_reason',
-                'provider_payout_id',
-                'account_number_snapshot',
-                'account_name_snapshot',
-            ]);
+        $query = WithdrawRequest::where('user_id', $instructorId);
 
-        if (!empty($filters['status'])) {
+        if (!empty($filters['status']) && $filters['status'] !== 'all') {
             $query->where('status', $filters['status']);
         }
 
@@ -72,16 +69,62 @@ class InstructorWithdrawalRepository
             $query->whereDate('requested_at', '<=', $filters['date_to']);
         }
 
-        $paginator = $query->orderByDesc('requested_at')->paginate($perPage, ['*'], 'page', $page);
+        return $query->orderByDesc('requested_at')->paginate($perPage, ['*'], 'page', $page);
+    }
 
-        $paginator->getCollection()->transform(function ($row) {
-            $row->account_number_masked = $this->maskAccount((string) $row->account_number_snapshot);
-            unset($row->account_number_snapshot);
+    public function getWithdrawalDetail(int $instructorId, int $withdrawalId): ?WithdrawRequest
+    {
+        return WithdrawRequest::with('payoutAccount')
+            ->where('user_id', $instructorId)
+            ->where('id', $withdrawalId)
+            ->first();
+    }
 
-            return $row;
-        });
+    public function createWithdrawal(int $instructorId, array $data): ?WithdrawRequest
+    {
+        $withdrawal = WithdrawRequest::create([
+            'user_id' => $instructorId,
+            'payout_account_id' => $data['payout_account_id'] ?? null,
+            'amount' => $data['amount'],
+            'status' => WithdrawRequest::STATUS_PENDING,
+            'requested_at' => now(),
+            'account_number_snapshot' => $data['account_number'],
+            'account_name_snapshot' => $data['account_name'],
+        ]);
 
-        return $paginator;
+        return $this->getWithdrawalDetail($instructorId, (int) $withdrawal->id);
+    }
+
+    public function getPayoutAccounts(int $instructorId, array $filters): Collection
+    {
+        $query = PayoutAccount::where('user_id', $instructorId);
+
+        $status = $filters['status'] ?? PayoutAccount::STATUS_ACTIVE;
+        $query->where('status', $status);
+
+        return $query->orderByDesc('updated_at')->get();
+    }
+
+    public function cancelWithdrawal(int $instructorId, int $withdrawalId): bool
+    {
+        $withdrawal = WithdrawRequest::where('user_id', $instructorId)
+            ->where('id', $withdrawalId)
+            ->first();
+
+        if (!$withdrawal) {
+            return false;
+        }
+
+        if ($withdrawal->status !== WithdrawRequest::STATUS_PENDING) {
+            throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException('Chỉ có thể hủy yêu cầu rút tiền đang chờ xử lý.');
+        }
+
+        $withdrawal->update([
+            'status' => WithdrawRequest::STATUS_CANCELLED,
+            'updated_at' => now(),
+        ]);
+
+        return true;
     }
 
     private function maskAccount(string $accountNumber): string
@@ -99,75 +142,4 @@ class InstructorWithdrawalRepository
     {
         return number_format((float) $amount, 2, '.', '');
     }
-    public function getWithdrawalDetail(int $instructorId, int $withdrawalId): ?array
-    {
-        $withdrawal = DB::table('withdraw_requests')
-            ->where('user_id', $instructorId)
-            ->where('id', $withdrawalId)
-            ->select([
-                'id',
-                'amount',
-                'status',
-                'requested_at',
-                'approved_at',
-                'paid_at',
-                'rejected_reason',
-                'provider_payout_id',
-                'account_number_snapshot',
-                'account_name_snapshot',
-            ])
-            ->first();
-
-        if (!$withdrawal) {
-            return null;
-        }
-
-        return [
-            'id' => (int) $withdrawal->id,
-            'amount' => $this->money($withdrawal->amount),
-            'status' => $withdrawal->status,
-            'requested_at' => $withdrawal->requested_at,
-            'approved_at' => $withdrawal->approved_at,
-            'paid_at' => $withdrawal->paid_at,
-            'rejected_reason' => $withdrawal->rejected_reason,
-            'provider_payout_id' => $withdrawal->provider_payout_id,
-            'account_number_masked' => $this->maskAccount((string) $withdrawal->account_number_snapshot),
-            'account_name' => $withdrawal->account_name_snapshot,
-        ];
-    }
-    public function createWithdrawal(int $instructorId, array $data): ?array
-    {
-        $withdrawalId = DB::table('withdraw_requests')->insertGetId([
-            'user_id' => $instructorId,
-            'amount' => $data['amount'],
-            'status' => 'pending',
-            'requested_at' => now(),
-            'account_number_snapshot' => $data['account_number'],
-            'account_name_snapshot' => $data['account_name'],
-        ]);
-
-        return $this->getWithdrawalDetail($instructorId, (int) $withdrawalId);
-    }
-    public function getPayoutAccount(int $instructorId): ?array
-    {
-        $payoutAccount = DB::table('payout_accounts')
-            ->where('user_id', $instructorId)
-            ->where('status', 'active')
-            ->whereNull('deleted_at')
-            ->orderByDesc('updated_at')
-            ->first();
-
-        if (!$payoutAccount) {
-            return null;
-        }
-
-        return [
-            'id' => (int) $payoutAccount->id,
-            'provider' => $payoutAccount->provider,
-            'account_number_masked' => $this->maskAccount((string) $payoutAccount->account_number),
-            'account_name' => $payoutAccount->account_name,
-            'status' => $payoutAccount->status,
-        ];
-    }
-
 }

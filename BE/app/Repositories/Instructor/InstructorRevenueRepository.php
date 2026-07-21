@@ -28,12 +28,20 @@ class InstructorRevenueRepository
                 COALESCE(SUM(revenues.instructor_amount), 0) as instructor_amount,
                 COALESCE(SUM(revenues.platform_fee_amount), 0) as platform_fee_amount,
                 MIN(revenues.earned_at) as first_earned_at,
-                MAX(revenues.earned_at) as last_earned_at
+                MAX(revenues.earned_at) as last_earned_at,
+                COALESCE(revenues.sale_source, "marketplace_default") as sale_source,
+                COALESCE(revenues.commission_rule_code, "marketplace_default") as commission_rule_code,
+                COALESCE(revenues.instructor_percent, 70.00) as instructor_percent,
+                COALESCE(revenues.platform_percent, 30.00) as platform_percent
             ')
             ->groupBy(
                 'revenues.course_id',
                 'courses.title',
-                DB::raw('DATE_FORMAT(revenues.earned_at, "%Y-%m")')
+                DB::raw('DATE_FORMAT(revenues.earned_at, "%Y-%m")'),
+                'revenues.sale_source',
+                'revenues.commission_rule_code',
+                'revenues.instructor_percent',
+                'revenues.platform_percent'
             )
             ->orderByDesc('revenue_month')
             ->orderBy('courses.title');
@@ -152,9 +160,17 @@ class InstructorRevenueRepository
 
     private function formatItems(LengthAwarePaginator $paginator): array
     {
+        $labels = [
+            'marketplace_default' => 'Marketplace mặc định',
+            'platform_ads' => 'Quảng cáo nền tảng',
+            'admin_campaign' => 'Chiến dịch admin',
+            'instructor_coupon' => 'Mã giảm giá giảng viên',
+            'instructor_referral' => 'Link giới thiệu giảng viên',
+        ];
+
         return $paginator
             ->getCollection()
-            ->map(function ($row): array {
+            ->map(function ($row) use ($labels): array {
                 return [
                     'course_id' => (int) $row->course_id,
                     'course_title' => $row->course_title,
@@ -165,6 +181,11 @@ class InstructorRevenueRepository
                     'platform_fee_amount' => $this->formatMoney($row->platform_fee_amount),
                     'first_earned_at' => $row->first_earned_at,
                     'last_earned_at' => $row->last_earned_at,
+                    'sale_source' => $row->sale_source,
+                    'sale_source_label' => $labels[$row->sale_source] ?? 'Marketplace mặc định',
+                    'commission_rule_code' => $row->commission_rule_code,
+                    'instructor_percent' => (float) $row->instructor_percent,
+                    'platform_percent' => (float) $row->platform_percent,
                 ];
             })
             ->values()
