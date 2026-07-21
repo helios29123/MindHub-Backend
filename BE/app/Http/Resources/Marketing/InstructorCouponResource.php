@@ -37,6 +37,7 @@ class InstructorCouponResource extends JsonResource
             'status_label' => $this->statusLabel($this->status),
             'effective_status' => $effectiveStatus,
             'effective_status_label' => $this->statusLabel($effectiveStatus),
+            'computed_status' => $effectiveStatus,
             'created_at' => $this->formatDate($this->created_at),
             'updated_at' => $this->formatDate($this->updated_at),
         ];

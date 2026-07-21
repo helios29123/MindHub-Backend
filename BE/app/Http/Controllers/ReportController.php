@@ -322,4 +322,186 @@ final class ReportController extends Controller
             'Lấy thông báo dashboard thành công.'
         );
     }
+
+    public function incompleteCourses(Request $request): JsonResponse
+    {
+        $instructorId = (int) $request->user()->id;
+        $courses = \Illuminate\Support\Facades\DB::table('courses')
+            ->where('instructor_id', $instructorId)
+            ->whereNull('deleted_at')
+            ->get();
+
+        $incomplete = [];
+        $checklistService = app(CourseChecklistService::class);
+
+        foreach ($courses as $course) {
+            try {
+                $checklist = $checklistService->getChecklist($instructorId, $course->id);
+                if (!$checklist['passed']) {
+                    $incomplete[] = [
+                        'id' => (int) $course->id,
+                        'title' => $course->title,
+                        'status' => $course->status,
+                        'missing_items' => $checklist['missing_items'],
+                        'warnings' => $checklist['warnings'],
+                    ];
+                }
+            } catch (\Exception $e) {
+                // Skip if error
+            }
+        }
+
+        return ApiResponse::success(
+            $incomplete,
+            'Lấy danh sách khóa học chưa hoàn thiện thành công.'
+        );
+    }
+
+    public function courseBreakdown(Request $request): JsonResponse
+    {
+        $instructorId = (int) $request->user()->id;
+
+        $breakdown = \Illuminate\Support\Facades\DB::table('courses')
+            ->leftJoin('revenues', function ($join) {
+                $join->on('revenues.course_id', '=', 'courses.id')
+                    ->whereIn('revenues.status', ['available', 'withdrawn']);
+            })
+            ->where('courses.instructor_id', $instructorId)
+            ->whereNull('courses.deleted_at')
+            ->selectRaw('
+                courses.id as course_id,
+                courses.title,
+                courses.status,
+                COUNT(revenues.id) as total_orders,
+                COALESCE(SUM(revenues.gross_amount), 0) as gross_amount,
+                COALESCE(SUM(revenues.instructor_amount), 0) as instructor_amount,
+                COALESCE(SUM(revenues.platform_fee_amount), 0) as platform_fee_amount
+            ')
+            ->groupBy('courses.id', 'courses.title', 'courses.status')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'course_id' => (int) $row->course_id,
+                    'title' => $row->title,
+                    'status' => $row->status,
+                    'total_orders' => (int) $row->total_orders,
+                    'gross_amount' => number_format((float) $row->gross_amount, 2, '.', ''),
+                    'instructor_amount' => number_format((float) $row->instructor_amount, 2, '.', ''),
+                    'platform_fee_amount' => number_format((float) $row->platform_fee_amount, 2, '.', ''),
+                ];
+            })
+            ->all();
+
+        return ApiResponse::success(
+            $breakdown,
+            'Lấy báo cáo doanh thu theo khóa học thành công.'
+        );
+    }
+
+    public function topCoursesByRevenue(Request $request): JsonResponse
+    {
+        $instructorId = (int) $request->user()->id;
+        $limit = min(max((int) ($request->query('limit') ?? 10), 1), 20);
+
+        $top = \Illuminate\Support\Facades\DB::table('courses')
+            ->join('revenues', function ($join) {
+                $join->on('revenues.course_id', '=', 'courses.id')
+                    ->whereIn('revenues.status', ['available', 'withdrawn']);
+            })
+            ->where('courses.instructor_id', $instructorId)
+            ->whereNull('courses.deleted_at')
+            ->selectRaw('
+                courses.id as course_id,
+                courses.title,
+                courses.status,
+                COUNT(revenues.id) as total_orders,
+                COALESCE(SUM(revenues.gross_amount), 0) as gross_amount,
+                COALESCE(SUM(revenues.instructor_amount), 0) as instructor_amount,
+                COALESCE(SUM(revenues.platform_fee_amount), 0) as platform_fee_amount
+            ')
+            ->groupBy('courses.id', 'courses.title', 'courses.status')
+            ->orderByDesc('instructor_amount')
+            ->limit($limit)
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'course_id' => (int) $row->course_id,
+                    'title' => $row->title,
+                    'status' => $row->status,
+                    'total_orders' => (int) $row->total_orders,
+                    'gross_amount' => number_format((float) $row->gross_amount, 2, '.', ''),
+                    'instructor_amount' => number_format((float) $row->instructor_amount, 2, '.', ''),
+                    'platform_fee_amount' => number_format((float) $row->platform_fee_amount, 2, '.', ''),
+                ];
+            })
+            ->all();
+
+        return ApiResponse::success(
+            $top,
+            'Lấy top khóa học theo doanh thu thành công.'
+        );
+    }
+
+    public function revenueSummary(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $instructorId = (int) $request->user()->id;
+
+        $startDate = now()->startOfMonth();
+        $endDate = now()->endOfMonth();
+
+        if ($request->query('date_from') && $request->query('date_to')) {
+            $startDate = \Illuminate\Support\Carbon::parse($request->query('date_from'));
+            $endDate = \Illuminate\Support\Carbon::parse($request->query('date_to'));
+        }
+
+        $row = \Illuminate\Support\Facades\DB::table('revenues')
+            ->where('instructor_id', $instructorId)
+            ->whereBetween('earned_at', [$startDate->startOfDay(), $endDate->endOfDay()])
+            ->whereIn('status', ['available', 'withdrawn'])
+            ->selectRaw('
+                COALESCE(SUM(gross_amount), 0) as gross_amount,
+                COALESCE(SUM(instructor_amount), 0) as instructor_amount,
+                COALESCE(SUM(platform_fee_amount), 0) as platform_fee_amount
+            ')
+            ->first();
+
+        $breakdownRows = \Illuminate\Support\Facades\DB::table('revenues')
+            ->where('instructor_id', $instructorId)
+            ->whereBetween('earned_at', [$startDate->startOfDay(), $endDate->endOfDay()])
+            ->whereIn('status', ['available', 'withdrawn'])
+            ->selectRaw('
+                COALESCE(sale_source, "marketplace_default") as sale_source,
+                COALESCE(SUM(gross_amount), 0) as gross_amount,
+                COALESCE(SUM(instructor_amount), 0) as instructor_amount,
+                COALESCE(SUM(platform_fee_amount), 0) as platform_fee_amount
+            ')
+            ->groupBy(\Illuminate\Support\Facades\DB::raw('COALESCE(sale_source, "marketplace_default")'))
+            ->get();
+
+        $labels = [
+            'marketplace_default' => 'Marketplace mặc định',
+            'platform_ads' => 'Quảng cáo nền tảng',
+            'admin_campaign' => 'Chiến dịch admin',
+            'instructor_coupon' => 'Mã giảm giá giảng viên',
+            'instructor_referral' => 'Link giới thiệu giảng viên',
+        ];
+
+        $sourceBreakdown = $breakdownRows->map(function ($row) use ($labels) {
+            $source = $row->sale_source;
+            return [
+                'sale_source' => $source,
+                'sale_source_label' => $labels[$source] ?? 'Marketplace mặc định',
+                'gross_revenue' => number_format((float) $row->gross_amount, 2, '.', ''),
+                'instructor_revenue' => number_format((float) $row->instructor_amount, 2, '.', ''),
+                'platform_fee' => number_format((float) $row->platform_fee_amount, 2, '.', ''),
+            ];
+        })->all();
+
+        return ApiResponse::success([
+            'gross_amount' => number_format((float) ($row->gross_amount ?? 0), 2, '.', ''),
+            'instructor_amount' => number_format((float) ($row->instructor_amount ?? 0), 2, '.', ''),
+            'platform_fee_amount' => number_format((float) ($row->platform_fee_amount ?? 0), 2, '.', ''),
+            'source_breakdown' => $sourceBreakdown,
+        ], 'Lấy tổng quan doanh thu thành công.');
+    }
 }

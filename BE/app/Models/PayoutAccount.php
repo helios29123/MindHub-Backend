@@ -25,10 +25,12 @@ class PayoutAccount extends Model
         'account_name',
         'connected_at',
         'status',
+        'is_default',
     ];
 
     protected $casts = [
         'connected_at' => 'datetime',
+        'is_default' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

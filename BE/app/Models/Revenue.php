@@ -24,6 +24,11 @@ class Revenue extends Model
         'status',
         'earned_at',
         'created_at',
+        'sale_source',
+        'commission_rule_id',
+        'commission_rule_code',
+        'instructor_percent',
+        'platform_percent',
     ];
 
     protected $casts = [
@@ -32,6 +37,9 @@ class Revenue extends Model
         'platform_fee_amount' => 'decimal:2',
         'earned_at' => 'datetime',
         'created_at' => 'datetime',
+        'commission_rule_id' => 'integer',
+        'instructor_percent' => 'decimal:2',
+        'platform_percent' => 'decimal:2',
     ];
 
     public function instructor(): BelongsTo

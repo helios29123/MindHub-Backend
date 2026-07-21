@@ -7,6 +7,9 @@ use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\InstructorWithdrawalController;
 use App\Http\Controllers\InstructorProfileController;
 use App\Http\Controllers\MarketingController;
+use App\Http\Controllers\InstructorCouponController;
+use App\Http\Controllers\InstructorPayoutAccountController;
+use App\Http\Controllers\InstructorNotificationController;
 use Illuminate\Support\Facades\Route;
 /*
 |--------------------------------------------------------------------------
@@ -97,9 +100,34 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         Route::get('/questions/summary', [InteractionController::class, 'instructorQuestionSummary']);
         Route::get('/questions/course-options', [InteractionController::class, 'instructorQuestionCourseOptions']);
         Route::get('/questions/lesson-options', [InteractionController::class, 'instructorQuestionLessonOptions']);
-        Route::get('/questions', [InteractionController::class, 'instructorQuestions']);
+        Route::get('/questions', [InteractionController::class, 'instructorQuestions'])->name('instructor.questions.index');
         Route::get('/questions/{id}', [InteractionController::class, 'showInstructorQuestion'])
             ->whereNumber('id');
+        Route::post('/questions/{id}/reply', [InteractionController::class, 'replyInstructorQuestion'])
+            ->whereNumber('id');
+        Route::patch('/questions/{id}/hide', [InteractionController::class, 'hideInstructorQuestion'])
+            ->whereNumber('id');
+        Route::patch('/questions/{id}/show', [InteractionController::class, 'showHiddenInstructorQuestion'])
+            ->whereNumber('id');
+        Route::delete('/questions/{id}', [InteractionController::class, 'deleteInstructorQuestion'])
+            ->whereNumber('id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Coupons management
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/coupons/summary', [InstructorCouponController::class, 'summary']);
+        Route::get('/coupons/course-options', [InstructorCouponController::class, 'courseOptions']);
+        Route::get('/coupons/check-code', [InstructorCouponController::class, 'checkCode']);
+        Route::get('/coupons', [InstructorCouponController::class, 'index']);
+        Route::post('/coupons', [InstructorCouponController::class, 'store']);
+        Route::get('/coupons/{id}', [InstructorCouponController::class, 'show'])->whereNumber('id');
+        Route::patch('/coupons/{id}', [InstructorCouponController::class, 'update'])->whereNumber('id');
+        Route::patch('/coupons/{id}/enable', [InstructorCouponController::class, 'enable'])->whereNumber('id');
+        Route::patch('/coupons/{id}/disable', [InstructorCouponController::class, 'disable'])->whereNumber('id');
+        Route::patch('/coupons/{id}/status', [InstructorCouponController::class, 'updateStatus'])->whereNumber('id');
+        Route::delete('/coupons/{id}', [InstructorCouponController::class, 'destroy'])->whereNumber('id');
         /*
 |--------------------------------------------------------------------------
 | Ghi chú
@@ -123,12 +151,39 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         Route::patch('/profile/expertise', [InstructorProfileController::class, 'updateExpertise']);
         Route::get('/profile/completion', [InstructorProfileController::class, 'completion']);
         Route::get('/revenue', [InstructorCourseController::class, 'revenue']);
-        Route::get('/withdrawals/summary', [InstructorWithdrawalController::class, 'summary']);
-        Route::get('/withdrawals', [InstructorWithdrawalController::class, 'index']);
+        Route::get('/withdrawals/summary', [InstructorWithdrawalController::class, 'summary'])
+            ->name('instructor.withdrawals.summary');
+        Route::get('/withdrawals', [InstructorWithdrawalController::class, 'index'])
+            ->name('instructor.withdrawals.index');
         Route::post('/withdrawals', [InstructorWithdrawalController::class, 'store']);
         Route::get('/withdrawals/{id}', [InstructorWithdrawalController::class, 'show'])
             ->whereNumber('id');
-        Route::get('/payout-accounts', [InstructorWithdrawalController::class, 'payoutAccounts']);
+        Route::patch('/withdrawals/{id}/cancel', [InstructorWithdrawalController::class, 'cancel'])
+            ->whereNumber('id');
+        /*
+        |--------------------------------------------------------------------------
+        | Payout accounts management
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/payout-accounts', [InstructorPayoutAccountController::class, 'index']);
+        Route::get('/payout-accounts/default', [InstructorPayoutAccountController::class, 'default']);
+        Route::get('/payout-accounts/{id}', [InstructorPayoutAccountController::class, 'show'])->whereNumber('id');
+        Route::post('/payout-accounts', [InstructorPayoutAccountController::class, 'store']);
+        Route::patch('/payout-accounts/{id}', [InstructorPayoutAccountController::class, 'update'])->whereNumber('id');
+        Route::patch('/payout-accounts/{id}/set-default', [InstructorPayoutAccountController::class, 'setDefault'])->whereNumber('id');
+        Route::patch('/payout-accounts/{id}/disable', [InstructorPayoutAccountController::class, 'disable'])->whereNumber('id');
+        Route::delete('/payout-accounts/{id}', [InstructorPayoutAccountController::class, 'destroy'])->whereNumber('id');
+        /*
+        |--------------------------------------------------------------------------
+        | Notifications management
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/notifications/unread-count', [InstructorNotificationController::class, 'unreadCount']);
+        Route::patch('/notifications/read-all', [InstructorNotificationController::class, 'readAll']);
+        Route::get('/notifications', [InstructorNotificationController::class, 'index']);
+        Route::get('/notifications/{id}', [InstructorNotificationController::class, 'show'])->whereNumber('id');
+        Route::patch('/notifications/{id}/read', [InstructorNotificationController::class, 'read'])->whereNumber('id');
+        Route::delete('/notifications/{id}', [InstructorNotificationController::class, 'destroy'])->whereNumber('id');
         /*
 |--------------------------------------------------------------------------
 | Ghi chú
@@ -169,6 +224,29 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         Route::get('/dashboard', [ReportController::class, 'instructorDashboard'])
             ->name('instructor.dashboard');
 
+        Route::get('/dashboard/revenue-chart', [ReportController::class, 'instructorRevenueChart'])
+            ->name('instructor.dashboard.revenue-chart');
+
+        Route::get('/dashboard/enrollment-chart', [ReportController::class, 'instructorEnrollmentChart'])
+            ->name('instructor.dashboard.enrollment-chart');
+
+        Route::get('/dashboard/top-courses', [ReportController::class, 'instructorTopCourses'])
+            ->name('instructor.dashboard.top-courses');
+
+        Route::get('/dashboard/incomplete-courses', [ReportController::class, 'incompleteCourses'])
+            ->name('instructor.dashboard.incomplete-courses');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Revenues & Reports routes
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/revenues/summary', [ReportController::class, 'revenueSummary']);
+        Route::get('/revenues/chart', [ReportController::class, 'instructorRevenueChart']);
+        Route::get('/revenues/enrollment-chart', [ReportController::class, 'instructorEnrollmentChart']);
+        Route::get('/revenues/top-courses', [ReportController::class, 'topCoursesByRevenue']);
+        Route::get('/revenues/course-breakdown', [ReportController::class, 'courseBreakdown']);
+
         Route::get('/courses', [InstructorCourseController::class, 'index'])
             ->name('instructor.courses.index');
 
@@ -184,14 +262,9 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         Route::get('/reports/top-courses', [ReportController::class, 'instructorTopCourses'])
             ->name('instructor.reports.top-courses');
 
-        Route::get('/withdrawals/summary', [InstructorCourseController::class, 'withdrawSummary'])
-            ->name('instructor.withdrawals.summary');
 
-        Route::get('/withdrawals', [InstructorCourseController::class, 'withdrawals'])
-            ->name('instructor.withdrawals.index');
 
-        Route::get('/questions', [InteractionController::class, 'instructorQuestions'])
-            ->name('instructor.questions.index');
+
 
         Route::get('/dashboard/alerts', [ReportController::class, 'instructorDashboardAlerts'])
             ->name('instructor.dashboard.alerts');

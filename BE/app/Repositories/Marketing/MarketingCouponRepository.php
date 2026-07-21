@@ -14,15 +14,46 @@ class MarketingCouponRepository
             ->whereHas('course', function ($courseQuery) use ($instructorId): void {
                 $courseQuery->where('instructor_id', $instructorId);
             });
+
         if (!empty($filters['course_id'])) {
             $query->where('course_id', (int) $filters['course_id']);
         }
+
+        if (!empty($filters['search'])) {
+            $search = '%' . $filters['search'] . '%';
+            $query->where(function ($q) use ($search) {
+                $q->where('code', 'like', $search)
+                  ->orWhere('name', 'like', $search);
+            });
+        }
+
+        $now = now();
+
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $status = $filters['status'];
+            if ($status === 'active') {
+                $query->where('status', 'active')
+                    ->where(function ($q) use ($now) {
+                        $q->whereNull('end_at')->orWhere('end_at', '>=', $now);
+                    })
+                    ->where(function ($q) {
+                        $q->whereNull('usage_limit')->orWhereRaw('used_count < usage_limit');
+                    });
+            } elseif ($status === 'inactive') {
+                $query->where('status', 'inactive');
+            } elseif ($status === 'expired') {
+                $query->where('status', 'active')
+                    ->whereNotNull('end_at')
+                    ->where('end_at', '<', $now);
+            } elseif ($status === 'used_up') {
+                $query->where('status', 'active')
+                    ->whereNotNull('usage_limit')
+                    ->whereRaw('used_count >= usage_limit');
+            } else {
+                $query->where('status', $status);
+            }
         }
-        if (!empty($filters['code'])) {
-            $query->where('code', 'like', '%' . $filters['code'] . '%');
-        }
+
         return $query
             ->orderByDesc('id')
             ->paginate($perPage);

@@ -16,7 +16,8 @@ class InstructorQuestionQueryRequest extends FormRequest
         return [
             'course_id' => ['nullable', 'integer', 'exists:courses,id'],
             'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
-            'status' => ['nullable', 'in:answered,unanswered'],
+            'status' => ['nullable', 'in:all,answered,unanswered'],
+            'sort' => ['nullable', 'in:newest,oldest'],
             'search' => ['nullable', 'string', 'max:255'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],

@@ -607,19 +607,6 @@ final class InstructorCourseController extends Controller
         return $validator->validated();
     }
 
-    public function withdraw(InstructorWithdrawRequest $request): JsonResponse
-    {
-        $withdrawRequest = $this->instructorCourseService->createWithdrawRequest(
-            $request->user(),
-            $request->validated(),
-        );
-
-        return ApiResponse::success(
-            new WithdrawRequestResource($withdrawRequest),
-            "Thao tác thành công.",
-            201,
-        );
-    }
 
     public function learners(CourseLearnerQueryRequest $request, int $id): JsonResponse
     {
@@ -671,38 +658,6 @@ public function allLearners(InstructorLearnerIndexRequest $request): JsonRespons
         );
     }
 
-public function withdrawSummary(InstructorWithdrawSummaryRequest $request): JsonResponse
-    {
-        $data = app(InstructorWithdrawalService::class)->getSummary(
-            (int) $request->user()->id,
-            $request->validated()
-        );
-
-        return ApiResponse::success(
-            (new InstructorWithdrawSummaryResource($data))->resolve($request),
-            'Thao tác thành công.'
-        );
-    }
-
-public function withdrawals(InstructorWithdrawIndexRequest $request): JsonResponse
-    {
-        $paginator = app(InstructorWithdrawalService::class)->paginateWithdrawals(
-            (int) $request->user()->id,
-            $request->validated()
-        );
-
-        return ApiResponse::success(
-            InstructorWithdrawResource::collection(collect($paginator->items()))->resolve($request),
-            'Thao tác thành công.',
-            200,
-            [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-            ]
-        );
-    }
 
 public function index(InstructorCourseIndexRequest $request): JsonResponse
     {
