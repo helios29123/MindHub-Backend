@@ -6,6 +6,8 @@ info:
     Cung cấp đầy đủ mô tả chi tiết đầu vào/đầu ra, mã lỗi HTTP và chức năng thử nghiệm API trực tiếp.
   version: 1.0.0
 servers:
+  - url: http://62.171.157.22/api
+    description: Production API Server
   - url: http://localhost/api
     description: Local Laragon Server
   - url: http://localhost:8000/api
@@ -4568,10 +4570,74 @@ paths:
           description: Chưa đăng nhập.
         '403':
           description: Không phải giảng viên.
+
+  /instructor/profile/account:
     patch:
       tags:
         - Instructor Management
-      summary: "[INS-01] Cập nhật hồ sơ giảng viên"
+      summary: "Cập nhật thông tin tài khoản giảng viên"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - full_name
+              properties:
+                full_name:
+                  type: string
+                  example: Nguyễn Văn A
+      responses:
+        '200':
+          description: Cập nhật thông tin tài khoản thành công.
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /instructor/profile/expertise:
+    patch:
+      tags:
+        - Instructor Management
+      summary: "Cập nhật chuyên môn giảng viên"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expertise:
+                  type: string
+                  example: Web Development
+                experience_years:
+                  type: integer
+                  example: 5
+                level:
+                  type: string
+                  example: Senior
+      responses:
+        '200':
+          description: Cập nhật chuyên môn giảng viên thành công.
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên.
+        '422':
+          description: Dữ liệu không hợp lệ.
+
+  /instructor/profile/introduction:
+    patch:
+      tags:
+        - Instructor Management
+      summary: "Cập nhật giới thiệu giảng viên"
       security:
         - BearerAuth: []
       requestBody:
@@ -4584,22 +4650,58 @@ paths:
                 bio:
                   type: string
                   example: Giảng viên lập trình PHP/Laravel
-                expertise:
-                  type: string
-                  example: Web Development
-                experience_years:
-                  type: integer
-                  example: 6
-                level:
-                  type: string
-                  example: Expert
       responses:
         '200':
-          description: Thao tác thành công.
+          description: Cập nhật giới thiệu giảng viên thành công.
         '401':
           description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên.
         '422':
           description: Dữ liệu không hợp lệ.
+
+  /instructor/profile/completion:
+    get:
+      tags:
+        - Instructor Management
+      summary: "Lấy trạng thái hoàn thiện hồ sơ giảng viên"
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lấy trạng thái hoàn thiện hồ sơ thành công.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lấy trạng thái hoàn thiện hồ sơ thành công.
+                  data:
+                    type: object
+                    properties:
+                      completed_fields:
+                        type: integer
+                        example: 3
+                      total_fields:
+                        type: integer
+                        example: 4
+                      is_completed:
+                        type: boolean
+                        example: false
+                      missing_fields:
+                        type: array
+                        items:
+                          type: string
+                        example: ["bio"]
+        '401':
+          description: Chưa đăng nhập.
+        '403':
+          description: Không phải giảng viên.
 
   /instructor/sections:
     get:

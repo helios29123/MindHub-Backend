@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Swagger UI CSS -->
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    <link rel="stylesheet" type="text/css" href="swagger-ui/swagger-ui.css" />
     
     <!-- Custom Premium Light Mode Styles -->
     <style>
@@ -460,12 +460,13 @@
     <div id="swagger-ui"></div>
 
     <!-- Swagger UI Scripts -->
-    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+    <script src="swagger-ui/swagger-ui-bundle.js"></script>
+    <script src="swagger-ui/swagger-ui-standalone-preset.js"></script>
+    <script src="swagger-ui/openapi-spec.js"></script>
     <script>
         window.onload = function() {
             window.ui = SwaggerUIBundle({
-                url: "openapi.yaml",
+                spec: window.swaggerSpec,
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [
