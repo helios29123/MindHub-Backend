@@ -13,14 +13,19 @@ use App\Http\Resources\Auth\AuthResource;
 use App\Http\Resources\User\UserResource;
 use App\Models\AuthSession;
 use App\Services\Auth\AuthService;
+use App\Services\Auth\GoogleTokenVerifier;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class AuthController extends Controller
 {
     public function __construct(
-        private readonly AuthService $authService
+        private readonly AuthService $authService,
+        private readonly GoogleTokenVerifier $googleTokenVerifier
     ) {
     }
 
@@ -101,6 +106,71 @@ class AuthController extends Controller
         );
     }
 
+    public function googleRedirect(Request $request): JsonResponse
+    {
+        $clientId = config('services.google.client_id');
+        $clientSecret = config('services.google.client_secret');
+        $redirectUri = config('services.google.redirect', 'http://localhost:8000/auth/google/callback');
+
+        if (empty($clientId) || empty($clientSecret) || empty($redirectUri)) {
+            return ApiResponse::error('Đăng nhập Google chưa được cấu hình trên máy chủ.', [
+                'code' => 'GOOGLE_OAUTH_NOT_CONFIGURED',
+            ], 503);
+        }
+
+        $scope = urlencode('openid email profile');
+        $url = "https://accounts.google.com/o/oauth2/v2/auth?client_id={$clientId}&redirect_uri=" . urlencode($redirectUri) . "&response_type=code&scope={$scope}&prompt=select_account";
+
+        return ApiResponse::success([
+            'url' => $url,
+        ], 'Tạo URL đăng nhập Google thành công.');
+    }
+
+    public function googleCallback(Request $request)
+    {
+        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'));
+        $code = $request->query('code');
+
+        if (! $code) {
+            return redirect("{$frontendUrl}/auth/google/callback?status=error&code=google_auth_failed");
+        }
+
+        try {
+            $clientId = config('services.google.client_id');
+            $clientSecret = config('services.google.client_secret');
+            $redirectUri = config('services.google.redirect', 'http://localhost:8000/auth/google/callback');
+
+            $tokenResponse = Http::asForm()->timeout(15)->post('https://oauth2.googleapis.com/token', [
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'redirect_uri' => $redirectUri,
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+            ]);
+
+            if (! $tokenResponse->successful()) {
+                return redirect("{$frontendUrl}/auth/google/callback?status=error&code=google_token_exchange_failed");
+            }
+
+            $tokenData = $tokenResponse->json();
+            $idToken = $tokenData['id_token'] ?? null;
+
+            if (! $idToken) {
+                return redirect("{$frontendUrl}/auth/google/callback?status=error&code=missing_id_token");
+            }
+
+            $googleUser = $this->googleTokenVerifier->verify($idToken);
+            $this->authService->handleGoogleUser($googleUser, $request);
+
+            return redirect("{$frontendUrl}/auth/google/callback?status=success");
+        } catch (\App\Exceptions\BusinessException $e) {
+            $errorCode = $e->getStatusCode() === 403 ? 'account_disabled' : 'google_auth_failed';
+            return redirect("{$frontendUrl}/auth/google/callback?status=error&code={$errorCode}");
+        } catch (Throwable $e) {
+            return redirect("{$frontendUrl}/auth/google/callback?status=error&code=google_auth_failed");
+        }
+    }
+
     public function googleLogin(GoogleLoginRequest $request): JsonResponse
     {
         $authResult = $this->authService->googleLogin(
@@ -137,12 +207,7 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         $session = $request->attributes->get('auth_session');
-
-        if (! $session instanceof AuthSession) {
-            return ApiResponse::error('Unauthenticated.', [], 401);
-        }
-
-        $this->authService->logout($session);
+        $this->authService->logout($session instanceof AuthSession ? $session : null, $request);
 
         return ApiResponse::success(
             null,
@@ -152,7 +217,7 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = Auth::guard('web')->user() ?: $request->user();
 
         if (! $user) {
             return ApiResponse::error('Unauthenticated.', [], 401);

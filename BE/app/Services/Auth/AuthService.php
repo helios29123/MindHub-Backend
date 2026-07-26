@@ -12,6 +12,7 @@ use App\Repositories\User\UserRepository;
 use App\Repositories\User\UserSessionRepository;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -33,25 +34,11 @@ class AuthService
     ) {
     }
 
-    /**
-     * Route cũ /api/auth/register
-     * Mặc định xử lý như đăng ký learner để không làm hỏng frontend cũ.
-     */
     public function register(array $registerData): array
     {
         return $this->registerLearner($registerData);
     }
 
-    /**
-     * AUTH-01: Đăng ký học viên.
-     *
-     * Luồng:
-     * - Check email trùng.
-     * - Check phone trùng.
-     * - Tạo user role=learner, status=inactive.
-     * - Gửi email xác thực.
-     * - Sau khi verify email, learner mới được active.
-     */
     public function registerLearner(array $registerData): array
     {
         $this->ensureEmailAndPhoneAreUnique(
@@ -82,18 +69,6 @@ class AuthService
         });
     }
 
-    /**
-     * AUTH-01 mở rộng: Đăng ký giảng viên.
-     *
-     * Luồng:
-     * - Check email trùng.
-     * - Check phone trùng.
-     * - Tạo user role=instructor, status=inactive.
-     * - Tạo instructor_profiles.
-     * - Tạo payout_accounts status=pending_verification.
-     * - Gửi email xác thực.
-     * - Sau khi verify email, instructor vẫn inactive để chờ admin duyệt.
-     */
     public function registerInstructor(array $registerData): array
     {
         $this->ensureEmailAndPhoneAreUnique(
@@ -123,15 +98,6 @@ class AuthService
                 'level' => $registerData['level'] ?? null,
             ]);
 
-            // $this->payoutAccountRepository->create([
-            //     'user_id' => $user->id,
-            //     'provider' => $registerData['bank_provider'] ?? 'Chưa cập nhật',
-            //     'account_number' => $registerData['bank_account_number'] ?? 'Chưa cập nhật',
-            //     'account_name' => $registerData['bank_account_name'] ?? 'Chưa cập nhật',
-            //     'connected_at' => null,
-            //     'status' => 'pending_verification',
-            // ]);
-
             $verifyUrl = $this->sendVerifyEmail($user);
 
             return [
@@ -142,9 +108,6 @@ class AuthService
         });
     }
 
-    /**
-     * AUTH-02: Tạo link xác thực email có chữ ký và thời hạn.
-     */
     public function createEmailVerificationUrl(User $user): string
     {
         return URL::temporarySignedRoute(
@@ -157,12 +120,6 @@ class AuthService
         );
     }
 
-    /**
-     * AUTH-02: Gửi email xác thực.
-     *
-     * Nếu MAIL_MAILER=log thì email sẽ ghi vào storage/logs/laravel.log.
-     * Nếu MAIL_MAILER=smtp thì gửi mail thật.
-     */
     public function sendVerifyEmail(User $user): string
     {
         $verifyUrl = $this->createEmailVerificationUrl($user);
@@ -174,17 +131,6 @@ class AuthService
         return $verifyUrl;
     }
 
-    /**
-     * AUTH-02: Xác thực email.
-     *
-     * Learner:
-     * - email_verified_at = now()
-     * - status = active
-     *
-     * Instructor:
-     * - email_verified_at = now()
-     * - status vẫn inactive để chờ admin duyệt hồ sơ
-     */
     public function verifyEmail(int $userId, string $hash): User
     {
         $user = $this->userRepository->findById($userId);
@@ -212,9 +158,6 @@ class AuthService
         return $this->userRepository->update($user, $updateData);
     }
 
-    /**
-     * AUTH-02: Gửi lại link xác thực email.
-     */
     public function resendVerifyEmail(array $data): array
     {
         $user = $this->userRepository->findByEmail($data['email']);
@@ -238,12 +181,9 @@ class AuthService
         ];
     }
 
-    /**
-     * AUTH-03: Đăng nhập bằng email/password.
-     */
     public function login(array $loginData, Request $request): array
     {
-        $user = $this->userRepository->findByEmail($loginData['email']);
+        $user = $this->userRepository->findByEmail(strtolower(trim($loginData['email'])));
 
         if (
             ! $user ||
@@ -256,6 +196,9 @@ class AuthService
         $this->ensureUserCanLogin($user);
 
         return DB::transaction(function () use ($user, $loginData, $request) {
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+
             $authPayload = $this->createAuthenticatedSession(
                 $user,
                 $loginData['device_name'] ?? null,
@@ -270,23 +213,21 @@ class AuthService
         });
     }
 
-    /**
-     * AUTH-04: Đăng nhập Google.
-     *
-     * Nếu user chưa tồn tại:
-     * - Tạo learner active.
-     * - email_verified_at = now().
-     *
-     * Nếu user đã tồn tại:
-     * - Check locked/inactive.
-     * - Gắn oauth_account_login.
-     * - Cập nhật email_verified_at nếu còn null.
-     */
     public function googleLogin(array $googleLoginData, Request $request): array
     {
         $googleUser = $this->googleTokenVerifier->verify($googleLoginData['google_token']);
+        $user = $this->handleGoogleUser($googleUser, $request);
 
-        return DB::transaction(function () use ($googleUser, $googleLoginData, $request) {
+        return $this->createAuthenticatedSession(
+            $user,
+            $googleLoginData['device_name'] ?? null,
+            $request
+        );
+    }
+
+    public function handleGoogleUser(array $googleUser, Request $request): User
+    {
+        return DB::transaction(function () use ($googleUser, $request) {
             $provider = $googleUser['provider'] ?? 'google';
             $providerId = $googleUser['provider_id'];
 
@@ -329,17 +270,13 @@ class AuthService
                 ]);
             }
 
-            return $this->createAuthenticatedSession(
-                $user,
-                $googleLoginData['device_name'] ?? null,
-                $request
-            );
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+
+            return $user;
         });
     }
 
-    /**
-     * AUTH-05: Quên mật khẩu.
-     */
     public function forgotPassword(array $data): array
     {
         $user = $this->userRepository->findByEmail($data['email']);
@@ -367,16 +304,13 @@ class AuthService
         ];
     }
 
-    /**
-     * AUTH-06: Đặt lại mật khẩu.
-     */
     public function resetPassword(array $resetPasswordData): void
     {
         $user = $this->userRepository->findByEmail($resetPasswordData['email']);
 
         if (! $user || ! $user->password_reset) {
-            throw new BusinessException('Token đặt lại mật khẩu không hợp lệ.', 400, [
-                'token' => ['Token đặt lại mật khẩu không hợp lệ.'],
+            throw new BusinessException('Token hoặc thông tin đặt lại mật khẩu không hợp lệ.', 400, [
+                'token' => ['Token hoặc thông tin đặt lại mật khẩu không hợp lệ.'],
             ]);
         }
 
@@ -395,7 +329,7 @@ class AuthService
 
         if (
             ! is_string($tokenHash) ||
-            ! hash_equals($tokenHash, hash('sha256', $resetPasswordData['token'])) ||
+            ! hash_equals($tokenHash, hash('sha256', $resetPasswordData['token'] ?? '')) ||
             ! $expiresAt ||
             now()->greaterThan($expiresAt)
         ) {
@@ -414,17 +348,16 @@ class AuthService
         });
     }
 
-    /**
-     * AUTH-07: Logout.
-     */
-    public function logout(AuthSession $session): void
+    public function logout(?AuthSession $session, Request $request): void
     {
-        $this->userSessionRepository->revoke($session);
+        if ($session) {
+            $this->userSessionRepository->revoke($session);
+        }
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
     }
 
-    /**
-     * Check email và số điện thoại không trùng.
-     */
     private function ensureEmailAndPhoneAreUnique(string $email, ?string $phone): void
     {
         if ($this->userRepository->existsByEmail($email)) {
@@ -440,16 +373,10 @@ class AuthService
         }
     }
 
-    /**
-     * Login thường bắt buộc:
-     * - active
-     * - không locked
-     * - đã xác thực email
-     */
     private function ensureUserCanLogin(User $user): void
     {
         if (! $user->isActive() || $user->isLocked()) {
-            throw new BusinessException('Tài khoản không được phép đăng nhập.', 403);
+            throw new BusinessException('Tài khoản đang bị khóa, vô hiệu hóa hoặc chưa được kích hoạt.', 403);
         }
 
         if (! $user->hasVerifiedEmail()) {
@@ -457,16 +384,10 @@ class AuthService
         }
     }
 
-    /**
-     * Google login:
-     * - locked thì chặn
-     * - instructor inactive thì chặn vì đang chờ admin duyệt
-     * - learner inactive thì có thể active vì Google đã xác thực email
-     */
     private function ensureUserCanLoginForGoogle(User $user): void
     {
         if ($user->isLocked()) {
-            throw new BusinessException('Tài khoản không được phép đăng nhập.', 403);
+            throw new BusinessException('Tài khoản đang bị khóa, vô hiệu hóa hoặc không có quyền truy cập.', 403);
         }
 
         if ($user->role === User::ROLE_INSTRUCTOR && ! $user->isActive()) {
@@ -481,11 +402,6 @@ class AuthService
         }
     }
 
-    /**
-     * Tạo session đăng nhập:
-     * - refresh_token lưu hash trong bảng sessions
-     * - access_token trả về cho client
-     */
     private function createAuthenticatedSession(User $user, ?string $deviceName, Request $request): array
     {
         $refreshToken = $this->accessTokenService->createRefreshToken();

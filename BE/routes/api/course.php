@@ -10,3 +10,5 @@ Route::get('/courses/{id}/reviews', [CoursePublicController::class, 'reviews'])-
 Route::get('/instructors/{id}', [CoursePublicController::class, 'showInstructor'])->where('id', '[0-9]+');
 Route::get('/courses/{id}/faqs', [CoursePublicController::class, 'faqs'])->where('id', '[0-9]+');
 Route::get('/courses/{courseId}/related', [CoursePublicController::class, 'relatedCourses'])->where('courseId', '[0-9]+');
+Route::post('/courses/{id}/view', [CoursePublicController::class, 'recordView'])->where('id', '[0-9]+');
+

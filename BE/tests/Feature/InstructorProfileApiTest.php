@@ -502,6 +502,60 @@ final class InstructorProfileApiTest extends TestCase
         ]);
     }
 
+    public function test_avatar_upload_updates_users_table_database_column(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $file = \Illuminate\Http\UploadedFile::fake()->image('avatar.jpg', 300, 300);
+
+        $response = $this->actingAs($this->instructor)
+            ->postJson('/api/account/avatar', [
+                'avatar' => $file,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->instructor->refresh();
+        $this->assertNotNull($this->instructor->avatar_url);
+        $this->assertStringContainsString('storage/avatars/', $this->instructor->avatar_url);
+
+        // Verify auth/me returns the updated avatar_url
+        $meResponse = $this->actingAs($this->instructor)->getJson('/api/users/me');
+        $meResponse->assertOk()
+            ->assertJsonPath('data.avatar_url', $this->instructor->avatar_url);
+    }
+
+    public function test_select_avatar_preset_updates_users_table_database_column(): void
+    {
+        $response = $this->actingAs($this->instructor)
+            ->patchJson('/api/account/avatar/preset', [
+                'preset_id' => 'avatar_01',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->instructor->refresh();
+        $this->assertNotNull($this->instructor->avatar_url);
+        $this->assertStringContainsString('ui-avatars.com', $this->instructor->avatar_url);
+    }
+
+    public function test_delete_avatar_clears_users_table_database_column(): void
+    {
+        $this->instructor->avatar_url = 'https://ui-avatars.com/api/?name=Test';
+        $this->instructor->save();
+
+        $response = $this->actingAs($this->instructor)
+            ->deleteJson('/api/account/avatar');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->instructor->refresh();
+        $this->assertNull($this->instructor->avatar_url);
+    }
+
     private function createUser(
         string $fullName,
         string $email,

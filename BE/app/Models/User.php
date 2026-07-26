@@ -29,11 +29,11 @@ class User extends Authenticatable
     protected $table = 'users';
 
     protected $fillable = [
-        'name',
         'full_name',
         'email',
         'password_hash',
         'phone',
+        'avatar_url',
         'oauth_account_login',
         'role',
         'status',
@@ -42,15 +42,17 @@ class User extends Authenticatable
         'locked',
         'locked_reason',
         'password_reset',
-        'avatar_url',
-        'settings',
     ];
 
     protected $hidden = [
         'password_hash',
         'password_reset',
-        'remember_token',
     ];
+
+    public function getRememberTokenName()
+    {
+        return null;
+    }
 
     protected function casts(): array
     {
@@ -58,37 +60,56 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'locked' => 'boolean',
-            'settings' => 'array',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
     }
 
-    protected static function boot()
+    public function getAvatarUrlAttribute(?string $value = null): ?string
     {
-        parent::boot();
+        $val = $value ?? ($this->attributes['avatar_url'] ?? null);
+        if (empty($val)) {
+            return null;
+        }
 
-        static::saving(function (User $user) {
-            if (empty($user->name) && !empty($user->full_name)) {
-                $user->name = $user->full_name;
-            } elseif (empty($user->full_name) && !empty($user->name)) {
-                $user->full_name = $user->name;
-            }
+        if (str_starts_with($val, 'http://') || str_starts_with($val, 'https://')) {
+            return $val;
+        }
 
-            if (!empty($user->name) && !empty($user->full_name) && $user->name !== $user->full_name) {
-                if ($user->isDirty('full_name') && !$user->isDirty('name')) {
-                    $user->name = $user->full_name;
-                } else {
-                    $user->full_name = $user->name;
-                }
-            }
-        });
+        $path = ltrim($val, '/');
+        if (str_starts_with($path, 'storage/')) {
+            return url($path);
+        }
+
+        return url('storage/' . $path);
     }
 
-    public function setPasswordAttribute($value)
+    public function getNameAttribute(): ?string
     {
-        $this->attributes['password_hash'] = (is_string($value) && (str_starts_with($value, '$2y$') || str_starts_with($value, '$2a$') || strlen($value) === 60)) ? $value : \Illuminate\Support\Facades\Hash::make($value);
+        return $this->attributes['full_name'] ?? null;
+    }
+
+    public function setNameAttribute($value): void
+    {
+        $this->attributes['full_name'] = $value;
+    }
+
+    public function getPasswordAttribute(): ?string
+    {
+        return $this->attributes['password_hash'] ?? $this->attributes['password'] ?? null;
+    }
+
+    public function setPasswordAttribute($value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['password_hash'] = null;
+            return;
+        }
+
+        $this->attributes['password_hash'] = \Illuminate\Support\Facades\Hash::needsRehash((string) $value)
+            ? \Illuminate\Support\Facades\Hash::make($value)
+            : $value;
     }
 
     public function getAuthPassword(): string

@@ -37,6 +37,7 @@ class InstructorQuestionRepository
                 learner.id as learner_id,
                 learner.full_name as learner_name,
                 learner.email as learner_email,
+                NULL as learner_avatar_url,
                 courses.id as course_id,
                 courses.title as course_title,
                 lessons.id as lesson_id,

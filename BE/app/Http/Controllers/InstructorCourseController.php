@@ -43,6 +43,7 @@ use App\Http\Resources\Instructor\ReviewNoteResource;
 use App\Http\Resources\Instructor\WithdrawRequestResource;
 use App\Services\Instructor\InstructorCourseService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 final class InstructorCourseController extends Controller
@@ -638,7 +639,7 @@ final class InstructorCourseController extends Controller
         );
     }
 
-public function allLearners(InstructorLearnerIndexRequest $request): JsonResponse
+    public function allLearners(InstructorLearnerIndexRequest $request): JsonResponse
     {
         $paginator = app(InstructorLearnerService::class)->paginateLearners(
             (int) $request->user()->id,
@@ -658,8 +659,103 @@ public function allLearners(InstructorLearnerIndexRequest $request): JsonRespons
         );
     }
 
+    public function learnersSummary(Request $request): JsonResponse
+    {
+        try {
+            $summary = app(InstructorLearnerService::class)->getLearnersSummary(
+                (int) $request->user()->id,
+                $request->all()
+            );
 
-public function index(InstructorCourseIndexRequest $request): JsonResponse
+            return ApiResponse::success($summary, 'Lấy thống kê học viên thành công.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception) {
+            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
+        }
+    }
+
+    public function learnersChart(Request $request): JsonResponse
+    {
+        try {
+            $chart = app(InstructorLearnerService::class)->getLearnersChart(
+                (int) $request->user()->id,
+                $request->all()
+            );
+
+            return ApiResponse::success($chart, 'Lấy biểu đồ học viên thành công.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception) {
+            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
+        }
+    }
+
+    public function showLearnerDetails(Request $request, mixed $id): JsonResponse
+    {
+        try {
+            $details = app(InstructorLearnerService::class)->getLearnerDetails(
+                (int) $request->user()->id,
+                (int) $id
+            );
+
+            return ApiResponse::success($details, 'Lấy chi tiết học viên thành công.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception) {
+            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
+        }
+    }
+
+    public function exportLearners(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse|JsonResponse
+    {
+        try {
+            $filters = $request->all();
+            $records = app(InstructorLearnerService::class)->exportLearners(
+                (int) $request->user()->id,
+                $filters
+            );
+
+            $repo = app(\App\Repositories\Instructor\InstructorLearnerRepository::class);
+            $period = $repo->resolvePeriod($filters);
+            $dateFromStr = $period['current_from']->format('Y-m-d');
+            $dateToStr = $period['current_to']->format('Y-m-d');
+            $filename = 'hoc-vien-' . $dateFromStr . '-den-' . $dateToStr . '.csv';
+
+            return response()->stream(function () use ($records) {
+                $handle = fopen('php://output', 'w');
+                // Output UTF-8 BOM for Excel compatibility
+                fwrite($handle, "\xEF\xBB\xBF");
+
+                fputcsv($handle, ['Mã Ghi Danh', 'ID Học Viên', 'Họ Và Tên', 'Email', 'ID Khóa Học', 'Tên Khóa Học', 'Trạng Thái', 'Tiến Độ (%)', 'Ngày Ghi Danh', 'Lần Học Gần Nhất']);
+
+                foreach ($records as $row) {
+                    fputcsv($handle, [
+                        $row->enrollment_id,
+                        $row->learner_id,
+                        $row->learner_name,
+                        $row->learner_email,
+                        $row->course_id,
+                        $row->course_title,
+                        $row->status === 'completed' || $row->progress_percent >= 100 ? 'Đã hoàn thành' : 'Đang học',
+                        $row->progress_percent . '%',
+                        $row->enrolled_at,
+                        $row->last_accessed_at ?? $row->enrolled_at
+                    ]);
+                }
+
+                fclose($handle);
+            }, 200, [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception) {
+            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
+        }
+    }
+
+
+    public function summary(Request $request): JsonResponse
+    {
+        $dashboardData = app(\App\Repositories\Report\InstructorDashboardRepository::class)->getDashboard((int) $request->user()->id, []);
+        return ApiResponse::success($dashboardData['course_summary'] ?? [], 'Lấy thống kê khóa học thành công.');
+    }
+
+    public function index(InstructorCourseIndexRequest $request): JsonResponse
     {
         $paginator = app(InstructorCourseService::class)->paginateCourses(
             (int) $request->user()->id,
@@ -677,5 +773,72 @@ public function index(InstructorCourseIndexRequest $request): JsonResponse
                 'total' => $paginator->total(),
             ]
         );
+    }
+
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        $this->instructorCourseService->deleteCourse($request->user(), $id);
+
+        return ApiResponse::success([
+            'id' => $id,
+        ], 'Đã xóa khóa học.');
+    }
+
+    public function hide(Request $request, int $id): JsonResponse
+    {
+        $course = $this->instructorCourseService->hideCourse($request->user(), $id);
+
+        return ApiResponse::success(
+            new InstructorCourseResource($course),
+            'Đã ẩn khóa học.'
+        );
+    }
+
+    public function unhide(Request $request, int $id): JsonResponse
+    {
+        $course = $this->instructorCourseService->unhideCourse($request->user(), $id);
+
+        return ApiResponse::success(
+            new InstructorCourseResource($course),
+            'Đã hiện lại khóa học.'
+        );
+    }
+
+    public function uploadMedia(Request $request): JsonResponse
+    {
+        $allowedExtensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'csv', 'zip', 'rar', '7z', 'jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov', 'webm'];
+        $request->validate([
+            'file' => [
+                'required', 
+                'file', 
+                'max:204800',
+                function (string $attribute, mixed $value, \Closure $fail) use ($allowedExtensions): void {
+                    if (!$value instanceof \Illuminate\Http\UploadedFile) return;
+                    $ext = strtolower((string) $value->getClientOriginalExtension());
+                    if (!in_array($ext, $allowedExtensions, true)) {
+                        $fail('Định dạng tập tin không được hỗ trợ.');
+                    }
+                }
+            ],
+            'type' => ['nullable', 'string'],
+        ], [
+            'file.required' => 'Vui lòng chọn tập tin để tải lên.',
+            'file.file' => 'Tập tin không hợp lệ.',
+            'file.max' => 'Dung lượng tập tin không được vượt quá 200MB.',
+        ]);
+
+        $file = $request->file('file');
+        $type = $request->input('type', 'course_media');
+
+        $path = $file->store('instructor/uploads/' . $type, 'public');
+        $url = Storage::disk('public')->url($path);
+
+        return ApiResponse::success([
+            'url' => $url,
+            'path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getClientMimeType(),
+            'size' => $file->getSize(),
+        ], 'Tải lên tập tin thành công.', 201);
     }
 }

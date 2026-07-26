@@ -20,11 +20,11 @@ class CourseChecklistService
         $course = $this->instructorCourseRepository->findCourseForChecklist($courseId);
 
         if (! $course) {
-            throw new BusinessException('Khﾃｴng tﾃｬm th蘯･y khﾃｳa h盻皇.', 404);
+            throw new BusinessException('Không tìm thấy khóa học.', 404);
         }
 
         if ((int) $course->instructor_id !== $instructorId) {
-            throw new BusinessException('B蘯｡n khﾃｴng cﾃｳ quy盻］ xem checklist khﾃｳa h盻皇 nﾃy.', 403);
+            throw new BusinessException('Bạn không có quyền xem checklist khóa học này.', 403);
         }
 
         $categories = $this->instructorCourseRepository->getChecklistCategories($courseId);
@@ -185,8 +185,16 @@ class CourseChecklistService
         foreach ($publishedLessons as $lesson) {
             $lessonType = strtolower((string) $lesson->lesson_type);
 
-            if ($lessonType === 'video' && $this->blank($lesson->video_url)) {
-                $missing[] = 'lesson_video';
+            if ($lessonType === 'video') {
+                $videoUrl = (string) ($lesson->video_url ?? '');
+                $isInvalidVideo = $this->blank($videoUrl) || str_starts_with($videoUrl, 'blob:');
+                if ($isInvalidVideo) {
+                    $missing[] = "Bài học '{$lesson->title}' chưa có video được tải lên hợp lệ.";
+                }
+
+                if (((int) ($lesson->video_duration_seconds ?? 0)) <= 0) {
+                    $checkWarnings[] = 'lesson_video_duration';
+                }
             }
 
             if (in_array($lessonType, ['text', 'article', 'document'], true) && $this->blank($lesson->content)) {
@@ -198,10 +206,6 @@ class CourseChecklistService
                 && $this->blank($lesson->video_url)
             ) {
                 $missing[] = 'lesson_content';
-            }
-
-            if ($lessonType === 'video' && ((int) ($lesson->video_duration_seconds ?? 0)) <= 0) {
-                $checkWarnings[] = 'lesson_video_duration';
             }
         }
 

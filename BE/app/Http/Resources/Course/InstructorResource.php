@@ -9,11 +9,31 @@ class InstructorResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $rawMeta = $this->locked_reason;
+        $meta = ($rawMeta && str_starts_with(trim((string)$rawMeta), '{')) ? json_decode((string)$rawMeta, true) : [];
+        $privacy = data_get($meta, 'privacy_settings', [
+            'profile_visibility' => 'public',
+            'show_email' => false,
+            'show_phone' => false,
+            'show_social_links' => true,
+        ]);
+
+        $currentUser = $request->user();
+        $isOwner = $currentUser && (int)$currentUser->id === (int)$this->id;
+
+        $showEmail = $isOwner || (bool)($privacy['show_email'] ?? false);
+        $showPhone = $isOwner || (bool)($privacy['show_phone'] ?? false);
+        $showSocial = $isOwner || (bool)($privacy['show_social_links'] ?? true);
+        $avatarUrl = data_get($meta, 'avatar_url');
+        $socialLinks = $showSocial ? data_get($meta, 'social_links', null) : null;
+
         return [
             'id' => $this->id,
             'full_name' => $this->full_name,
-            'email' => $this->email,
-            'phone' => $this->phone,
+            'email' => $showEmail ? $this->email : null,
+            'phone' => $showPhone ? $this->phone : null,
+            'avatar_url' => $avatarUrl,
+            'social_links' => $socialLinks,
             'bio' => $this->instructorProfile?->bio,
             'expertise' => $this->instructorProfile?->expertise,
             'experience_years' => $this->instructorProfile !== null ? (int) $this->instructorProfile->experience_years : null,

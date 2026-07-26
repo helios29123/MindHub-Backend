@@ -214,12 +214,18 @@ final class InstructorCouponController extends Controller
             }
         }
 
+        $totalUsage = DB::table('coupons')
+            ->where('user_id', $instructorId)
+            ->whereNull('deleted_at')
+            ->sum('used_count');
+
         return [
             'total_coupons' => $total,
             'active_coupons' => $active,
             'inactive_coupons' => $inactive,
             'expired_coupons' => $expired,
             'used_up_coupons' => $usedUp,
+            'total_usage_count' => (int) $totalUsage,
         ];
     }
 }

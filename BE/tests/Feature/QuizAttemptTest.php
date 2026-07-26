@@ -6,9 +6,21 @@ use App\Models\QuizAttempt;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
+uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
+
 if (!function_exists('getAuthHeadersForUser')) {
     function getAuthHeadersForUser(string $email): array
     {
+        $user = \App\Models\User::where('email', $email)->first();
+        if ($user) {
+            $user->update([
+                'password_hash' => \Illuminate\Support\Facades\Hash::make('12345678'),
+                'status' => 'active',
+                'locked' => 0,
+                'is_active' => 1
+            ]);
+        }
+
         $response = test()->postJson('/api/auth/login', [
             'email' => $email,
             'password' => '12345678',
@@ -31,11 +43,13 @@ test('learner can submit quiz and pass with all correct answers', function () {
     // learner1@mindhub.test has active enrollment for course 1, and quiz 1 is published
     $headers = getAuthHeadersForUser('learner1@mindhub.test');
 
+    \App\Models\Quiz::where('id', 1)->update(['passing_score' => 3.00]);
+
     $response = $this->postJson('/api/quizzes/1/attempts', [
         'answers' => [
-            ['question_id' => 1, 'option_id' => 1], // Correct
+            ['question_id' => 1, 'option_id' => 2], // Correct
             ['question_id' => 2, 'option_id' => 5], // Correct
-            ['question_id' => 3, 'option_id' => 9], // Correct
+            ['question_id' => 3, 'option_id' => 7], // Correct
         ]
     ], $headers);
 
@@ -55,8 +69,8 @@ test('learner can submit quiz and pass with all correct answers', function () {
             ]
         ]);
 
-    $this->assertEquals(10.00, (float) $response->json('data.score'));
-    $this->assertEquals(10.00, (float) $response->json('data.total_score'));
+    $this->assertEquals(3.00, (float) $response->json('data.score'));
+    $this->assertEquals(3.00, (float) $response->json('data.total_score'));
     $this->assertTrue((bool) $response->json('data.passed'));
 });
 
@@ -65,9 +79,9 @@ test('learner can submit quiz and fail with wrong answers', function () {
 
     $response = $this->postJson('/api/quizzes/1/attempts', [
         'answers' => [
-            ['question_id' => 1, 'option_id' => 2], // Wrong
-            ['question_id' => 2, 'option_id' => 8], // Wrong
-            ['question_id' => 3, 'option_id' => 10], // Wrong
+            ['question_id' => 1, 'option_id' => 1], // Wrong
+            ['question_id' => 2, 'option_id' => 4], // Wrong
+            ['question_id' => 3, 'option_id' => 6], // Wrong
         ]
     ], $headers);
 

@@ -14,9 +14,11 @@ final class UserProfileRepository
                 'full_name',
                 'email',
                 'phone',
+                'avatar_url',
                 'role',
                 'status',
                 'email_verified_at',
+                'last_login_at',
             ])
             ->whereKey($id)
             ->firstOrFail();

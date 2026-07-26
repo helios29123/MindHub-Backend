@@ -23,10 +23,11 @@ class InstructorDashboardAlertRepository
             }
 
             $alerts = $query->get()
-                ->map(fn ($row) => [
-                    'type' => $row->type,
-                    'title' => $row->title,
-                    'message' => $row->message,
+                ->map(fn ($row, $idx) => [
+                    'id' => (int) ($row->id ?? ($idx + 1)),
+                    'type' => $row->type ?? 'info',
+                    'title' => $row->title ?? 'Thông báo',
+                    'message' => $row->message ?? '',
                     'created_at' => $row->created_at,
                     'action_url' => property_exists($row, 'action_url') ? $row->action_url : null,
                     'read_at' => property_exists($row, 'read_at') ? $row->read_at : null,
@@ -60,9 +61,10 @@ class InstructorDashboardAlertRepository
 
         if ($question) {
             $alerts[] = [
+                'id' => 101,
                 'type' => 'unanswered_question',
-                'title' => 'Dữ liệu không hợp lệ.',
-                'message' => $question->full_name . 'Dữ liệu không hợp lệ.' . $question->course_title . '.',
+                'title' => 'Câu hỏi mới từ học viên',
+                'message' => 'Học viên ' . $question->full_name . ' vừa đặt câu hỏi trong khóa ' . $question->course_title . '.',
                 'created_at' => $question->created_at,
                 'action_url' => '/instructor/questions?status=unanswered',
                 'read_at' => null,
@@ -78,9 +80,10 @@ class InstructorDashboardAlertRepository
 
         if ($rejectedCourse) {
             $alerts[] = [
+                'id' => 102,
                 'type' => 'course_rejected',
-                'title' => 'Dữ liệu không hợp lệ.',
-                'message' => 'Khﾃｳa ' . $rejectedCourse->title . 'Dữ liệu không hợp lệ.',
+                'title' => 'Khóa học chưa được phê duyệt',
+                'message' => 'Khóa học "' . $rejectedCourse->title . '" đã bị từ chối phê duyệt.',
                 'created_at' => $rejectedCourse->updated_at,
                 'action_url' => '/instructor/courses?status=rejected',
                 'read_at' => null,
@@ -94,9 +97,10 @@ class InstructorDashboardAlertRepository
 
         if ($withdraw) {
             $alerts[] = [
+                'id' => 103,
                 'type' => 'withdraw_request',
-                'title' => 'Dữ liệu không hợp lệ.',
-                'message' => 'Dữ liệu không hợp lệ.' . $withdraw->id . 'Dữ liệu không hợp lệ.' . $withdraw->status . '.',
+                'title' => 'Cập nhật yêu cầu rút tiền',
+                'message' => 'Yêu cầu rút tiền #' . $withdraw->id . ' đang ở trạng thái ' . $withdraw->status . '.',
                 'created_at' => $withdraw->updated_at,
                 'action_url' => '/instructor/withdrawals',
                 'read_at' => null,

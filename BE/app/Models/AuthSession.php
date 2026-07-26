@@ -6,7 +6,9 @@ class AuthSession extends Model
 {
     protected $table = 'sessions';
     public $timestamps = false;
+
     protected $fillable = [
+        'id',
         'user_id',
         'refresh_token_hash',
         'device_name',

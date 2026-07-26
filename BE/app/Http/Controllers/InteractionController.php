@@ -334,4 +334,79 @@ class InteractionController extends Controller
             return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
         }
     }
+
+    public function starInstructorQuestion(Request $request, mixed $id): JsonResponse
+    {
+        try {
+            $res = app(InstructorQuestionService::class)->starQuestion(
+                (int) $request->user()->id,
+                (int) $id
+            );
+
+            return ApiResponse::success($res, 'Đánh dấu câu hỏi thành công.');
+        } catch (HttpExceptionInterface $exception) {
+            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
+        }
+    }
+
+    public function unstarInstructorQuestion(Request $request, mixed $id): JsonResponse
+    {
+        try {
+            $res = app(InstructorQuestionService::class)->unstarQuestion(
+                (int) $request->user()->id,
+                (int) $id
+            );
+
+            return ApiResponse::success($res, 'Bỏ đánh dấu câu hỏi thành công.');
+        } catch (HttpExceptionInterface $exception) {
+            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
+        }
+    }
+
+    public function updateInstructorQuestionStatus(Request $request, mixed $id): JsonResponse
+    {
+        try {
+            $status = $request->input('status', 'answered');
+            $comment = app(InstructorQuestionService::class)->updateQuestionStatus(
+                (int) $request->user()->id,
+                (int) $id,
+                $status
+            );
+
+            return ApiResponse::success(['status' => $comment->status], 'Cập nhật trạng thái thành công.');
+        } catch (HttpExceptionInterface $exception) {
+            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
+        }
+    }
+
+    public function updateInstructorQuestionReply(Request $request, mixed $id, mixed $replyId): JsonResponse
+    {
+        try {
+            $reply = app(InstructorQuestionService::class)->updateReply(
+                (int) $request->user()->id,
+                (int) $id,
+                (int) $replyId,
+                $request->all()
+            );
+
+            return ApiResponse::success(['id' => $reply->id, 'content' => $reply->content], 'Cập nhật câu trả lời thành công.');
+        } catch (HttpExceptionInterface $exception) {
+            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
+        }
+    }
+
+    public function deleteInstructorQuestionReply(Request $request, mixed $id, mixed $replyId): JsonResponse
+    {
+        try {
+            $res = app(InstructorQuestionService::class)->deleteReply(
+                (int) $request->user()->id,
+                (int) $id,
+                (int) $replyId
+            );
+
+            return ApiResponse::success($res, 'Xóa câu trả lời thành công.');
+        } catch (HttpExceptionInterface $exception) {
+            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
+        }
+    }
 }

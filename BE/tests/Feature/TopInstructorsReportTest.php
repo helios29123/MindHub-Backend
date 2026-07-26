@@ -5,12 +5,12 @@ namespace Tests\Feature;
 use App\Models\Course;
 use App\Models\Order;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class TopInstructorsReportTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $admin;
     private User $learner;
@@ -88,6 +88,7 @@ class TopInstructorsReportTest extends TestCase
 
     public function test_no_data_returns_empty_items_and_0_metrics()
     {
+        User::where('role', 'instructor')->delete();
         $instructor = User::create([
             'full_name' => 'Instructor Test',
             'email' => 'instructor_test_' . uniqid() . '@mindhub.test',

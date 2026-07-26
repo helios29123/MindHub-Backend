@@ -567,14 +567,17 @@ final class InstructorCouponApiTest extends TestCase
     }
     private function createUser(string $fullName, string $email, string $role): User
     {
-        return User::query()->create([
+        $id = DB::table('users')->insertGetId([
             'full_name' => $fullName,
             'email' => $email,
             'password_hash' => null,
             'role' => $role,
             'status' => 'active',
             'locked' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+        return User::find($id);
     }
     private function createCourse(int $instructorId, string $title, string $slug, mixed $deletedAt = null): int
     {

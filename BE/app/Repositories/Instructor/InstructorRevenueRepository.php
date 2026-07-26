@@ -18,31 +18,51 @@ class InstructorRevenueRepository
         $summary = $this->getSummary(clone $baseQuery);
         $statusBreakdown = $this->getStatusBreakdown(clone $baseQuery);
 
-        $groupedQuery = (clone $baseQuery)
-            ->selectRaw('
-                revenues.course_id,
-                courses.title as course_title,
-                DATE_FORMAT(revenues.earned_at, "%Y-%m") as revenue_month,
-                COUNT(revenues.id) as revenue_count,
-                COALESCE(SUM(revenues.gross_amount), 0) as gross_amount,
-                COALESCE(SUM(revenues.instructor_amount), 0) as instructor_amount,
-                COALESCE(SUM(revenues.platform_fee_amount), 0) as platform_fee_amount,
-                MIN(revenues.earned_at) as first_earned_at,
-                MAX(revenues.earned_at) as last_earned_at,
+        $hasSaleSource = \Illuminate\Support\Facades\Schema::hasColumn('revenues', 'sale_source');
+
+        $selectFields = '
+            revenues.course_id,
+            courses.title as course_title,
+            DATE_FORMAT(revenues.earned_at, "%Y-%m") as revenue_month,
+            COUNT(revenues.id) as revenue_count,
+            COALESCE(SUM(revenues.gross_amount), 0) as gross_amount,
+            COALESCE(SUM(revenues.instructor_amount), 0) as instructor_amount,
+            COALESCE(SUM(revenues.platform_fee_amount), 0) as platform_fee_amount,
+            MIN(revenues.earned_at) as first_earned_at,
+            MAX(revenues.earned_at) as last_earned_at
+        ';
+
+        $groupByFields = [
+            'revenues.course_id',
+            'courses.title',
+            DB::raw('DATE_FORMAT(revenues.earned_at, "%Y-%m")'),
+        ];
+
+        if ($hasSaleSource) {
+            $selectFields .= ',
                 COALESCE(revenues.sale_source, "marketplace_default") as sale_source,
                 COALESCE(revenues.commission_rule_code, "marketplace_default") as commission_rule_code,
                 COALESCE(revenues.instructor_percent, 70.00) as instructor_percent,
                 COALESCE(revenues.platform_percent, 30.00) as platform_percent
-            ')
-            ->groupBy(
-                'revenues.course_id',
-                'courses.title',
-                DB::raw('DATE_FORMAT(revenues.earned_at, "%Y-%m")'),
+            ';
+            $groupByFields = array_merge($groupByFields, [
                 'revenues.sale_source',
                 'revenues.commission_rule_code',
                 'revenues.instructor_percent',
                 'revenues.platform_percent'
-            )
+            ]);
+        } else {
+            $selectFields .= ',
+                "marketplace_default" as sale_source,
+                "marketplace_default" as commission_rule_code,
+                70.00 as instructor_percent,
+                30.00 as platform_percent
+            ';
+        }
+
+        $groupedQuery = (clone $baseQuery)
+            ->selectRaw($selectFields)
+            ->groupBy($groupByFields)
             ->orderByDesc('revenue_month')
             ->orderBy('courses.title');
 

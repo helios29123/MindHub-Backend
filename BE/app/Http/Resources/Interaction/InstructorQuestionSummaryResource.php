@@ -10,6 +10,8 @@ final class InstructorQuestionSummaryResource extends JsonResource
             'total_questions' => (int) data_get($this->resource, 'total_questions', 0),
             'unanswered_questions' => (int) data_get($this->resource, 'unanswered_questions', 0),
             'answered_questions' => (int) data_get($this->resource, 'answered_questions', 0),
+            'comments_today' => (int) data_get($this->resource, 'comments_today', 0),
+            'starred' => (int) data_get($this->resource, 'starred', 0),
         ];
     }
 }
