@@ -100,6 +100,7 @@ final class UpdateCourseRequest extends FormRequest
             'sale_price.numeric' => 'Giá khuyến mãi phải là số.',
             'sale_price.min' => 'Giá khuyến mãi không được âm.',
             'level.in' => 'Cấp độ khóa học không hợp lệ.',
+            'category_ids.*.integer' => 'Mã danh mục khóa học phải là số nguyên.',
             'category_ids.*.exists' => 'Danh mục không tồn tại hoặc đã bị tắt.',
         ];
     }

@@ -3,13 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class CourseDashboardTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -40,7 +40,7 @@ class CourseDashboardTest extends TestCase
         ]);
         
         $tokenService = $this->app->make(\App\Services\Auth\AccessTokenService::class);
-        return $tokenService->createAccessToken($user->id, $session->id)['token'];
+        return $tokenService->createAccessToken((int) $user->id, (int) $session->id)['token'];
     }
 
     private function createUser($role = 'instructor')

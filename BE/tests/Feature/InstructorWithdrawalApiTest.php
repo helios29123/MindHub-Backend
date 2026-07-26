@@ -216,7 +216,7 @@ final class InstructorWithdrawalApiTest extends TestCase
                 'payout_account_id' => $this->activeAccountId,
                 'amount' => 8000000,
             ]);
-        $response->assertStatus(409);
+        $response->assertUnprocessable();
     }
     public function test_create_rejects_inactive_payout_account(): void
     {
@@ -234,7 +234,7 @@ final class InstructorWithdrawalApiTest extends TestCase
                 'payout_account_id' => $this->otherAccountId,
                 'amount' => 1000000,
             ]);
-        $response->assertNotFound();
+        $response->assertUnprocessable();
     }
     public function test_create_rejects_client_controlled_fields(): void
     {

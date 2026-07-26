@@ -71,6 +71,7 @@ final class StoreCourseRequest extends FormRequest
             'sale_price.min' => 'Giá khuyến mãi không được âm.',
             'sale_price.lte' => 'Giá khuyến mãi không được lớn hơn giá gốc.',
             'level.in' => 'Cấp độ khóa học không hợp lệ.',
+            'category_ids.*.integer' => 'Mã danh mục khóa học phải là số nguyên.',
             'category_ids.*.exists' => 'Danh mục không tồn tại hoặc đã bị tắt.',
         ];
     }

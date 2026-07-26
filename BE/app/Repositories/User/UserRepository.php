@@ -23,7 +23,7 @@ class UserRepository
 
     public function findByEmail(string $email): ?User
     {
-        return User::where('email', $email)->first();
+        return User::whereRaw('LOWER(email) = ?', [strtolower(trim($email))])->first();
     }
 
     public function findByOAuthProviderId(string $provider, string $providerId): ?User

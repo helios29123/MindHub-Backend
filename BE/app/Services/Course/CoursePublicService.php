@@ -33,6 +33,9 @@ class CoursePublicService
         // 2. Resolve optional authenticated user from Bearer token
         $user = $this->resolveOptionalUser();
 
+        // 2.1 Record course view asynchronously / safely
+        app(\App\Services\Course\CourseViewService::class)->recordView($course, $user, request());
+
         // 3. Eager load relationships with status and ordering constraints
         $course->load([
             'instructor.instructorProfile',
@@ -243,6 +246,36 @@ class CoursePublicService
         // 4. Resolve optional authenticated user
         $currentUser = $this->resolveOptionalUser();
 
+        // Enforce Privacy Visibility Settings
+        $rawMeta = $user->locked_reason;
+        $meta = ($rawMeta && str_starts_with(trim($rawMeta), '{')) ? json_decode($rawMeta, true) : [];
+        $privacy = data_get($meta, 'privacy_settings', [
+            'profile_visibility' => 'public',
+        ]);
+
+        $visibility = $privacy['profile_visibility'] ?? 'public';
+        $isOwner = $currentUser && (int)$currentUser->id === (int)$user->id;
+
+        if (!$isOwner) {
+            if ($visibility === 'private') {
+                throw new \App\Exceptions\BusinessException('Hồ sơ giảng viên này đang ở chế độ riêng tư.', 403);
+            }
+            if ($visibility === 'students_only') {
+                $isStudent = false;
+                if ($currentUser) {
+                    $isStudent = \Illuminate\Support\Facades\DB::table('enrollments')
+                        ->join('courses', 'courses.id', '=', 'enrollments.course_id')
+                        ->where('courses.instructor_id', $user->id)
+                        ->where('enrollments.user_id', $currentUser->id)
+                        ->whereIn('enrollments.status', ['active', 'completed'])
+                        ->exists();
+                }
+                if (!$isStudent) {
+                    throw new \App\Exceptions\BusinessException('Hồ sơ giảng viên này chỉ dành cho học viên đã đăng ký khóa học.', 403);
+                }
+            }
+        }
+
         foreach ($instructor->publishedCourses as $course) {
             $isEnrolled = false;
             $enrollmentStatus = null;
@@ -310,6 +343,10 @@ class CoursePublicService
 
     private function resolveOptionalUser()
     {
+        if (request()->user()) {
+            return request()->user();
+        }
+
         $plainAccessToken = request()->bearerToken();
 
         if (!$plainAccessToken) {

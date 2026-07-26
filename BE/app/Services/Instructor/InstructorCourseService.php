@@ -292,18 +292,18 @@ final class InstructorCourseService
                 $courseId,
             );
             if (!$course) {
-                throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
+                throw new NotFoundHttpException("Không tìm thấy khóa học.");
             }
             if ((int) $course->instructor_id !== (int) $instructor->id) {
                 throw new BusinessException(
-                    "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                    "Bạn không có quyền gửi duyệt khóa học này.",
                     403,
                 );
             }
             if (!$this->courseCanBeSubmitted($course)) {
                 throw new BusinessException(
-                    "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
-                    400,
+                    "Khóa học chưa đủ điều kiện để gửi duyệt. Vui lòng hoàn thiện thông tin cơ bản, danh mục, chương học và bài học.",
+                    422,
                 );
             }
             return $this->instructorCourseRepository->markAsPendingReview(
@@ -346,8 +346,6 @@ final class InstructorCourseService
                 "description",
                 "level",
                 "language",
-                "requirements",
-                "outcomes",
             ]
             as $requiredField
         ) {
@@ -364,7 +362,22 @@ final class InstructorCourseService
         $lessonCount = $course->sections->sum(
             fn(CourseSection $section): int => $section->lessons->count(),
         );
-        return $lessonCount > 0;
+        if ($lessonCount === 0) {
+            return false;
+        }
+
+        foreach ($course->sections as $section) {
+            foreach ($section->lessons as $lesson) {
+                if (strtolower((string) $lesson->lesson_type) === 'video') {
+                    $videoUrl = trim((string) ($lesson->video_url ?? ''));
+                    if ($videoUrl === '' || str_starts_with($videoUrl, 'blob:')) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 
     private function findOwnedLessonOrFail(
@@ -601,7 +614,8 @@ final class InstructorCourseService
 
         if (
             !array_key_exists("sort_order", $data) ||
-            $data["sort_order"] === null
+            $data["sort_order"] === null ||
+            CourseSection::query()->where('course_id', $course->id)->where('sort_order', $data['sort_order'])->exists()
         ) {
             $data["sort_order"] = $this->getNextSectionSortOrder(
                 (int) $course->id,
@@ -1039,29 +1053,10 @@ final class InstructorCourseService
             $query->where('enrollments.status', $filters['status']);
         }
 
-        // Progress Calculation using subquery if tables exist
-        if (\Schema::hasTable('lessons') && \Schema::hasTable('lesson_progress')) {
-            $totalLessonsSubquery = \DB::table('lessons')
-                ->where('course_id', $courseId)
-                ->selectRaw('count(*)')
-                ->toSql();
-
-            $completedLessonsSubquery = \DB::table('lesson_progress')
-                ->join('lessons', 'lesson_progress.lesson_id', '=', 'lessons.id')
-                ->where('lessons.course_id', $courseId)
-                ->whereColumn('lesson_progress.user_id', 'users.id')
-                ->where('lesson_progress.status', 'completed')
-                ->selectRaw('count(*)')
-                ->toSql();
-            
-            // Avoid division by zero
-            $query->selectRaw("
-                CASE 
-                    WHEN ($totalLessonsSubquery) > 0 THEN 
-                        CAST(($completedLessonsSubquery) AS FLOAT) / ($totalLessonsSubquery) * 100
-                    ELSE 0 
-                END as progress_percent
-            ", [\DB::raw($courseId), \DB::raw($courseId)]);
+        if (\Schema::hasColumn('enrollments', 'progress_percent')) {
+            $query->addSelect('enrollments.progress_percent');
+        } else {
+            $query->selectRaw('0 as progress_percent');
         }
 
         // Sort
@@ -1242,4 +1237,69 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
         return $slug;
     }
 
+    public function deleteCourse(User $instructor, int $courseId): void
+    {
+        $course = Course::query()
+            ->where('id', $courseId)
+            ->where('instructor_id', $instructor->id)
+            ->first();
+
+        if (! $course) {
+            throw new BusinessException('Khóa học không tồn tại hoặc bạn không có quyền thao tác.', 404);
+        }
+
+        $hasEnrollments = \App\Models\Enrollment::where('course_id', $course->id)->exists();
+        $hasOrders = \App\Models\Order::where('course_id', $course->id)->exists();
+        $hasRevenues = DB::table('revenues')->where('course_id', $course->id)->exists();
+
+        if ($hasEnrollments || $hasOrders || $hasRevenues) {
+            throw new BusinessException(
+                'Khóa học đã phát sinh học viên hoặc giao dịch nên không thể xóa. Bạn có thể ẩn khóa học thay thế.',
+                409,
+                ['code' => 'COURSE_HAS_DEPENDENCIES']
+            );
+        }
+
+        DB::transaction(function () use ($course): void {
+            $course->delete();
+        });
+    }
+
+    public function hideCourse(User $instructor, int $courseId): Course
+    {
+        $course = Course::query()
+            ->where('id', $courseId)
+            ->where('instructor_id', $instructor->id)
+            ->first();
+
+        if (! $course) {
+            throw new BusinessException('Khóa học không tồn tại hoặc bạn không có quyền thao tác.', 404);
+        }
+
+        return DB::transaction(function () use ($course): Course {
+            $course->update(['status' => 'hidden']);
+            return $course->fresh();
+        });
+    }
+
+    public function unhideCourse(User $instructor, int $courseId): Course
+    {
+        $course = Course::query()
+            ->where('id', $courseId)
+            ->where('instructor_id', $instructor->id)
+            ->first();
+
+        if (! $course) {
+            throw new BusinessException('Khóa học không tồn tại hoặc bạn không có quyền thao tác.', 404);
+        }
+
+        return DB::transaction(function () use ($course): Course {
+            $newStatus = 'draft';
+            if (empty($course->admin_reject_reason) && $course->published_at !== null) {
+                $newStatus = 'published';
+            }
+            $course->update(['status' => $newStatus]);
+            return $course->fresh();
+        });
+    }
 }

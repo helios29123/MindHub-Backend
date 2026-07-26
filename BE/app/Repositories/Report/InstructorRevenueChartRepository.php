@@ -38,12 +38,31 @@ class InstructorRevenueChartRepository
         ])->all();
     }
 
-    private function resolveDateRange(array $filters): array
+    private function resolveDateRange(array &$filters): array
     {
-        return [
-            !empty($filters['date_from']) ? Carbon::parse($filters['date_from']) : now()->subDays(29),
-            !empty($filters['date_to']) ? Carbon::parse($filters['date_to']) : now(),
-        ];
+        $period = $filters['preset'] ?? $filters['period'] ?? null;
+        if ($period === 'day') {
+            $filters['group_by'] = $filters['group_by'] ?? 'day';
+            return [now()->startOfDay(), now()->endOfDay()];
+        }
+        if ($period === 'week') {
+            $filters['group_by'] = $filters['group_by'] ?? 'day';
+            return [now()->startOfWeek(), now()->endOfWeek()];
+        }
+        if ($period === 'month') {
+            $filters['group_by'] = $filters['group_by'] ?? 'day';
+            return [now()->startOfMonth(), now()->endOfMonth()];
+        }
+        if ($period === 'year') {
+            $filters['group_by'] = $filters['group_by'] ?? 'month';
+            return [now()->startOfYear(), now()->endOfYear()];
+        }
+
+        if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+            return [Carbon::parse($filters['date_from']), Carbon::parse($filters['date_to'])];
+        }
+
+        return [now()->startOfMonth(), now()->endOfMonth()];
     }
 
     private function money(mixed $amount): string

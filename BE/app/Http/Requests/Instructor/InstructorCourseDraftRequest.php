@@ -73,6 +73,7 @@ final class InstructorCourseDraftRequest extends FormRequest
             'sale_price.min' => 'Giá khuyến mãi không được âm.',
             'level.in' => 'Cấp độ khóa học không hợp lệ.',
             'category_ids.array' => 'Danh mục khóa học không hợp lệ.',
+            'category_ids.*.integer' => 'Mã danh mục khóa học phải là số nguyên.',
             'category_ids.*.exists' => 'Danh mục không tồn tại hoặc đã bị tắt.',
             'category_ids.*.distinct' => 'Danh mục không được trùng lặp.',
         ];

@@ -25,6 +25,12 @@ final class InstructorCourseResource extends JsonResource
             'status' => $status,
             'status_label' => $this->statusLabel($status),
             'categories' => $this->categories(),
+            'enrollment_count' => (int) data_get($this->resource, 'enrollment_count', 0),
+            'enrollments_count' => (int) data_get($this->resource, 'enrollment_count', 0),
+            'revenue' => (string) number_format((float) data_get($this->resource, 'revenue', 0), 2, '.', ''),
+            'rating' => (float) data_get($this->resource, 'rating', 0),
+            'review_count' => (int) data_get($this->resource, 'review_count', 0),
+            'reviews_count' => (int) data_get($this->resource, 'review_count', 0),
             'created_at' => $this->dateValue(data_get($this->resource, 'created_at')),
             'updated_at' => $this->dateValue(data_get($this->resource, 'updated_at')),
         ];

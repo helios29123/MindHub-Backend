@@ -10,7 +10,7 @@ Route::prefix('auth')->group(function () {
     // Form đăng ký giảng viên
     Route::post('register/instructor', [AuthController::class, 'registerInstructor']);
 
-    // Giữ route cũ nếu frontend đang dùng /register
+    // Route đăng ký chung
     Route::post('register', [AuthController::class, 'registerLearner']);
 
     // Xác thực email
@@ -19,14 +19,17 @@ Route::prefix('auth')->group(function () {
 
     Route::post('verify-email/resend', [AuthController::class, 'resendVerifyEmail']);
 
+    // Luồng Đăng nhập Email/Password & Google OAuth
     Route::post('login', [AuthController::class, 'login']);
+    Route::get('google/redirect', [AuthController::class, 'googleRedirect']);
+    Route::get('google/callback', [AuthController::class, 'googleCallback']);
     Route::post('google', [AuthController::class, 'googleLogin']);
+
+    // Quên & Đặt lại mật khẩu
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
 
-    Route::post('logout', [AuthController::class, 'logout'])
-        ->middleware('auth.session');
-
-    Route::get('me', [AuthController::class, 'me'])
-        ->middleware('auth.session');
+    // Session & User Info
+    Route::post('logout', [AuthController::class, 'logout']);
+    Route::get('me', [AuthController::class, 'me']);
 });

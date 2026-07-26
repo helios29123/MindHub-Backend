@@ -12,6 +12,7 @@ final class InstructorCouponSummaryResource extends JsonResource
             'inactive_coupons' => (int) data_get($this->resource, 'inactive_coupons', 0),
             'expired_coupons' => (int) data_get($this->resource, 'expired_coupons', 0),
             'used_up_coupons' => (int) data_get($this->resource, 'used_up_coupons', 0),
+            'total_usage_count' => (int) data_get($this->resource, 'total_usage_count', 0),
         ];
     }
 }

@@ -45,7 +45,6 @@ final class UploadLessonAssetRequest extends FormRequest
                         $fail('Định dạng tài liệu không được hỗ trợ.');
                     }
                 },
-                'mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,txt,csv,zip,rar,7z,jpg,jpeg,png,webp',
             ],
             'title' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:2000'],

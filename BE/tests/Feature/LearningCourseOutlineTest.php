@@ -12,6 +12,16 @@ use Carbon\Carbon;
 if (!function_exists('getAuthHeadersForUser')) {
     function getAuthHeadersForUser(string $email): array
     {
+        $user = \App\Models\User::where('email', $email)->first();
+        if ($user) {
+            $user->update([
+                'password_hash' => \Illuminate\Support\Facades\Hash::make('12345678'),
+                'status' => 'active',
+                'locked' => 0,
+                'is_active' => 1
+            ]);
+        }
+
         $response = test()->postJson('/api/auth/login', [
             'email' => $email,
             'password' => '12345678',

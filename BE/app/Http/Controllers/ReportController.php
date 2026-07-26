@@ -40,6 +40,8 @@ use App\Services\Report\LearnerRiskService;
 use App\Services\Report\ReportService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use App\Services\Instructor\CourseChecklistService;
 
 final class ReportController extends Controller
 {
@@ -326,6 +328,8 @@ final class ReportController extends Controller
     public function incompleteCourses(Request $request): JsonResponse
     {
         $instructorId = (int) $request->user()->id;
+        $limit = min(max((int) ($request->query('limit') ?? $request->query('per_page') ?? 5), 1), 20);
+
         $courses = \Illuminate\Support\Facades\DB::table('courses')
             ->where('instructor_id', $instructorId)
             ->whereNull('deleted_at')
@@ -338,13 +342,28 @@ final class ReportController extends Controller
             try {
                 $checklist = $checklistService->getChecklist($instructorId, $course->id);
                 if (!$checklist['passed']) {
+                    $checks = $checklist['checks'] ?? [];
+                    $totalChecks = count($checks);
+                    $passedChecks = 0;
+                    foreach ($checks as $chk) {
+                        if (!empty($chk['passed'])) {
+                            $passedChecks++;
+                        }
+                    }
+                    $completionPercentage = $totalChecks > 0 ? (int) round(($passedChecks / $totalChecks) * 100) : 0;
+
                     $incomplete[] = [
                         'id' => (int) $course->id,
                         'title' => $course->title,
                         'status' => $course->status,
+                        'completion_percentage' => $completionPercentage,
                         'missing_items' => $checklist['missing_items'],
                         'warnings' => $checklist['warnings'],
                     ];
+
+                    if (count($incomplete) >= $limit) {
+                        break;
+                    }
                 }
             } catch (\Exception $e) {
                 // Skip if error
@@ -360,15 +379,22 @@ final class ReportController extends Controller
     public function courseBreakdown(Request $request): JsonResponse
     {
         $instructorId = (int) $request->user()->id;
+        $period = $this->resolvePeriod($request->all());
 
-        $breakdown = \Illuminate\Support\Facades\DB::table('courses')
-            ->leftJoin('revenues', function ($join) {
+        $query = \Illuminate\Support\Facades\DB::table('courses')
+            ->leftJoin('revenues', function ($join) use ($period) {
                 $join->on('revenues.course_id', '=', 'courses.id')
-                    ->whereIn('revenues.status', ['available', 'withdrawn']);
+                    ->whereIn('revenues.status', ['available', 'withdrawn'])
+                    ->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
             })
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
-            ->selectRaw('
+            ->whereNull('courses.deleted_at');
+
+        if ($request->query('course_id') && $request->query('course_id') !== 'all') {
+            $query->where('courses.id', (int) $request->query('course_id'));
+        }
+
+        $breakdown = $query->selectRaw('
                 courses.id as course_id,
                 courses.title,
                 courses.status,
@@ -401,40 +427,85 @@ final class ReportController extends Controller
     public function topCoursesByRevenue(Request $request): JsonResponse
     {
         $instructorId = (int) $request->user()->id;
+        $period = $this->resolvePeriod($request->all());
         $limit = min(max((int) ($request->query('limit') ?? 10), 1), 20);
 
-        $top = \Illuminate\Support\Facades\DB::table('courses')
-            ->join('revenues', function ($join) {
-                $join->on('revenues.course_id', '=', 'courses.id')
-                    ->whereIn('revenues.status', ['available', 'withdrawn']);
-            })
+        $coursesQuery = \Illuminate\Support\Facades\DB::table('courses')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
-            ->selectRaw('
-                courses.id as course_id,
-                courses.title,
-                courses.status,
-                COUNT(revenues.id) as total_orders,
-                COALESCE(SUM(revenues.gross_amount), 0) as gross_amount,
-                COALESCE(SUM(revenues.instructor_amount), 0) as instructor_amount,
-                COALESCE(SUM(revenues.platform_fee_amount), 0) as platform_fee_amount
-            ')
-            ->groupBy('courses.id', 'courses.title', 'courses.status')
-            ->orderByDesc('instructor_amount')
-            ->limit($limit)
+            ->whereNull('courses.deleted_at');
+
+        if ($request->query('course_id') && $request->query('course_id') !== 'all') {
+            $coursesQuery->where('courses.id', (int) $request->query('course_id'));
+        }
+
+        $courses = $coursesQuery->get(['id', 'title', 'status', 'thumbnail_url', 'level', 'price']);
+        $courseIds = $courses->pluck('id')->toArray();
+
+        if (empty($courseIds)) {
+            return ApiResponse::success([], 'Lấy top khóa học theo doanh thu thành công.');
+        }
+
+        $enrollmentsMap = \Illuminate\Support\Facades\DB::table('enrollments')
+            ->whereIn('course_id', $courseIds)
+            ->whereIn('status', ['active', 'completed'])
+            ->select('course_id', \Illuminate\Support\Facades\DB::raw('COUNT(id) as enrollment_count'), \Illuminate\Support\Facades\DB::raw('COUNT(DISTINCT user_id) as unique_learner_count'))
+            ->groupBy('course_id')
             ->get()
-            ->map(function ($row) {
-                return [
-                    'course_id' => (int) $row->course_id,
-                    'title' => $row->title,
-                    'status' => $row->status,
-                    'total_orders' => (int) $row->total_orders,
-                    'gross_amount' => number_format((float) $row->gross_amount, 2, '.', ''),
-                    'instructor_amount' => number_format((float) $row->instructor_amount, 2, '.', ''),
-                    'platform_fee_amount' => number_format((float) $row->platform_fee_amount, 2, '.', ''),
-                ];
-            })
-            ->all();
+            ->keyBy('course_id');
+
+        $revenuesMap = \Illuminate\Support\Facades\DB::table('revenues')
+            ->whereIn('course_id', $courseIds)
+            ->whereIn('status', ['available', 'withdrawn'])
+            ->whereBetween('earned_at', [$period['current_from'], $period['current_to']])
+            ->select('course_id', \Illuminate\Support\Facades\DB::raw('COUNT(id) as total_orders'), \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(instructor_amount), 0) as total_instructor_revenue'), \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(gross_amount), 0) as total_gross_revenue'), \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(platform_fee_amount), 0) as total_platform_fee'))
+            ->groupBy('course_id')
+            ->get()
+            ->keyBy('course_id');
+
+        $items = [];
+        foreach ($courses as $c) {
+            $e = $enrollmentsMap->get($c->id);
+            $r = $revenuesMap->get($c->id);
+
+            $eCount = $e ? (int) $e->enrollment_count : 0;
+            $uCount = $e ? (int) $e->unique_learner_count : 0;
+            $orders = $r ? (int) $r->total_orders : 0;
+            $instRev = $r ? (float) $r->total_instructor_revenue : 0.0;
+            $grossRev = $r ? (float) $r->total_gross_revenue : 0.0;
+            $feeRev = $r ? (float) $r->total_platform_fee : 0.0;
+
+            $items[] = [
+                'id' => (int) $c->id,
+                'course_id' => (int) $c->id,
+                'title' => $c->title,
+                'status' => $c->status,
+                'total_orders' => $orders,
+                'enrollment_count' => $eCount,
+                'enrollments_count' => $eCount,
+                'studentCount' => $uCount,
+                'student_count' => $uCount,
+                'learners_count' => $uCount,
+                'unique_learner_count' => $uCount,
+                'revenue' => $instRev,
+                'instructor_revenue' => $instRev,
+                'instructor_amount' => number_format($instRev, 2, '.', ''),
+                'gross_amount' => number_format($grossRev, 2, '.', ''),
+                'gross_revenue' => $grossRev,
+                'platform_fee_amount' => number_format($feeRev, 2, '.', ''),
+            ];
+        }
+
+        usort($items, function ($a, $b) {
+            if ($b['revenue'] !== $a['revenue']) {
+                return $b['revenue'] <=> $a['revenue'];
+            }
+            return $b['enrollment_count'] <=> $a['enrollment_count'];
+        });
+
+        $top = array_slice($items, 0, $limit);
+        foreach ($top as $idx => &$item) {
+            $item['rank'] = $idx + 1;
+        }
 
         return ApiResponse::success(
             $top,
@@ -445,19 +516,18 @@ final class ReportController extends Controller
     public function revenueSummary(\Illuminate\Http\Request $request): JsonResponse
     {
         $instructorId = (int) $request->user()->id;
+        $period = $this->resolvePeriod($request->all());
 
-        $startDate = now()->startOfMonth();
-        $endDate = now()->endOfMonth();
+        $summaryQuery = \Illuminate\Support\Facades\DB::table('revenues')
+            ->where('instructor_id', $instructorId)
+            ->whereBetween('earned_at', [$period['current_from'], $period['current_to']])
+            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
 
-        if ($request->query('date_from') && $request->query('date_to')) {
-            $startDate = \Illuminate\Support\Carbon::parse($request->query('date_from'));
-            $endDate = \Illuminate\Support\Carbon::parse($request->query('date_to'));
+        if ($request->query('course_id') && $request->query('course_id') !== 'all') {
+            $summaryQuery->where('course_id', (int) $request->query('course_id'));
         }
 
-        $row = \Illuminate\Support\Facades\DB::table('revenues')
-            ->where('instructor_id', $instructorId)
-            ->whereBetween('earned_at', [$startDate->startOfDay(), $endDate->endOfDay()])
-            ->whereIn('status', ['available', 'withdrawn'])
+        $row = (clone $summaryQuery)
             ->selectRaw('
                 COALESCE(SUM(gross_amount), 0) as gross_amount,
                 COALESCE(SUM(instructor_amount), 0) as instructor_amount,
@@ -465,18 +535,28 @@ final class ReportController extends Controller
             ')
             ->first();
 
-        $breakdownRows = \Illuminate\Support\Facades\DB::table('revenues')
-            ->where('instructor_id', $instructorId)
-            ->whereBetween('earned_at', [$startDate->startOfDay(), $endDate->endOfDay()])
-            ->whereIn('status', ['available', 'withdrawn'])
-            ->selectRaw('
-                COALESCE(sale_source, "marketplace_default") as sale_source,
-                COALESCE(SUM(gross_amount), 0) as gross_amount,
-                COALESCE(SUM(instructor_amount), 0) as instructor_amount,
-                COALESCE(SUM(platform_fee_amount), 0) as platform_fee_amount
-            ')
-            ->groupBy(\Illuminate\Support\Facades\DB::raw('COALESCE(sale_source, "marketplace_default")'))
-            ->get();
+        $hasSaleSource = \Illuminate\Support\Facades\Schema::hasColumn('revenues', 'sale_source');
+
+        if ($hasSaleSource) {
+            $breakdownRows = (clone $summaryQuery)
+                ->selectRaw('
+                    COALESCE(sale_source, "marketplace_default") as sale_source,
+                    COALESCE(SUM(gross_amount), 0) as gross_amount,
+                    COALESCE(SUM(instructor_amount), 0) as instructor_amount,
+                    COALESCE(SUM(platform_fee_amount), 0) as platform_fee_amount
+                ')
+                ->groupBy(\Illuminate\Support\Facades\DB::raw('COALESCE(sale_source, "marketplace_default")'))
+                ->get();
+        } else {
+            $breakdownRows = collect([
+                (object) [
+                    'sale_source' => 'marketplace_default',
+                    'gross_amount' => $row->gross_amount ?? 0,
+                    'instructor_amount' => $row->instructor_amount ?? 0,
+                    'platform_fee_amount' => $row->platform_fee_amount ?? 0,
+                ],
+            ]);
+        }
 
         $labels = [
             'marketplace_default' => 'Marketplace mặc định',
@@ -497,11 +577,246 @@ final class ReportController extends Controller
             ];
         })->all();
 
+        // Previous period totals for comparison
+        $prevQuery = \Illuminate\Support\Facades\DB::table('revenues')
+            ->where('instructor_id', $instructorId)
+            ->whereBetween('earned_at', [$period['previous_from'], $period['previous_to']])
+            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
+
+        if ($request->query('course_id') && $request->query('course_id') !== 'all') {
+            $prevQuery->where('course_id', (int) $request->query('course_id'));
+        }
+
+        $prevRow = $prevQuery
+            ->selectRaw('
+                COALESCE(SUM(gross_amount), 0) as gross_amount,
+                COALESCE(SUM(instructor_amount), 0) as instructor_amount,
+                COALESCE(SUM(platform_fee_amount), 0) as platform_fee_amount
+            ')
+            ->first();
+
+        // Calculate withdrawable balance
+        $withdrawalRepo = app(\App\Repositories\Instructor\InstructorWithdrawalRepository::class);
+        $withdrawalSummary = $withdrawalRepo->getSummary($instructorId);
+
+        $currGross = (float) ($row->gross_amount ?? 0);
+        $currInst = (float) ($row->instructor_amount ?? 0);
+        $currFee = (float) ($row->platform_fee_amount ?? 0);
+
+        $prevGross = (float) ($prevRow->gross_amount ?? 0);
+        $prevInst = (float) ($prevRow->instructor_amount ?? 0);
+        $prevFee = (float) ($prevRow->platform_fee_amount ?? 0);
+
+        $grossChange = $this->calculatePercentChange($currGross, $prevGross);
+        $instChange = $this->calculatePercentChange($currInst, $prevInst);
+        $feeChange = $this->calculatePercentChange($currFee, $prevFee);
+
         return ApiResponse::success([
-            'gross_amount' => number_format((float) ($row->gross_amount ?? 0), 2, '.', ''),
-            'instructor_amount' => number_format((float) ($row->instructor_amount ?? 0), 2, '.', ''),
-            'platform_fee_amount' => number_format((float) ($row->platform_fee_amount ?? 0), 2, '.', ''),
+            'gross_revenue' => $currGross,
+            'instructor_revenue' => $currInst,
+            'platform_fee' => $currFee,
+            'period_revenue' => $currInst,
+            'withdrawable_balance' => (float) ($withdrawalSummary['available_balance'] ?? 0),
+            'gross_amount' => number_format($currGross, 2, '.', ''),
+            'instructor_amount' => number_format($currInst, 2, '.', ''),
+            'platform_fee_amount' => number_format($currFee, 2, '.', ''),
+            'comparison' => [
+                'gross_percent' => $grossChange,
+                'instructor_percent' => $instChange,
+                'platform_fee_percent' => $feeChange,
+                'period_revenue_percent' => $instChange,
+                'gross_previous' => $prevGross,
+                'instructor_previous' => $prevInst,
+            ],
+            'period' => [
+                'preset' => $period['preset'],
+                'from' => $period['current_from']->format('Y-m-d'),
+                'to' => $period['current_to']->format('Y-m-d'),
+                'previous_from' => $period['previous_from']->format('Y-m-d'),
+                'previous_to' => $period['previous_to']->format('Y-m-d'),
+            ],
             'source_breakdown' => $sourceBreakdown,
         ], 'Lấy tổng quan doanh thu thành công.');
+    }
+
+    public function revenueDetails(Request $request): JsonResponse
+    {
+        $instructorId = (int) $request->user()->id;
+        $period = $this->resolvePeriod($request->all());
+
+        $page = max((int) $request->query('page', 1), 1);
+        $perPage = min(max((int) $request->query('per_page', 5), 1), 100);
+
+        $query = \Illuminate\Support\Facades\DB::table('revenues')
+            ->join('courses', 'courses.id', '=', 'revenues.course_id')
+            ->where('revenues.instructor_id', $instructorId)
+            ->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']])
+            ->whereNull('courses.deleted_at');
+
+        if ($request->query('course_id') && $request->query('course_id') !== 'all') {
+            $query->where('revenues.course_id', (int) $request->query('course_id'));
+        }
+
+        if ($request->query('status') && $request->query('status') !== 'all') {
+            $query->where('revenues.status', $request->query('status'));
+        }
+
+        if ($request->query('search')) {
+            $search = '%' . trim($request->query('search')) . '%';
+            $query->where('courses.title', 'like', $search);
+        }
+
+        $total = $query->count();
+
+        $items = $query->select([
+                'revenues.id',
+                'revenues.earned_at',
+                'revenues.gross_amount',
+                'revenues.instructor_amount',
+                'revenues.platform_fee_amount',
+                'revenues.status',
+                'courses.id as course_id',
+                'courses.title as course_title',
+            ])
+            ->orderByDesc('revenues.earned_at')
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage)
+            ->get()
+            ->map(function ($row) {
+                $statusLabel = 'Hoàn thành';
+                if ($row->status === 'pending') $statusLabel = 'Chờ đối soát';
+                if ($row->status === 'refunded') $statusLabel = 'Đã hoàn tiền';
+
+                return [
+                    'id' => (string) $row->id,
+                    'date' => \Illuminate\Support\Carbon::parse($row->earned_at)->format('d/m/Y H:i'),
+                    'course' => [
+                        'id' => (int) $row->course_id,
+                        'title' => $row->course_title,
+                    ],
+                    'orders' => 1,
+                    'gross' => (float) $row->gross_amount,
+                    'net' => (float) $row->instructor_amount,
+                    'platform_fee' => (float) $row->platform_fee_amount,
+                    'status' => $statusLabel,
+                    'raw_status' => $row->status,
+                ];
+            });
+
+        return ApiResponse::success([
+            'items' => $items,
+            'pagination' => [
+                'current_page' => $page,
+                'last_page' => (int) ceil($total / $perPage) ?: 1,
+                'per_page' => $perPage,
+                'total' => $total,
+                'from' => $total > 0 ? ($page - 1) * $perPage + 1 : 0,
+                'to' => min($page * $perPage, $total),
+            ]
+        ], 'Lấy chi tiết doanh thu thành công.');
+    }
+
+    public function exportRevenues(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $instructorId = (int) $request->user()->id;
+        $period = $this->resolvePeriod($request->all());
+
+        $records = \Illuminate\Support\Facades\DB::table('revenues')
+            ->join('courses', 'courses.id', '=', 'revenues.course_id')
+            ->where('revenues.instructor_id', $instructorId)
+            ->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']])
+            ->whereNull('courses.deleted_at')
+            ->select([
+                'revenues.id',
+                'revenues.earned_at',
+                'revenues.gross_amount',
+                'revenues.instructor_amount',
+                'revenues.platform_fee_amount',
+                'revenues.status',
+                'courses.title as course_title',
+            ])
+            ->orderByDesc('revenues.earned_at')
+            ->get();
+
+        $dateFromStr = $period['current_from']->format('Y-m-d');
+        $dateToStr = $period['current_to']->format('Y-m-d');
+        $filename = 'doanh-thu-' . $dateFromStr . '-den-' . $dateToStr . '.csv';
+
+        return response()->stream(function () use ($records) {
+            $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            fputcsv($handle, ['ID Giao Dịch', 'Ngày Ghi Nhận', 'Tên Khóa Học', 'Doanh Thu Gộp (VND)', 'Thu Nhập Giảng Viên (VND)', 'Phí Nền Tảng (VND)', 'Trạng Thái']);
+
+            foreach ($records as $row) {
+                $statusLabel = 'Hoàn thành';
+                if ($row->status === 'pending') $statusLabel = 'Chờ đối soát';
+                if ($row->status === 'refunded') $statusLabel = 'Đã hoàn tiền';
+
+                fputcsv($handle, [
+                    $row->id,
+                    $row->earned_at,
+                    $row->course_title,
+                    number_format((float)$row->gross_amount, 0, ',', '.'),
+                    number_format((float)$row->instructor_amount, 0, ',', '.'),
+                    number_format((float)$row->platform_fee_amount, 0, ',', '.'),
+                    $statusLabel,
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    private function resolvePeriod(array $filters): array
+    {
+        $preset = $filters['preset'] ?? $filters['period'] ?? 'month';
+        $now = now();
+
+        if ($preset === 'day') {
+            $currentFrom = $now->copy()->startOfDay();
+            $currentTo = $now->copy()->endOfDay();
+            $prevFrom = $now->copy()->subDay()->startOfDay();
+            $prevTo = $now->copy()->subDay()->endOfDay();
+        } elseif ($preset === 'year') {
+            $currentFrom = $now->copy()->startOfYear();
+            $currentTo = $now->copy()->endOfYear();
+            $prevFrom = $now->copy()->subYear()->startOfYear();
+            $prevTo = $now->copy()->subYear()->endOfYear();
+        } elseif ($preset === 'custom' && !empty($filters['date_from']) && !empty($filters['date_to'])) {
+            $currentFrom = \Illuminate\Support\Carbon::parse($filters['date_from'])->startOfDay();
+            $currentTo = \Illuminate\Support\Carbon::parse($filters['date_to'])->endOfDay();
+            $days = max(1, $currentFrom->diffInDays($currentTo) + 1);
+            $prevTo = $currentFrom->copy()->subDay()->endOfDay();
+            $prevFrom = $prevTo->copy()->subDays($days - 1)->startOfDay();
+        } else {
+            $preset = 'month';
+            $currentFrom = $now->copy()->startOfMonth();
+            $currentTo = $now->copy()->endOfMonth();
+            $prevFrom = $now->copy()->subMonth()->startOfMonth();
+            $prevTo = $now->copy()->subMonth()->endOfMonth();
+        }
+
+        return [
+            'preset' => $preset,
+            'current_from' => $currentFrom,
+            'current_to' => $currentTo,
+            'previous_from' => $prevFrom,
+            'previous_to' => $prevTo,
+        ];
+    }
+
+    private function calculatePercentChange(float $current, float $previous): ?float
+    {
+        if ($current == 0 && $previous == 0) {
+            return 0.0;
+        }
+        if ($previous == 0) {
+            return null;
+        }
+        return round((($current - $previous) / $previous) * 100, 1);
     }
 }

@@ -20,7 +20,8 @@ final class InstructorWithdrawalStoreRequest extends FormRequest
             'account_number_snapshot' => ['prohibited'],
             'account_name_snapshot' => ['prohibited'],
             'payout_account_id' => ['required', 'integer', 'exists:payout_accounts,id'],
-            'amount' => ['required', 'numeric', 'min:1'],
+            'amount' => ['required', 'numeric', 'min:200000'],
+            'note' => ['nullable', 'string', 'max:200'],
         ];
     }
     public function messages(): array
@@ -40,7 +41,8 @@ final class InstructorWithdrawalStoreRequest extends FormRequest
             'payout_account_id.exists' => 'Tài khoản nhận tiền không tồn tại.',
             'amount.required' => 'Vui lòng nhập số tiền rút.',
             'amount.numeric' => 'Số tiền rút phải là số.',
-            'amount.min' => 'Số tiền rút phải lớn hơn 0.',
+            'amount.min' => 'Số tiền rút tối thiểu là 200.000 đ.',
+            'note.max' => 'Ghi chú không được vượt quá 200 ký tự.',
         ];
     }
 }

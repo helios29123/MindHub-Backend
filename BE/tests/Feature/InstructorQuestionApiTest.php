@@ -473,7 +473,11 @@ final class InstructorQuestionApiTest extends TestCase
             ->postJson('/api/comments/' . $this->otherInstructorQuestionId . '/replies', [
                 'content' => 'Không được reply câu hỏi của instructor khác.',
             ]);
-        $response->assertNotFound();
+        $response->assertStatus(403)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Bạn không được trả lời Q&A của khóa học này.',
+            ]);
     }
     public function test_instructor_cannot_reply_root_comment_created_by_instructor(): void
     {

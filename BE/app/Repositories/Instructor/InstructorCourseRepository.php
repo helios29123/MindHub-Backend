@@ -3,6 +3,7 @@
 namespace App\Repositories\Instructor;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use App\Models\Course;
 
@@ -196,8 +197,17 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
             ->where('instructor_id', $instructorId)
             ->whereNull('deleted_at');
 
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        if (!empty($filters['status']) && $filters['status'] !== 'all') {
+            $statusInput = strtolower(trim((string) $filters['status']));
+            if ($statusInput === 'published' || $statusInput === 'active') {
+                $query->whereIn('status', ['published', 'approved', 'active']);
+            } elseif ($statusInput === 'pending' || $statusInput === 'pending_review') {
+                $query->whereIn('status', ['pending', 'pending_review', 'submitted']);
+            } elseif ($statusInput === 'hidden') {
+                $query->whereIn('status', ['hidden', 'inactive']);
+            } else {
+                $query->where('status', $statusInput);
+            }
         }
 
         if (!empty($filters['search'])) {
@@ -212,7 +222,98 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
             default => $query->orderByDesc('created_at'),
         };
 
-        return $query->paginate($perPage, ['*'], 'page', $page);
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        $courseIds = collect($paginator->items())->pluck('id')->all();
+
+        if (empty($courseIds)) {
+            return $paginator;
+        }
+
+        // 1. Enrollment count
+        $enrollmentCounts = DB::table('enrollments')
+            ->whereIn('course_id', $courseIds)
+            ->whereIn('status', ['active', 'completed', 'enrolled'])
+            ->groupBy('course_id')
+            ->select('course_id', DB::raw('COUNT(id) as count'))
+            ->pluck('count', 'course_id')
+            ->all();
+
+        // 2. Revenue amount
+        $revenuesMap = DB::table('revenues')
+            ->whereIn('course_id', $courseIds)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhereNotIn('status', ['cancelled']);
+            })
+            ->groupBy('course_id')
+            ->select('course_id', DB::raw('COALESCE(SUM(instructor_amount), 0) as total'))
+            ->pluck('total', 'course_id')
+            ->all();
+
+        // 3. Rating & Review Count
+        $hasCourseReviewsTable = Schema::hasTable('course_reviews');
+        $reviewsMap = collect();
+
+        if ($hasCourseReviewsTable) {
+            $reviewsMap = DB::table('course_reviews')
+                ->join('orders', 'orders.id', '=', 'course_reviews.order_id')
+                ->whereIn('orders.course_id', $courseIds)
+                ->whereNull('course_reviews.deleted_at')
+                ->groupBy('orders.course_id')
+                ->select(
+                    'orders.course_id',
+                    DB::raw('COUNT(course_reviews.id) as count'),
+                    DB::raw('ROUND(AVG(course_reviews.rating), 1) as avg_rating')
+                )
+                ->get()
+                ->keyBy('course_id');
+        } elseif (Schema::hasTable('reviews')) {
+            $reviewsMap = DB::table('reviews')
+                ->whereIn('course_id', $courseIds)
+                ->whereNull('deleted_at')
+                ->groupBy('course_id')
+                ->select(
+                    'course_id',
+                    DB::raw('COUNT(id) as count'),
+                    DB::raw('ROUND(AVG(rating), 1) as avg_rating')
+                )
+                ->get()
+                ->keyBy('course_id');
+        }
+
+        // 4. Categories Map
+        $categoriesMap = DB::table('course_categories as cc')
+            ->join('categories as c', 'c.id', '=', 'cc.category_id')
+            ->whereIn('cc.course_id', $courseIds)
+            ->whereNull('c.deleted_at')
+            ->select('cc.course_id', 'c.id', 'c.name')
+            ->get()
+            ->groupBy('course_id');
+
+        foreach ($paginator->items() as $course) {
+            $cId = (int) $course->id;
+            $eCount = (int) ($enrollmentCounts[$cId] ?? 0);
+            $revAmount = (float) ($revenuesMap[$cId] ?? 0);
+            $revItem = $reviewsMap->get($cId);
+            $revCount = $revItem ? (int) $revItem->count : 0;
+            $ratingVal = $revItem ? (float) $revItem->avg_rating : 0.0;
+
+            $course->enrollment_count = $eCount;
+            $course->enrollments_count = $eCount;
+            $course->revenue = number_format($revAmount, 2, '.', '');
+            $course->revenue_amount = $revAmount;
+            $course->rating = $ratingVal;
+            $course->review_count = $revCount;
+            $course->reviews_count = $revCount;
+
+            $catList = $categoriesMap->get($cId, collect());
+            $course->categories = $catList->map(fn ($cat): array => [
+                'id' => (int) $cat->id,
+                'name' => $cat->name,
+            ])->values()->all();
+        }
+
+        return $paginator;
     }
 
 public function instructorOwnsCourse(int $instructorId, int $courseId): bool
