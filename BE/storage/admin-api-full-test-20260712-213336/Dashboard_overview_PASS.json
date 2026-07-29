@@ -1,0 +1,41 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "kpis":  {
+                              "total_revenue_month":  0,
+                              "instructor_revenue_month":  0,
+                              "platform_revenue_month":  0,
+                              "paid_orders":  3,
+                              "pending_payout_items":  0,
+                              "action_required":  5
+                          },
+                 "source_breakdown":  [
+                                          {
+                                              "sale_channel":  "admin_campaign",
+                                              "total_orders":  1,
+                                              "gross_amount":  "269100.00",
+                                              "instructor_amount":  "99567.00",
+                                              "platform_fee_amount":  "169533.00"
+                                          },
+                                          {
+                                              "sale_channel":  "marketplace",
+                                              "total_orders":  2,
+                                              "gross_amount":  "698000.00",
+                                              "instructor_amount":  "258260.00",
+                                              "platform_fee_amount":  "439740.00"
+                                          }
+                                      ],
+                 "revenue_chart":  [
+                                       {
+                                           "month":  "2026-05",
+                                           "instructor_amount":  "110630.00",
+                                           "platform_fee_amount":  "188370.00"
+                                       },
+                                       {
+                                           "month":  "2026-06",
+                                           "instructor_amount":  "247197.00",
+                                           "platform_fee_amount":  "420903.00"
+                                       }
+                                   ]
+             }
+}

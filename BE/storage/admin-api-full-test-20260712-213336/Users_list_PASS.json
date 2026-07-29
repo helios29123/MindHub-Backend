@@ -1,0 +1,165 @@
+﻿{
+    "data":  [
+                 {
+                     "id":  11,
+                     "name":  "Learner Empty State",
+                     "full_name":  "Learner Empty State",
+                     "email":  "learner.empty@mindhub.test",
+                     "phone":  "0900000011",
+                     "role":  "learner",
+                     "status":  "active",
+                     "email_verified_at":  "2026-01-05T09:35:00.000000Z",
+                     "last_login_at":  null,
+                     "created_at":  "2026-01-02T09:35:00.000000Z"
+                 },
+                 {
+                     "id":  10,
+                     "name":  "Learner Device Limit",
+                     "full_name":  "Learner Device Limit",
+                     "email":  "learner.limit@mindhub.test",
+                     "phone":  "0900000010",
+                     "role":  "learner",
+                     "status":  "active",
+                     "email_verified_at":  "2026-01-05T09:30:00.000000Z",
+                     "last_login_at":  "2026-06-23T06:30:00.000000Z",
+                     "created_at":  "2026-01-02T09:30:00.000000Z"
+                 },
+                 {
+                     "id":  9,
+                     "name":  "OAuth Only Learner",
+                     "full_name":  "OAuth Only Learner",
+                     "email":  "oauth.only@mindhub.test",
+                     "phone":  null,
+                     "role":  "learner",
+                     "status":  "active",
+                     "email_verified_at":  "2026-01-05T09:25:00.000000Z",
+                     "last_login_at":  "2026-06-10T11:00:00.000000Z",
+                     "created_at":  "2026-01-02T09:25:00.000000Z"
+                 },
+                 {
+                     "id":  8,
+                     "name":  "Tài khoản inactive",
+                     "full_name":  "Tài khoản inactive",
+                     "email":  "inactive@mindhub.test",
+                     "phone":  "0900000008",
+                     "role":  "learner",
+                     "status":  "inactive",
+                     "email_verified_at":  null,
+                     "last_login_at":  null,
+                     "created_at":  "2026-01-02T09:20:00.000000Z"
+                 },
+                 {
+                     "id":  7,
+                     "name":  "Tài khoản bị khóa",
+                     "full_name":  "Tài khoản bị khóa",
+                     "email":  "locked@mindhub.test",
+                     "phone":  "0900000007",
+                     "role":  "learner",
+                     "status":  "locked",
+                     "email_verified_at":  "2026-01-05T09:15:00.000000Z",
+                     "last_login_at":  "2026-04-01T10:00:00.000000Z",
+                     "created_at":  "2026-01-02T09:15:00.000000Z"
+                 },
+                 {
+                     "id":  6,
+                     "name":  "Đỗ Hoàng Nam",
+                     "full_name":  "Đỗ Hoàng Nam",
+                     "email":  "learner.completed@mindhub.test",
+                     "phone":  "0900000006",
+                     "role":  "learner",
+                     "status":  "active",
+                     "email_verified_at":  "2026-01-05T09:10:00.000000Z",
+                     "last_login_at":  "2026-06-20T10:30:00.000000Z",
+                     "created_at":  "2026-01-02T09:10:00.000000Z"
+                 },
+                 {
+                     "id":  5,
+                     "name":  "Phạm Anh Thư",
+                     "full_name":  "Phạm Anh Thư",
+                     "email":  "learner2@mindhub.test",
+                     "phone":  "0900000005",
+                     "role":  "learner",
+                     "status":  "active",
+                     "email_verified_at":  "2026-01-05T09:05:00.000000Z",
+                     "last_login_at":  "2026-06-22T21:00:00.000000Z",
+                     "created_at":  "2026-01-02T09:05:00.000000Z"
+                 },
+                 {
+                     "id":  4,
+                     "name":  "Lê Gia Bảo",
+                     "full_name":  "Lê Gia Bảo",
+                     "email":  "learner1@mindhub.test",
+                     "phone":  "0900000004",
+                     "role":  "learner",
+                     "status":  "active",
+                     "email_verified_at":  "2026-01-05T09:00:00.000000Z",
+                     "last_login_at":  "2026-06-23T07:40:00.000000Z",
+                     "created_at":  "2026-01-02T09:00:00.000000Z"
+                 },
+                 {
+                     "id":  3,
+                     "name":  "Trần Hà Linh",
+                     "full_name":  "Trần Hà Linh",
+                     "email":  "instructor2@mindhub.test",
+                     "phone":  "0900000003",
+                     "role":  "instructor",
+                     "status":  "active",
+                     "email_verified_at":  "2026-01-05T08:10:00.000000Z",
+                     "last_login_at":  "2026-06-21T16:45:00.000000Z",
+                     "created_at":  "2026-01-01T08:10:00.000000Z"
+                 },
+                 {
+                     "id":  2,
+                     "name":  "Nguyễn Minh Khoa",
+                     "full_name":  "Nguyễn Minh Khoa",
+                     "email":  "instructor1@mindhub.test",
+                     "phone":  "0900000002",
+                     "role":  "instructor",
+                     "status":  "active",
+                     "email_verified_at":  "2026-01-05T08:05:00.000000Z",
+                     "last_login_at":  "2026-07-10T05:30:24.000000Z",
+                     "created_at":  "2026-01-01T08:05:00.000000Z"
+                 }
+             ],
+    "links":  {
+                  "first":  "http://127.0.0.1:8000/api/admin/users?page=1",
+                  "last":  "http://127.0.0.1:8000/api/admin/users?page=2",
+                  "prev":  null,
+                  "next":  "http://127.0.0.1:8000/api/admin/users?page=2"
+              },
+    "meta":  {
+                 "current_page":  1,
+                 "from":  1,
+                 "last_page":  2,
+                 "links":  [
+                               {
+                                   "url":  null,
+                                   "label":  "\u0026laquo; Previous",
+                                   "page":  null,
+                                   "active":  false
+                               },
+                               {
+                                   "url":  "http://127.0.0.1:8000/api/admin/users?page=1",
+                                   "label":  "1",
+                                   "page":  1,
+                                   "active":  true
+                               },
+                               {
+                                   "url":  "http://127.0.0.1:8000/api/admin/users?page=2",
+                                   "label":  "2",
+                                   "page":  2,
+                                   "active":  false
+                               },
+                               {
+                                   "url":  "http://127.0.0.1:8000/api/admin/users?page=2",
+                                   "label":  "Next \u0026raquo;",
+                                   "page":  2,
+                                   "active":  false
+                               }
+                           ],
+                 "path":  "http://127.0.0.1:8000/api/admin/users",
+                 "per_page":  10,
+                 "to":  10,
+                 "total":  11
+             }
+}

@@ -1,0 +1,40 @@
+﻿
+  GET|HEAD       api/admin/reports/instructors .......................................................................................................... ReportController@topInstructors
+                 竍・Illuminate\Routing\Middleware\SubstituteBindings
+                 竍・App\Http\Middleware\AuthenticateSessionToken
+                 竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD       api/admin/reports/revenue ............................................................................................................... ReportController@revenueReport
+                 竍・Illuminate\Routing\Middleware\SubstituteBindings
+                 竍・App\Http\Middleware\AuthenticateSessionToken
+                 竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD       api/admin/reports/top-courses .............................................................................................................. ReportController@topCourses
+                 竍・Illuminate\Routing\Middleware\SubstituteBindings
+                 竍・App\Http\Middleware\AuthenticateSessionToken
+                 竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD       api/instructor/reports/completion-rate ................................................................................................. ReportController@completionRate
+                 竍・Illuminate\Routing\Middleware\SubstituteBindings
+                 竍・App\Http\Middleware\AuthenticateSessionToken
+                 竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD       api/instructor/reports/enrollment-chart ............................................... instructor.reports.enrollment-chart 窶ｺ ReportController@instructorEnrollmentChart
+                 竍・Illuminate\Routing\Middleware\SubstituteBindings
+                 竍・App\Http\Middleware\AuthenticateSessionToken
+                 竍・App\Http\Middleware\EnsureUserIsActive
+                 竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD       api/instructor/reports/inactive-learners ............................................................................................. ReportController@inactiveLearners
+                 竍・Illuminate\Routing\Middleware\SubstituteBindings
+                 竍・App\Http\Middleware\AuthenticateSessionToken
+                 竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD       api/instructor/reports/revenue-chart ........................................................ instructor.reports.revenue-chart 窶ｺ ReportController@instructorRevenueChart
+                 竍・Illuminate\Routing\Middleware\SubstituteBindings
+                 竍・App\Http\Middleware\AuthenticateSessionToken
+                 竍・App\Http\Middleware\EnsureUserIsActive
+                 竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD       api/instructor/reports/top-courses .............................................................. instructor.reports.top-courses 窶ｺ ReportController@instructorTopCourses
+                 竍・Illuminate\Routing\Middleware\SubstituteBindings
+                 竍・App\Http\Middleware\AuthenticateSessionToken
+                 竍・App\Http\Middleware\EnsureUserIsActive
+                 竍・App\Http\Middleware\RoleMiddleware:instructor
+
+                                                                                                                                                                       Showing [8] routes
+
+

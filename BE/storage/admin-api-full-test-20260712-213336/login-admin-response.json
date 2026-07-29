@@ -1,0 +1,21 @@
+﻿{
+    "success":  true,
+    "message":  "Đăng nhập thành công.",
+    "data":  {
+                 "active_session_count":  null,
+                 "max_sessions":  null,
+                 "token_type":  "Bearer",
+                 "access_token":  "eyJ1c2VyX2lkIjoxLCJzZXNzaW9uX2lkIjoyMywiZXhwaXJlc19hdCI6MTc4Mzg3MDQyMiwiaXNzdWVkX2F0IjoxNzgzODY2ODIyfQ.aaaffa14532069f0a0620c903bc9108669eb706e3acba221b82786b81e0cc0f4",
+                 "refresh_token":  "Ad5HH3jcJVKrGvDO7v8U0jMZMJUhZhACGR9agDJIp0m2ufladmStoMb8rxujTHhSxRHzX9iSsN24t692",
+                 "expires_in":  3600,
+                 "user":  {
+                              "id":  1,
+                              "full_name":  "MindHub Admin",
+                              "email":  "admin@mindhub.test",
+                              "phone":  "0900000001",
+                              "role":  "admin",
+                              "status":  "active",
+                              "email_verified_at":  "2026-01-05T08:00:00.000000Z"
+                          }
+             }
+}

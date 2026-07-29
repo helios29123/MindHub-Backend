@@ -1,0 +1,48 @@
+﻿{
+    "success":  true,
+    "message":  "Lấy báo cáo top giảng viên thành công.",
+    "data":  {
+                 "items":  [
+                               {
+                                   "instructor_id":  2,
+                                   "full_name":  "Nguyễn Minh Khoa",
+                                   "email":  "instructor1@mindhub.test",
+                                   "role":  "instructor",
+                                   "status":  "active",
+                                   "total_courses":  18,
+                                   "published_courses":  16,
+                                   "total_sold":  3,
+                                   "total_enrollments":  3,
+                                   "total_completed":  1,
+                                   "completion_rate":  33.33,
+                                   "total_revenue":  967100,
+                                   "instructor_amount":  0,
+                                   "platform_fee_amount":  0,
+                                   "last_activity_at":  "2026-06-21T08:30:00+00:00"
+                               },
+                               {
+                                   "instructor_id":  3,
+                                   "full_name":  "Trần Hà Linh",
+                                   "email":  "instructor2@mindhub.test",
+                                   "role":  "instructor",
+                                   "status":  "active",
+                                   "total_courses":  12,
+                                   "published_courses":  11,
+                                   "total_sold":  0,
+                                   "total_enrollments":  0,
+                                   "total_completed":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  0,
+                                   "instructor_amount":  0,
+                                   "platform_fee_amount":  0,
+                                   "last_activity_at":  null
+                               }
+                           ]
+             },
+    "meta":  {
+                 "current_page":  1,
+                 "last_page":  1,
+                 "per_page":  10,
+                 "total":  2
+             }
+}

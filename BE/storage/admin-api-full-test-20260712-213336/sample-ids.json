@@ -1,0 +1,13 @@
+﻿{
+    "course_id": 1,
+    "pending_course_id": 8,
+    "order_id": 1,
+    "revenue_id": 1,
+    "payout_batch_id": 1,
+    "payout_item_id": 1,
+    "payout_account_id": 1,
+    "user_id": 2,
+    "instructor_user_id": 2,
+    "commission_rule_id": 1,
+    "notification_id": 1
+}

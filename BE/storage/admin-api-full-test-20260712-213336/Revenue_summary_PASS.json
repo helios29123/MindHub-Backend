@@ -1,0 +1,10 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "gross_amount":  967100,
+                 "instructor_amount":  357827,
+                 "platform_fee_amount":  609273,
+                 "available_amount":  99567,
+                 "paid_amount":  110630
+             }
+}

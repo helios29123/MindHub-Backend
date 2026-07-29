@@ -1,0 +1,11 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "total_revenue_month":  0,
+                 "instructor_revenue_month":  0,
+                 "platform_revenue_month":  0,
+                 "paid_orders":  3,
+                 "pending_payout_items":  0,
+                 "action_required":  5
+             }
+}

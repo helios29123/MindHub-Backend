@@ -1,0 +1,128 @@
+<?php
+
+namespace App\Repositories\Payment;
+
+use App\Models\Order;
+use Carbon\CarbonInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+class OrderRepository
+{
+    public function create(array $orderData): Order
+    {
+        return Order::create($orderData);
+    }
+
+    public function cancel(Order $order): bool
+    {
+        return $order->update([
+            'status' => Order::STATUS_CANCELLED,
+        ]);
+    }    public function findUserOrder(int $orderId, int $userId): ?Order
+    {
+        return Order::with(['course', 'coupon', 'enrollment'])
+            ->where('id', $orderId)
+            ->where('user_id', $userId)
+            ->first();
+    }
+
+    public function findUserOrderForUpdate(int $orderId, int $userId): ?Order
+    {
+        return Order::where('id', $orderId)
+            ->where('user_id', $userId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function findUserOrderWithCourseForUpdate(int $orderId, int $userId): ?Order
+    {
+        return Order::with(['course'])
+            ->where('id', $orderId)
+            ->where('user_id', $userId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function findForUpdate(int $orderId): ?Order
+    {
+        return Order::where('id', $orderId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function existsActiveOrder(int $userId, int $courseId): bool
+    {
+        return Order::where('user_id', $userId)
+            ->where('course_id', $courseId)
+            ->whereIn('status', [
+                Order::STATUS_PENDING,
+                Order::STATUS_PAID,
+            ])
+            ->whereIn('payment_status', [
+                Order::PAYMENT_UNPAID,
+                Order::PAYMENT_PROCESSING,
+                Order::PAYMENT_PAID,
+            ])
+            ->exists();
+    }
+
+    public function existsTransactionForAnotherOrder(string $transactionCode, int $orderId): bool
+    {
+        return Order::where('provider_transaction_id', $transactionCode)
+            ->where('id', '!=', $orderId)
+            ->exists();
+    }
+
+    public function paginateUserOrders(int $userId, array $filters): LengthAwarePaginator
+    {
+        $query = Order::with(['course', 'coupon'])
+            ->where('user_id', $userId)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (! empty($filters['payment_status'])) {
+            $query->where('payment_status', $filters['payment_status']);
+        }
+
+        $perPage = (int) ($filters['per_page'] ?? 10);
+        $page = (int) ($filters['page'] ?? 1);
+
+        return $query->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    public function findByProviderTransactionId(string $transactionId): ?Order
+    {
+        return Order::with(['course', 'coupon'])
+            ->where('provider_transaction_id', $transactionId)
+            ->first();
+    }
+
+    public function countPendingExpiredOrders(CarbonInterface $expiredBefore): int
+    {
+        return Order::where('status', Order::STATUS_PENDING)
+            ->where('created_at', '<=', $expiredBefore)
+            ->where(function ($query): void {
+                $query->whereNull('payment_status')
+                    ->orWhere('payment_status', '!=', Order::PAYMENT_PAID);
+            })
+            ->count();
+    }
+
+    public function expirePendingOrders(CarbonInterface $expiredBefore): int
+    {
+        return Order::where('status', Order::STATUS_PENDING)
+            ->where('created_at', '<=', $expiredBefore)
+            ->where(function ($query): void {
+                $query->whereNull('payment_status')
+                    ->orWhere('payment_status', '!=', Order::PAYMENT_PAID);
+            })
+            ->update([
+                'status' => Order::STATUS_EXPIRED,
+                'updated_at' => now(),
+            ]);
+    }
+}

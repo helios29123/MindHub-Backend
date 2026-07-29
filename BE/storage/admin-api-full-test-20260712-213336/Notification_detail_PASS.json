@@ -1,0 +1,16 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "id":  1,
+                 "type":  "course",
+                 "title":  "Khóa học mới chờ duyệt",
+                 "message":  "Có khóa học mới được giảng viên gửi duyệt, cần admin kiểm tra nội dung.",
+                 "severity":  "medium",
+                 "related_type":  "course",
+                 "related_id":  1,
+                 "data":  null,
+                 "is_read":  false,
+                 "read_at":  null,
+                 "created_at":  "2026-07-07T08:10:00.000000Z"
+             }
+}

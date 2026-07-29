@@ -1,0 +1,15 @@
+﻿{
+    "success":  true,
+    "data":  [
+                 {
+                     "month":  "2026-05",
+                     "instructor_amount":  "110630.00",
+                     "platform_fee_amount":  "188370.00"
+                 },
+                 {
+                     "month":  "2026-06",
+                     "instructor_amount":  "247197.00",
+                     "platform_fee_amount":  "420903.00"
+                 }
+             ]
+}

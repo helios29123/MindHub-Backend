@@ -1,0 +1,272 @@
+﻿[
+    {
+        "name":  "Admin dashboard legacy",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/dashboard",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Dashboard overview",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/dashboard/overview",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Dashboard revenue chart",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/dashboard/revenue-chart",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Dashboard action required",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/dashboard/action-required",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Courses list",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/courses?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Course detail",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/courses/1",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Orders list",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/orders?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Order detail",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/orders/1",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Revenues list",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/revenues?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Revenue summary",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/revenues/summary",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Revenue source breakdown",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/revenues/source-breakdown",
+        "status":  "FAIL",
+        "http_status":  500,
+        "expected":  "200",
+        "error":  "{\"success\":false,\"message\":\"C\\u00f3 l\\u1ed7i x\\u1ea3y ra, vui l\\u00f2ng th\\u1eed l\\u1ea1i sau.\",\"errors\":[]}"
+    },
+    {
+        "name":  "Revenue chart",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/revenues/chart",
+        "status":  "FAIL",
+        "http_status":  500,
+        "expected":  "200",
+        "error":  "{\"success\":false,\"message\":\"C\\u00f3 l\\u1ed7i x\\u1ea3y ra, vui l\\u00f2ng th\\u1eed l\\u1ea1i sau.\",\"errors\":[]}"
+    },
+    {
+        "name":  "Revenue detail",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/revenues/1",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Payout batches list",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/payout-batches?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Payout batch detail",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/payout-batches/1",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Payout bank export",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/payout-batches/1/export-bank-list",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Payout accounts list",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/payout-accounts?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Payout account detail",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/payout-accounts/1",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Payout account logs",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/payout-accounts/1/logs",
+        "status":  "FAIL",
+        "http_status":  500,
+        "expected":  "200",
+        "error":  "{\"success\":false,\"message\":\"C\\u00f3 l\\u1ed7i x\\u1ea3y ra, vui l\\u00f2ng th\\u1eed l\\u1ea1i sau.\",\"errors\":[]}"
+    },
+    {
+        "name":  "Users list",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/users?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "User detail",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/users/2",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Commission rules list",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/commission-rules?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Notifications list",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/notifications?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Notification detail",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/notifications/1",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Audit logs",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/audit-logs?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Report revenue",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/reports/revenue?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Report top courses",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/reports/top-courses?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Report top instructors",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/reports/instructors?page=1\u0026per_page=10",
+        "status":  "PASS",
+        "http_status":  200,
+        "expected":  "200",
+        "error":  null
+    },
+    {
+        "name":  "Unauth dashboard overview should be 401",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/dashboard/overview",
+        "status":  "PASS_EXPECTED",
+        "http_status":  401,
+        "expected":  "401",
+        "error":  "{\"success\":false,\"message\":\"Unauthenticated.\",\"errors\":[]}"
+    },
+    {
+        "name":  "Unauth courses list should be 401",
+        "method":  "GET",
+        "url":  "http://127.0.0.1:8000/api/admin/courses?page=1\u0026per_page=10",
+        "status":  "PASS_EXPECTED",
+        "http_status":  401,
+        "expected":  "401",
+        "error":  "{\"success\":false,\"message\":\"Unauthenticated.\",\"errors\":[]}"
+    }
+]

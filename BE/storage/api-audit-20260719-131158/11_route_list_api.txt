@@ -1,0 +1,821 @@
+﻿
+  GET|POST|HEAD   api/admin/banners ............................................................................................................................. AdminController@banners
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|PUT|PATCH|DELETE|HEAD api/admin/banners/{id} .............................................................................................................. AdminController@banners
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|POST|HEAD   api/admin/campaigns ....................................................................................................................... MarketingController@banners
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|PUT|PATCH|DELETE|HEAD api/admin/campaigns/{id} ........................................................................................................ MarketingController@banners
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/categories ....................................................................................................................... AdminController@categories
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  POST            api/admin/categories .................................................................................................................... AdminController@storeCategory
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/categories/{id} ................................................................................................................ AdminController@showCategory
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PUT             api/admin/categories/{id} .............................................................................................................. AdminController@updateCategory
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/categories/{id} .............................................................................................................. AdminController@updateCategory
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  DELETE          api/admin/categories/{id} .............................................................................................................. AdminController@deleteCategory
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/course-reviews ..................................................................................................... AdminModerationController@pendingCourses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/courses ............................................................................................................................. AdminController@courses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/courses/{courseId}/approve ............................................................................................ AdminCourseApprovalController@approve
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/courses/{courseId}/reject .............................................................................................. AdminCourseApprovalController@reject
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/courses/{id} ..................................................................................................................... AdminController@showCourse
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/courses/{id} ................................................................................................................... AdminController@updateCourse
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/credit-packages .......................................................................................................... AdminCreditPackageController@index
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  POST            api/admin/credit-packages .......................................................................................................... AdminCreditPackageController@store
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/credit-packages/{packageId} ............................................................................................. AdminCreditPackageController@update
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  DELETE          api/admin/credit-packages/{packageId} ............................................................................................ AdminCreditPackageController@destroy
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/dashboard ........................................................................................................................ ReportController@dashboard
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/instructor-upgrade-requests .......................................................................................... InstructorUpgradeController@adminIndex
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/instructor-upgrade-requests/{userId} .................................................................................. InstructorUpgradeController@adminShow
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/instructor-upgrade-requests/{userId}/approve ............................................................................ InstructorUpgradeController@approve
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/instructor-upgrade-requests/{userId}/reject .............................................................................. InstructorUpgradeController@reject
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/instructors/{instructorId}/credit-transactions ................................................................. AdminInstructorCreditController@transactions
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/instructors/{instructorId}/credits ..................................................................................... AdminInstructorCreditController@show
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  POST            api/admin/instructors/{instructorId}/credits/adjust ............................................................................ AdminInstructorCreditController@adjust
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/moderation/items/{id} ................................................................................................ AdminModerationController@moderateItem
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/orders ............................................................................................................................... AdminController@orders
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/reports/instructors ......................................................................................................... ReportController@topInstructors
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/reports/revenue .............................................................................................................. ReportController@revenueReport
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/reports/top-courses ............................................................................................................. ReportController@topCourses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/roles ................................................................................................................................. AdminController@roles
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  POST            api/admin/roles ................................................................................................................................. AdminController@roles
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/roles/{id} ............................................................................................................................ AdminController@roles
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PUT             api/admin/roles/{id} ............................................................................................................................ AdminController@roles
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/roles/{id} ............................................................................................................................ AdminController@roles
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  DELETE          api/admin/roles/{id} ............................................................................................................................ AdminController@roles
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/test ................................................................................................................................ routes/api/admin.php:23
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/users ................................................................................................................................. AdminController@users
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  POST            api/admin/users ............................................................................................................................. AdminController@storeUser
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/admin/users/{id} ......................................................................................................................... AdminController@showUser
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PUT             api/admin/users/{id} ....................................................................................................................... AdminController@updateUser
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH           api/admin/users/{id} ....................................................................................................................... AdminController@updateUser
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  DELETE          api/admin/users/{id} ....................................................................................................................... AdminController@deleteUser
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  POST            api/auth/forgot-password ................................................................................................................ AuthController@forgotPassword
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/auth/google ............................................................................................................................ AuthController@googleLogin
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/auth/login ................................................................................................................................... AuthController@login
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/auth/logout ................................................................................................................................. AuthController@logout
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+  POST            api/auth/register ...................................................................................................................... AuthController@registerLearner
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/auth/register/instructor ........................................................................................................ AuthController@registerInstructor
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/auth/register/learner .............................................................................................................. AuthController@registerLearner
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/auth/reset-password .................................................................................................................. AuthController@resetPassword
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/auth/verify-email/resend ......................................................................................................... AuthController@resendVerifyEmail
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/auth/verify-email/{id}/{hash} ...................................................................................... auth.verify-email 窶ｺ AuthController@verifyEmail
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/categories ........................................................................................................................... CatalogController@categories
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/comments/{id}/replies .......................................................................................................... InteractionController@replyComment
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/courses ........................................................................................................................... CatalogController@searchCourses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/courses/featured ................................................................................................................ CatalogController@featuredCourses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/courses/latest .................................................................................................................... CatalogController@latestCourses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/courses/sort ........................................................................................................................ CatalogController@sortCourses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/courses/{courseId}/related .................................................................................................. CoursePublicController@relatedCourses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/courses/{id}/completion-status .................................................................................................... QuizController@completionStatus
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/courses/{id}/faqs ..................................................................................................................... CoursePublicController@faqs
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/courses/{id}/outline ............................................................................................................... CoursePublicController@outline
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/courses/{id}/reviews ............................................................................................................... CoursePublicController@reviews
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/courses/{id}/reviews ............................................................................................................ InteractionController@storeReview
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/courses/{slug} ........................................................................................................................ CoursePublicController@show
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/home ....................................................................................................................................... CatalogController@home
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/instructor/coupons .......................................................................................................... MarketingController@instructorCoupons
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/coupons ...................................................................................................... MarketingController@storeInstructorCoupon
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/coupons/course-options ......................................................................................... MarketingController@couponCourseOptions
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/coupons/summary ............................................................................................ MarketingController@instructorCouponSummary
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/coupons/{id} .................................................................................................. MarketingController@showInstructorCoupon
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PATCH           api/instructor/coupons/{id} ................................................................................................ MarketingController@updateInstructorCoupon
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  DELETE          api/instructor/coupons/{id} ............................................................................................... MarketingController@destroyInstructorCoupon
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PATCH           api/instructor/coupons/{id}/status ................................................................................... MarketingController@updateInstructorCouponStatus
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/course-announcements ........................................................................................... MarketingController@courseAnnouncements
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/course-credits ...................................................................................................... InstructorCreditController@balance
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/courses ............................................................................................................... InstructorCourseController@store
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/courses .................................................................................... instructor.courses.index 窶ｺ InstructorCourseController@index
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/courses/draft .................................................................................................... InstructorCourseController@storeDraft
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/courses/{courseId}/analytics .......................................................................................... ReportController@courseAnalytics
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/courses/{courseId}/checklist ...................................................................................... InstructorCourseController@checklist
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/courses/{courseId}/learner-risk ........................................................................................... ReportController@learnerRisk
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/courses/{id} ........................................................................................................... InstructorCourseController@show
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PATCH           api/instructor/courses/{id} ......................................................................................................... InstructorCourseController@update
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/courses/{id}/content ................................................................................................ InstructorCourseController@content
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/courses/{id}/dashboard ................................................................................................ ReportController@courseDashboard
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PATCH           api/instructor/courses/{id}/draft .............................................................................................. InstructorCourseController@updateDraft
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/courses/{id}/learners .............................................................................................. InstructorCourseController@learners
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/courses/{id}/review-notes ....................................................................................... InstructorCourseController@reviewNotes
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/courses/{id}/submit ......................................................................................... InstructorCourseController@submitForReview
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/credit-orders ................................................................................................... InstructorCreditController@createOrder
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/credit-packages .................................................................................................... InstructorCreditController@packages
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/credit-transactions ............................................................................................ InstructorCreditController@transactions
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/dashboard .................................................................................. instructor.dashboard 窶ｺ ReportController@instructorDashboard
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/dashboard/alerts .............................................................. instructor.dashboard.alerts 窶ｺ ReportController@instructorDashboardAlerts
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/learners ............................................................................ instructor.learners.index 窶ｺ InstructorCourseController@allLearners
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/lessons ........................................................................................................ InstructorCourseController@indexLessons
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/lessons ......................................................................................................... InstructorCourseController@storeLesson
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/lessons/{id} ..................................................................................................... InstructorCourseController@showLesson
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PUT|PATCH       api/instructor/lessons/{id} ................................................................................................... InstructorCourseController@updateLesson
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  DELETE          api/instructor/lessons/{id} .................................................................................................. InstructorCourseController@destroyLesson
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/lessons/{id}/assets ............................................................................................. InstructorCourseController@uploadAsset
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PATCH           api/instructor/lessons/{id}/preview .......................................................................................... InstructorCourseController@togglePreview
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/lessons/{id}/video .............................................................................................. InstructorCourseController@uploadVideo
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/payout-accounts .......................................................................................... InstructorWithdrawalController@payoutAccounts
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/profile ............................................................................................................... InstructorProfileController@show
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PATCH           api/instructor/profile/account .............................................................................................. InstructorProfileController@updateAccount
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/profile/completion .............................................................................................. InstructorProfileController@completion
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PATCH           api/instructor/profile/expertise .......................................................................................... InstructorProfileController@updateExpertise
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PATCH           api/instructor/profile/introduction .................................................................................... InstructorProfileController@updateIntroduction
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/questions ....................................................................... instructor.questions.index 窶ｺ InteractionController@instructorQuestions
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/questions/course-options ......................................................................... InteractionController@instructorQuestionCourseOptions
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/questions/lesson-options ......................................................................... InteractionController@instructorQuestionLessonOptions
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/questions/summary ...................................................................................... InteractionController@instructorQuestionSummary
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/questions/{id} ............................................................................................ InteractionController@showInstructorQuestion
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|POST|HEAD   api/instructor/quizzes ....................................................................................................... InstructorCourseController@manageQuizzes
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|PUT|PATCH|DELETE|HEAD api/instructor/quizzes/{id} ........................................................................................ InstructorCourseController@manageQuizzes
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/reports/completion-rate ................................................................................................ ReportController@completionRate
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/reports/enrollment-chart .............................................. instructor.reports.enrollment-chart 窶ｺ ReportController@instructorEnrollmentChart
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/reports/inactive-learners ............................................................................................ ReportController@inactiveLearners
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/reports/revenue-chart ....................................................... instructor.reports.revenue-chart 窶ｺ ReportController@instructorRevenueChart
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/reports/top-courses ............................................................. instructor.reports.top-courses 窶ｺ ReportController@instructorTopCourses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/revenue ............................................................................................................. InstructorCourseController@revenue
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/sections ........................................................................................................... InstructorCourseController@sections
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/sections ....................................................................................................... InstructorCourseController@storeSection
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/sections/{id} ................................................................................................... InstructorCourseController@showSection
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PUT             api/instructor/sections/{id} ................................................................................................. InstructorCourseController@updateSection
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  PATCH           api/instructor/sections/{id} ................................................................................................. InstructorCourseController@updateSection
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  DELETE          api/instructor/sections/{id} ................................................................................................. InstructorCourseController@deleteSection
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/withdrawals ...................................................................... instructor.withdrawals.index 窶ｺ InstructorCourseController@withdrawals
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  POST            api/instructor/withdrawals ....................................................................................................... InstructorWithdrawalController@store
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/withdrawals/summary ........................................................ instructor.withdrawals.summary 窶ｺ InstructorCourseController@withdrawSummary
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructor/withdrawals/{id} ................................................................................................... InstructorWithdrawalController@show
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:instructor
+  GET|HEAD        api/instructors/featured ........................................................................................................ CatalogController@featuredInstructors
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/instructors/{id} ............................................................................................................ CoursePublicController@showInstructor
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/learn/assets/{assetId}/signed-url ............................................................................................... LearningController@signedAssetUrl
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learn/assets/{id}/download ....................................................................................................... LearningController@downloadAsset
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learn/courses/{id}/outline ............................................................................................................. LearningController@outline
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learn/courses/{id}/progress ..................................................................................................... LearningController@courseProgress
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learn/lessons/{id} .................................................................................................................. LearningController@showLesson
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learn/lessons/{id}/check-access ................................................................................................ LearningController@canAccessLesson
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+  PATCH           api/learn/lessons/{id}/complete ..................................................................................................... LearningController@completeLesson
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learn/lessons/{id}/next ............................................................................................................. LearningController@nextLesson
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  PATCH           api/learn/lessons/{id}/progress .................................................................................................. LearningController@saveVideoProgress
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learn/lessons/{id}/stream ............................................................................. learn.lessons.stream 窶ｺ LearningController@streamLessonVideo
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/learn/lessons/{id}/video-url .............................................................................................. LearningController@signedLessonVideoUrl
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learn/lessons/{lessonId}/watermark-info .......................................................................................... LearningController@watermarkInfo
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learn/resume ............................................................................................................................ LearningController@resume
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/learning-logs/my .................................................................................................................. LearningController@learningLogs
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|POST|HEAD   api/lessons/{id}/comments ........................................................................................................ InteractionController@lessonComments
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/lessons/{id}/preview ......................................................................................................... CoursePublicController@previewLesson
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/me/courses ........................................................................................................................... LearningController@myCourses
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/me/dynamic-alerts ................................................................................................................ LearningController@dynamicAlerts
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/me/instructor-upgrade ................................................................................................... InstructorUpgradeController@myApplication
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  POST            api/me/instructor-upgrade ........................................................................................................... InstructorUpgradeController@store
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  PUT             api/me/instructor-upgrade .......................................................................................................... InstructorUpgradeController@update
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/me/learning-dashboard ................................................................................................................ LearningController@dashboard
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/me/learning-path/next ......................................................................................................... LearningController@nextLearningPath
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/me/recommendations/rule-based ......................................................................................... LearningController@ruleBasedRecommendations
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  POST            api/orders ............................................................................................................................... PaymentController@storeOrder
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,member,instructor
+  POST            api/orders/apply-coupon ................................................................................................................. PaymentController@applyCoupon
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,member,instructor
+  GET|HEAD        api/orders/my .............................................................................................................................. PaymentController@myOrders
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,member,instructor
+  GET|HEAD        api/orders/{id} ........................................................................................................................... PaymentController@showOrder
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,member,instructor
+  PATCH           api/orders/{orderId}/cancel ............................................................................................................. PaymentController@cancelOrder
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,member,instructor
+  POST            api/orders/{orderId}/retry-payment ..................................................................................................... PaymentController@retryPayment
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,member,instructor
+  POST            api/payments ........................................................................................................................... PaymentController@storePayment
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,member,instructor
+  GET|HEAD        api/payments/vnpay-return ............................................................................................................... PaymentController@vnpayReturn
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  POST            api/payments/vnpay/create ........................................................................................................ PaymentController@createVnpayPayment
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,member,instructor
+  POST            api/payments/webhook ........................................................................................................................ PaymentController@webhook
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD        api/quiz-attempts/{id} ..................................................................................................................... QuizController@showAttempt
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  POST            api/quizzes/{id}/attempts ................................................................................................................. QuizController@storeAttempt
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  GET|HEAD        api/search/suggestions ............................................................................................................ CatalogController@searchSuggestions
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+  GET|HEAD        api/users/me ................................................................................................................................. UserProfileController@me
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,instructor,admin
+  PATCH           api/users/me ........................................................................................................................... UserProfileController@updateMe
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,instructor,admin
+  PATCH           api/users/me/password ............................................................................................................ UserProfileController@changePassword
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner,instructor,admin
+  GET|HEAD        api/wishlists ................................................................................................................................ WishlistController@index
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  POST            api/wishlists ................................................................................................................................ WishlistController@store
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+  DELETE          api/wishlists/{courseId} ................................................................................................................... WishlistController@destroy
+                  竍・Illuminate\Routing\Middleware\SubstituteBindings
+                  竍・App\Http\Middleware\AuthenticateSessionToken
+                  竍・App\Http\Middleware\EnsureUserIsActive
+                  竍・App\Http\Middleware\RoleMiddleware:learner
+
+                                                                                                                                                                     Showing [182] routes
+
+

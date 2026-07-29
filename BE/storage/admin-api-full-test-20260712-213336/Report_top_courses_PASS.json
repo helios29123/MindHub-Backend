@@ -1,0 +1,230 @@
+﻿{
+    "success":  true,
+    "message":  "Lấy báo cáo top khóa học thành công.",
+    "data":  {
+                 "summary":  {
+                                 "total_courses":  30,
+                                 "total_sold":  3,
+                                 "total_revenue":  967100,
+                                 "total_completed":  1
+                             },
+                 "items":  [
+                               {
+                                   "course_id":  1,
+                                   "title":  "Laravel REST API từ cơ bản đến triển khai",
+                                   "slug":  "laravel-rest-api-tu-co-ban-den-trien-khai",
+                                   "status":  "published",
+                                   "price":  499000,
+                                   "sale_price":  299000,
+                                   "instructor":  {
+                                                      "id":  2,
+                                                      "full_name":  "Nguyễn Minh Khoa",
+                                                      "email":  "instructor1@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  2,
+                                   "enrollment_count":  2,
+                                   "completed_count":  1,
+                                   "completion_rate":  50,
+                                   "total_revenue":  568100,
+                                   "last_paid_at":  "2026-06-20T07:50:00+00:00"
+                               },
+                               {
+                                   "course_id":  2,
+                                   "title":  "PHP \u0026 MySQL nền tảng cho Backend",
+                                   "slug":  "php-mysql-nen-tang-cho-backend",
+                                   "status":  "published",
+                                   "price":  399000,
+                                   "sale_price":  null,
+                                   "instructor":  {
+                                                      "id":  2,
+                                                      "full_name":  "Nguyễn Minh Khoa",
+                                                      "email":  "instructor1@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  1,
+                                   "enrollment_count":  1,
+                                   "completed_count":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  399000,
+                                   "last_paid_at":  "2026-06-21T08:30:00+00:00"
+                               },
+                               {
+                                   "course_id":  30,
+                                   "title":  "Phỏng vấn Backend Developer Fresher",
+                                   "slug":  "phong-van-backend-developer-fresher",
+                                   "status":  "published",
+                                   "price":  499000,
+                                   "sale_price":  299000,
+                                   "instructor":  {
+                                                      "id":  2,
+                                                      "full_name":  "Nguyễn Minh Khoa",
+                                                      "email":  "instructor1@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  0,
+                                   "enrollment_count":  0,
+                                   "completed_count":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  0,
+                                   "last_paid_at":  null
+                               },
+                               {
+                                   "course_id":  29,
+                                   "title":  "Lộ trình xin việc Web Developer cho sinh viên IT",
+                                   "slug":  "lo-trinh-xin-viec-web-developer-cho-sinh-vien-it",
+                                   "status":  "published",
+                                   "price":  499000,
+                                   "sale_price":  299000,
+                                   "instructor":  {
+                                                      "id":  2,
+                                                      "full_name":  "Nguyễn Minh Khoa",
+                                                      "email":  "instructor1@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  0,
+                                   "enrollment_count":  0,
+                                   "completed_count":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  0,
+                                   "last_paid_at":  null
+                               },
+                               {
+                                   "course_id":  28,
+                                   "title":  "Tích hợp VNPay Payment với Laravel E-learning",
+                                   "slug":  "tich-hop-vnpay-payment-voi-laravel-e-learning",
+                                   "status":  "published",
+                                   "price":  599000,
+                                   "sale_price":  399000,
+                                   "instructor":  {
+                                                      "id":  2,
+                                                      "full_name":  "Nguyễn Minh Khoa",
+                                                      "email":  "instructor1@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  0,
+                                   "enrollment_count":  0,
+                                   "completed_count":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  0,
+                                   "last_paid_at":  null
+                               },
+                               {
+                                   "course_id":  27,
+                                   "title":  "SEO cơ bản cho Web Developer",
+                                   "slug":  "seo-co-ban-cho-web-developer",
+                                   "status":  "published",
+                                   "price":  299000,
+                                   "sale_price":  199000,
+                                   "instructor":  {
+                                                      "id":  3,
+                                                      "full_name":  "Trần Hà Linh",
+                                                      "email":  "instructor2@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  0,
+                                   "enrollment_count":  0,
+                                   "completed_count":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  0,
+                                   "last_paid_at":  null
+                               },
+                               {
+                                   "course_id":  26,
+                                   "title":  "Content Marketing cho Landing Page và Blog công nghệ",
+                                   "slug":  "content-marketing-cho-landing-page-va-blog-cong-nghe",
+                                   "status":  "published",
+                                   "price":  299000,
+                                   "sale_price":  199000,
+                                   "instructor":  {
+                                                      "id":  3,
+                                                      "full_name":  "Trần Hà Linh",
+                                                      "email":  "instructor2@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  0,
+                                   "enrollment_count":  0,
+                                   "completed_count":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  0,
+                                   "last_paid_at":  null
+                               },
+                               {
+                                   "course_id":  25,
+                                   "title":  "Web Analytics và A/B Testing cơ bản",
+                                   "slug":  "web-analytics-va-a-b-testing-co-ban",
+                                   "status":  "published",
+                                   "price":  299000,
+                                   "sale_price":  199000,
+                                   "instructor":  {
+                                                      "id":  3,
+                                                      "full_name":  "Trần Hà Linh",
+                                                      "email":  "instructor2@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  0,
+                                   "enrollment_count":  0,
+                                   "completed_count":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  0,
+                                   "last_paid_at":  null
+                               },
+                               {
+                                   "course_id":  24,
+                                   "title":  "Thiết kế Landing Page chuyển đổi cao cho sản phẩm Web",
+                                   "slug":  "thiet-ke-landing-page-chuyen-doi-cao-cho-san-pham-web",
+                                   "status":  "published",
+                                   "price":  299000,
+                                   "sale_price":  199000,
+                                   "instructor":  {
+                                                      "id":  3,
+                                                      "full_name":  "Trần Hà Linh",
+                                                      "email":  "instructor2@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  0,
+                                   "enrollment_count":  0,
+                                   "completed_count":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  0,
+                                   "last_paid_at":  null
+                               },
+                               {
+                                   "course_id":  23,
+                                   "title":  "React E-learning Frontend từ cơ bản đến thực chiến",
+                                   "slug":  "react-e-learning-frontend-tu-co-ban-den-thuc-chien",
+                                   "status":  "published",
+                                   "price":  499000,
+                                   "sale_price":  299000,
+                                   "instructor":  {
+                                                      "id":  3,
+                                                      "full_name":  "Trần Hà Linh",
+                                                      "email":  "instructor2@mindhub.test",
+                                                      "role":  "instructor",
+                                                      "status":  "active"
+                                                  },
+                                   "sold_count":  0,
+                                   "enrollment_count":  0,
+                                   "completed_count":  0,
+                                   "completion_rate":  0,
+                                   "total_revenue":  0,
+                                   "last_paid_at":  null
+                               }
+                           ]
+             },
+    "meta":  {
+                 "current_page":  1,
+                 "last_page":  3,
+                 "per_page":  10,
+                 "total":  30
+             }
+}

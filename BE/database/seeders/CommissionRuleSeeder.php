@@ -9,6 +9,8 @@ final class CommissionRuleSeeder extends Seeder
 {
     public function run(): void
     {
+        CommissionRule::query()->delete();
+
         $rules = [
             ['marketplace_default', 70, 30, 'Marketplace mặc định'],
             ['platform_ads', 37, 63, 'Nền tảng tự chạy quảng cáo'],

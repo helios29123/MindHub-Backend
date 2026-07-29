@@ -1,0 +1,15 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "id":  2,
+                 "name":  "Nguyễn Minh Khoa",
+                 "full_name":  "Nguyễn Minh Khoa",
+                 "email":  "instructor1@mindhub.test",
+                 "phone":  "0900000002",
+                 "role":  "instructor",
+                 "status":  "active",
+                 "email_verified_at":  "2026-01-05T08:05:00.000000Z",
+                 "last_login_at":  "2026-07-10T05:30:24.000000Z",
+                 "created_at":  "2026-01-01T08:05:00.000000Z"
+             }
+}

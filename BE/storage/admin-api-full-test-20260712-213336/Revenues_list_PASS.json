@@ -1,0 +1,99 @@
+﻿{
+    "data":  [
+                 {
+                     "id":  3,
+                     "order_id":  7,
+                     "course":  {
+                                    "id":  2,
+                                    "title":  "PHP \u0026 MySQL nền tảng cho Backend"
+                                },
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "gross_amount":  399000,
+                     "instructor_amount":  147630,
+                     "platform_fee_amount":  251370,
+                     "sale_channel":  "marketplace",
+                     "instructor_rate_percent":  37,
+                     "platform_rate_percent":  63,
+                     "status":  "pending",
+                     "earned_at":  "2026-06-21T08:30:00.000000Z"
+                 },
+                 {
+                     "id":  1,
+                     "order_id":  1,
+                     "course":  {
+                                    "id":  1,
+                                    "title":  "Laravel REST API từ cơ bản đến triển khai"
+                                },
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "gross_amount":  269100,
+                     "instructor_amount":  99567,
+                     "platform_fee_amount":  169533,
+                     "sale_channel":  "admin_campaign",
+                     "instructor_rate_percent":  37,
+                     "platform_rate_percent":  63,
+                     "status":  "available",
+                     "earned_at":  "2026-06-20T07:50:00.000000Z"
+                 },
+                 {
+                     "id":  2,
+                     "order_id":  6,
+                     "course":  {
+                                    "id":  1,
+                                    "title":  "Laravel REST API từ cơ bản đến triển khai"
+                                },
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "gross_amount":  299000,
+                     "instructor_amount":  110630,
+                     "platform_fee_amount":  188370,
+                     "sale_channel":  "marketplace",
+                     "instructor_rate_percent":  37,
+                     "platform_rate_percent":  63,
+                     "status":  "paid",
+                     "earned_at":  "2026-05-01T07:40:00.000000Z"
+                 }
+             ],
+    "links":  {
+                  "first":  "http://127.0.0.1:8000/api/admin/revenues?page=1",
+                  "last":  "http://127.0.0.1:8000/api/admin/revenues?page=1",
+                  "prev":  null,
+                  "next":  null
+              },
+    "meta":  {
+                 "current_page":  1,
+                 "from":  1,
+                 "last_page":  1,
+                 "links":  [
+                               {
+                                   "url":  null,
+                                   "label":  "\u0026laquo; Previous",
+                                   "page":  null,
+                                   "active":  false
+                               },
+                               {
+                                   "url":  "http://127.0.0.1:8000/api/admin/revenues?page=1",
+                                   "label":  "1",
+                                   "page":  1,
+                                   "active":  true
+                               },
+                               {
+                                   "url":  null,
+                                   "label":  "Next \u0026raquo;",
+                                   "page":  null,
+                                   "active":  false
+                               }
+                           ],
+                 "path":  "http://127.0.0.1:8000/api/admin/revenues",
+                 "per_page":  10,
+                 "to":  3,
+                 "total":  3
+             }
+}

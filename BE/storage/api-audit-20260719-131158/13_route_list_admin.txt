@@ -1,0 +1,231 @@
+﻿
+  GET|POST|HEAD api/admin/banners ............................................................................................................................... AdminController@banners
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|PUT|PATCH|DELETE|HEAD api/admin/banners/{id} .............................................................................................................. AdminController@banners
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|POST|HEAD api/admin/campaigns ......................................................................................................................... MarketingController@banners
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|PUT|PATCH|DELETE|HEAD api/admin/campaigns/{id} ........................................................................................................ MarketingController@banners
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/categories ............................................................................................................................. AdminController@categories
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  POST      api/admin/categories .......................................................................................................................... AdminController@storeCategory
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/categories/{id} ...................................................................................................................... AdminController@showCategory
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PUT       api/admin/categories/{id} .................................................................................................................... AdminController@updateCategory
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/categories/{id} .................................................................................................................... AdminController@updateCategory
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  DELETE    api/admin/categories/{id} .................................................................................................................... AdminController@deleteCategory
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/course-reviews ........................................................................................................... AdminModerationController@pendingCourses
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/courses ................................................................................................................................... AdminController@courses
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/courses/{courseId}/approve .................................................................................................. AdminCourseApprovalController@approve
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/courses/{courseId}/reject .................................................................................................... AdminCourseApprovalController@reject
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/courses/{id} ........................................................................................................................... AdminController@showCourse
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/courses/{id} ......................................................................................................................... AdminController@updateCourse
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/credit-packages ................................................................................................................ AdminCreditPackageController@index
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  POST      api/admin/credit-packages ................................................................................................................ AdminCreditPackageController@store
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/credit-packages/{packageId} ................................................................................................... AdminCreditPackageController@update
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  DELETE    api/admin/credit-packages/{packageId} .................................................................................................. AdminCreditPackageController@destroy
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/dashboard .............................................................................................................................. ReportController@dashboard
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/instructor-upgrade-requests ................................................................................................ InstructorUpgradeController@adminIndex
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/instructor-upgrade-requests/{userId} ........................................................................................ InstructorUpgradeController@adminShow
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/instructor-upgrade-requests/{userId}/approve .................................................................................. InstructorUpgradeController@approve
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/instructor-upgrade-requests/{userId}/reject .................................................................................... InstructorUpgradeController@reject
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/instructors/{instructorId}/credit-transactions ....................................................................... AdminInstructorCreditController@transactions
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/instructors/{instructorId}/credits ........................................................................................... AdminInstructorCreditController@show
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  POST      api/admin/instructors/{instructorId}/credits/adjust .................................................................................. AdminInstructorCreditController@adjust
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/moderation/items/{id} ...................................................................................................... AdminModerationController@moderateItem
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/orders ..................................................................................................................................... AdminController@orders
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/reports/instructors ............................................................................................................... ReportController@topInstructors
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/reports/revenue .................................................................................................................... ReportController@revenueReport
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/reports/top-courses ................................................................................................................... ReportController@topCourses
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/roles ....................................................................................................................................... AdminController@roles
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  POST      api/admin/roles ....................................................................................................................................... AdminController@roles
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/roles/{id} .................................................................................................................................. AdminController@roles
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PUT       api/admin/roles/{id} .................................................................................................................................. AdminController@roles
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/roles/{id} .................................................................................................................................. AdminController@roles
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  DELETE    api/admin/roles/{id} .................................................................................................................................. AdminController@roles
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/test ...................................................................................................................................... routes/api/admin.php:23
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/users ....................................................................................................................................... AdminController@users
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  POST      api/admin/users ................................................................................................................................... AdminController@storeUser
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  GET|HEAD  api/admin/users/{id} ............................................................................................................................... AdminController@showUser
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PUT       api/admin/users/{id} ............................................................................................................................. AdminController@updateUser
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  PATCH     api/admin/users/{id} ............................................................................................................................. AdminController@updateUser
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+  DELETE    api/admin/users/{id} ............................................................................................................................. AdminController@deleteUser
+            竍・Illuminate\Routing\Middleware\SubstituteBindings
+            竍・App\Http\Middleware\AuthenticateSessionToken
+            竍・App\Http\Middleware\EnsureUserIsActive
+            竍・App\Http\Middleware\RoleMiddleware:admin
+
+                                                                                                                                                                      Showing [46] routes
+
+

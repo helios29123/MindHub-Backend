@@ -1,0 +1,251 @@
+﻿{
+    "data":  [
+                 {
+                     "id":  9,
+                     "title":  "AI Learning cho sinh viên IT và E-learning",
+                     "slug":  "ai-learning-cho-sinh-vien-it-va-e-learning",
+                     "thumbnail_url":  "/thumbnails/courses/ai-learning.jpg",
+                     "price":  "499000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  3,
+                                        "name":  "Trần Hà Linh"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 },
+                 {
+                     "id":  10,
+                     "title":  "Postman API Testing cho Laravel Backend",
+                     "slug":  "postman-api-testing-cho-laravel-backend",
+                     "thumbnail_url":  "/thumbnails/courses/postman-api-testing.jpg",
+                     "price":  "499000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 },
+                 {
+                     "id":  11,
+                     "title":  "Git \u0026 GitHub làm việc nhóm đồ án",
+                     "slug":  "git-github-lam-viec-nhom-do-an",
+                     "thumbnail_url":  "/thumbnails/courses/git-github.jpg",
+                     "price":  "199000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 },
+                 {
+                     "id":  12,
+                     "title":  "MySQL Database Design cho dự án E-learning",
+                     "slug":  "mysql-database-design-cho-du-an-e-learning",
+                     "thumbnail_url":  "/thumbnails/courses/mysql-database-design.jpg",
+                     "price":  "499000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 },
+                 {
+                     "id":  13,
+                     "title":  "Deploy Fullstack Laravel React lên VPS aaPanel",
+                     "slug":  "deploy-fullstack-laravel-react-len-vps-aapanel",
+                     "thumbnail_url":  "/thumbnails/courses/deploy-vps-aapanel.jpg",
+                     "price":  "499000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  3,
+                                        "name":  "Trần Hà Linh"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 },
+                 {
+                     "id":  14,
+                     "title":  "Tailwind CSS UI cho Dashboard E-learning",
+                     "slug":  "tailwind-css-ui-cho-dashboard-e-learning",
+                     "thumbnail_url":  "/thumbnails/courses/tailwind-ui-elearning.jpg",
+                     "price":  "499000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  3,
+                                        "name":  "Trần Hà Linh"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 },
+                 {
+                     "id":  15,
+                     "title":  "Báo giá hợp đồng và quản lý dự án web nhỏ",
+                     "slug":  "bao-gia-hop-dong-va-quan-ly-du-an-web-nho",
+                     "thumbnail_url":  "/thumbnails/courses/web-project-management.jpg",
+                     "price":  "299000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 },
+                 {
+                     "id":  16,
+                     "title":  "Freelance Web Developer từ Portfolio đến khách hàng đầu tiên",
+                     "slug":  "freelance-web-developer-tu-portfolio-den-khach-hang-dau-tien",
+                     "thumbnail_url":  "/thumbnails/courses/freelance-web-developer.jpg",
+                     "price":  "299000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 },
+                 {
+                     "id":  17,
+                     "title":  "Tư duy sản phẩm SaaS cho lập trình viên Web",
+                     "slug":  "tu-duy-san-pham-saas-cho-lap-trinh-vien-web",
+                     "thumbnail_url":  "/thumbnails/courses/saas-product-thinking.jpg",
+                     "price":  "299000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 },
+                 {
+                     "id":  18,
+                     "title":  "Xây MVP sản phẩm Web cho người mới",
+                     "slug":  "xay-mvp-san-pham-web-cho-nguoi-moi",
+                     "thumbnail_url":  "/thumbnails/courses/mvp-web-product.jpg",
+                     "price":  "299000.00",
+                     "status":  "published",
+                     "instructor":  {
+                                        "id":  2,
+                                        "name":  "Nguyễn Minh Khoa"
+                                    },
+                     "category":  {
+                                      "id":  null,
+                                      "name":  null
+                                  },
+                     "students_count":  0,
+                     "rating_avg":  0,
+                     "created_at":  "2026-06-27T08:00:00.000000Z",
+                     "updated_at":  "2026-06-27T08:00:00.000000Z"
+                 }
+             ],
+    "links":  {
+                  "first":  "http://127.0.0.1:8000/api/admin/courses?page=1",
+                  "last":  "http://127.0.0.1:8000/api/admin/courses?page=3",
+                  "prev":  null,
+                  "next":  "http://127.0.0.1:8000/api/admin/courses?page=2"
+              },
+    "meta":  {
+                 "current_page":  1,
+                 "from":  1,
+                 "last_page":  3,
+                 "links":  [
+                               {
+                                   "url":  null,
+                                   "label":  "\u0026laquo; Previous",
+                                   "page":  null,
+                                   "active":  false
+                               },
+                               {
+                                   "url":  "http://127.0.0.1:8000/api/admin/courses?page=1",
+                                   "label":  "1",
+                                   "page":  1,
+                                   "active":  true
+                               },
+                               {
+                                   "url":  "http://127.0.0.1:8000/api/admin/courses?page=2",
+                                   "label":  "2",
+                                   "page":  2,
+                                   "active":  false
+                               },
+                               {
+                                   "url":  "http://127.0.0.1:8000/api/admin/courses?page=3",
+                                   "label":  "3",
+                                   "page":  3,
+                                   "active":  false
+                               },
+                               {
+                                   "url":  "http://127.0.0.1:8000/api/admin/courses?page=2",
+                                   "label":  "Next \u0026raquo;",
+                                   "page":  2,
+                                   "active":  false
+                               }
+                           ],
+                 "path":  "http://127.0.0.1:8000/api/admin/courses",
+                 "per_page":  10,
+                 "to":  10,
+                 "total":  30
+             }
+}

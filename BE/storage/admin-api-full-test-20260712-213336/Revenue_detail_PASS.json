@@ -1,0 +1,23 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "id":  1,
+                 "order_id":  1,
+                 "course":  {
+                                "id":  1,
+                                "title":  "Laravel REST API từ cơ bản đến triển khai"
+                            },
+                 "instructor":  {
+                                    "id":  2,
+                                    "name":  "Nguyễn Minh Khoa"
+                                },
+                 "gross_amount":  269100,
+                 "instructor_amount":  99567,
+                 "platform_fee_amount":  169533,
+                 "sale_channel":  "admin_campaign",
+                 "instructor_rate_percent":  37,
+                 "platform_rate_percent":  63,
+                 "status":  "available",
+                 "earned_at":  "2026-06-20T07:50:00.000000Z"
+             }
+}

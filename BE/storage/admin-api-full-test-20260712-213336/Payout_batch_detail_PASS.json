@@ -1,0 +1,72 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "id":  1,
+                 "period_month":  5,
+                 "period_year":  "2026",
+                 "total_amount":  110630,
+                 "total_instructors":  1,
+                 "status":  "paid",
+                 "paid_at":  "2026-06-05T09:00:00.000000Z",
+                 "note":  "Thanh toán doanh thu giảng viên tháng 05/2026.",
+                 "items":  [
+                               {
+                                   "id":  1,
+                                   "payout_batch_id":  1,
+                                   "instructor":  {
+                                                      "id":  2,
+                                                      "name":  "Nguyễn Minh Khoa",
+                                                      "email":  "instructor1@mindhub.test"
+                                                  },
+                                   "payout_account":  {
+                                                          "id":  1,
+                                                          "user":  {
+                                                                       "id":  2,
+                                                                       "name":  "Nguyễn Minh Khoa",
+                                                                       "email":  "instructor1@mindhub.test"
+                                                                   },
+                                                          "provider":  "bank",
+                                                          "bank_name":  null,
+                                                          "account_number_masked":  "********0001",
+                                                          "account_name":  "NGUYEN MINH KHOA",
+                                                          "status":  "active",
+                                                          "is_default":  false,
+                                                          "connected_at":  "2026-02-01T08:00:00.000000Z",
+                                                          "verified_at":  null,
+                                                          "updated_at":  "2026-02-01T08:00:00.000000Z"
+                                                      },
+                                   "gross_amount":  299000,
+                                   "instructor_amount":  110630,
+                                   "platform_fee_amount":  188370,
+                                   "paid_amount":  110630,
+                                   "status":  "paid",
+                                   "transaction_code":  "BANK-PAYOUT-2026-05-0001",
+                                   "paid_at":  "2026-06-05T09:00:00.000000Z",
+                                   "note":  "Đã chuyển khoản thủ công cho giảng viên.",
+                                   "revenues":  [
+                                                    {
+                                                        "id":  2,
+                                                        "order_id":  6,
+                                                        "course":  {
+                                                                       "id":  1,
+                                                                       "title":  "Laravel REST API từ cơ bản đến triển khai"
+                                                                   },
+                                                        "instructor":  {
+                                                                           "id":  2,
+                                                                           "name":  "Nguyễn Minh Khoa"
+                                                                       },
+                                                        "gross_amount":  299000,
+                                                        "instructor_amount":  110630,
+                                                        "platform_fee_amount":  188370,
+                                                        "sale_channel":  "marketplace",
+                                                        "instructor_rate_percent":  37,
+                                                        "platform_rate_percent":  63,
+                                                        "status":  "paid",
+                                                        "earned_at":  "2026-05-01T07:40:00.000000Z"
+                                                    }
+                                                ]
+                               }
+                           ],
+                 "created_at":  "2026-06-01T09:00:00.000000Z"
+             }
+}

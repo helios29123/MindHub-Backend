@@ -1,0 +1,49 @@
+﻿{
+    "success":  true,
+    "message":  "Lấy báo cáo doanh thu thành công.",
+    "data":  {
+                 "summary":  {
+                                 "total_gross_amount":  967100,
+                                 "total_instructor_amount":  357827,
+                                 "total_platform_fee_amount":  609273,
+                                 "order_count":  3,
+                                 "course_count":  2,
+                                 "instructor_count":  1
+                             },
+                 "items":  [
+                               {
+                                   "period":  "2026-05-01",
+                                   "gross_amount":  299000,
+                                   "instructor_amount":  110630,
+                                   "platform_fee_amount":  188370,
+                                   "order_count":  1,
+                                   "course_count":  1,
+                                   "instructor_count":  1
+                               },
+                               {
+                                   "period":  "2026-06-20",
+                                   "gross_amount":  269100,
+                                   "instructor_amount":  99567,
+                                   "platform_fee_amount":  169533,
+                                   "order_count":  1,
+                                   "course_count":  1,
+                                   "instructor_count":  1
+                               },
+                               {
+                                   "period":  "2026-06-21",
+                                   "gross_amount":  399000,
+                                   "instructor_amount":  147630,
+                                   "platform_fee_amount":  251370,
+                                   "order_count":  1,
+                                   "course_count":  1,
+                                   "instructor_count":  1
+                               }
+                           ]
+             },
+    "meta":  {
+                 "current_page":  1,
+                 "last_page":  1,
+                 "per_page":  10,
+                 "total":  3
+             }
+}

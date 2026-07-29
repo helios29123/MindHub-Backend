@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
@@ -95,7 +96,47 @@ class UserSeeder extends Seeder
             ]
         );
 
-        $instructor = User::updateOrCreate(
+        DB::table('users')->updateOrInsert(
+            ['email' => 'admin@mindhub.test'],
+            [
+                'full_name' => 'MindHub Admin',
+                'password_hash' => Hash::make('12345678'),
+                'phone' => '0900000001',
+                'oauth_account_login' => null,
+                'role' => User::ROLE_ADMIN,
+                'status' => User::STATUS_ACTIVE,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+                'locked' => false,
+                'locked_reason' => null,
+                'password_reset' => null,
+                'deleted_at' => null,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
+        DB::table('users')->updateOrInsert(
+            ['email' => 'learner1@mindhub.test'],
+            [
+                'full_name' => 'Lê Gia Bảo',
+                'password_hash' => Hash::make('12345678'),
+                'phone' => '0900000004',
+                'oauth_account_login' => null,
+                'role' => User::ROLE_LEARNER,
+                'status' => User::STATUS_ACTIVE,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+                'locked' => false,
+                'locked_reason' => null,
+                'password_reset' => null,
+                'deleted_at' => null,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
+        DB::table('users')->updateOrInsert(
             ['email' => 'instructor1@mindhub.test'],
             [
                 'full_name' => 'Giảng viên MindHub 01',
@@ -109,28 +150,43 @@ class UserSeeder extends Seeder
                 'locked' => false,
                 'locked_reason' => null,
                 'password_reset' => null,
+                'deleted_at' => null,
+                'updated_at' => now(),
+                'created_at' => now(),
             ]
         );
 
-        \App\Models\InstructorProfile::firstOrCreate(
-            ['user_id' => $instructor->id],
-            [
-                'bio' => 'Giảng viên chuyên nghiệp về lập trình và thiết kế.',
-                'expertise' => 'Web Development',
-                'experience_years' => 5,
-                'level' => 'Senior',
-            ]
-        );
+        $instructor = User::withTrashed()->where('email', 'instructor1@mindhub.test')->first();
+        if ($instructor && $instructor->trashed()) {
+            $instructor->restore();
+        }
+        $instructorId = $instructor ? $instructor->id : (int) DB::table('users')->where('email', 'instructor1@mindhub.test')->value('id');
 
-        \App\Models\PayoutAccount::firstOrCreate(
-            ['user_id' => $instructor->id, 'account_number' => '1903123456789'],
-            [
+        if ($instructorId) {
+            \App\Models\InstructorProfile::firstOrCreate(
+                ['user_id' => $instructorId],
+                [
+                    'bio' => 'Giảng viên chuyên nghiệp về lập trình và thiết kế.',
+                    'expertise' => 'Web Development',
+                    'experience_years' => 5,
+                    'level' => 'Senior',
+                ]
+            );
+
+            $payoutData = [
                 'provider' => 'Techcombank – Ngân hàng TMCP Kỹ thương Việt Nam',
                 'account_name' => 'GIẢNG VIÊN MINDHUB 01',
                 'status' => 'active',
-                'is_default' => true,
                 'connected_at' => now(),
-            ]
-        );
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('payout_accounts', 'is_default')) {
+                $payoutData['is_default'] = true;
+            }
+
+            \App\Models\PayoutAccount::firstOrCreate(
+                ['user_id' => $instructorId, 'account_number' => '1903123456789'],
+                $payoutData
+            );
+        }
     }
 }

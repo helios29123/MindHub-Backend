@@ -1,0 +1,26 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "id":  1,
+                 "order_code":  "ORD-2026-0001",
+                 "user":  {
+                              "id":  4,
+                              "name":  "Lê Gia Bảo",
+                              "email":  "learner1@mindhub.test"
+                          },
+                 "course":  {
+                                "id":  1,
+                                "title":  "Laravel REST API từ cơ bản đến triển khai"
+                            },
+                 "coupon_code":  "GLOBAL10",
+                 "amount":  269100,
+                 "price_snapshot":  299000,
+                 "payment_method":  "vnpay",
+                 "provider_transaction_id":  "VNPAY-DEMO-0001",
+                 "status":  "paid",
+                 "payment_status":  "paid",
+                 "sale_channel":  "admin_campaign",
+                 "paid_at":  "2026-06-20T07:50:00.000000Z",
+                 "created_at":  "2026-06-20T07:45:00.000000Z"
+             }
+}

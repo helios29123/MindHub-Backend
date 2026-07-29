@@ -1,0 +1,23 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "id":  1,
+                 "title":  "Laravel REST API từ cơ bản đến triển khai",
+                 "slug":  "laravel-rest-api-tu-co-ban-den-trien-khai",
+                 "thumbnail_url":  "/demo/courses/laravel-rest-api.jpg",
+                 "price":  "499000.00",
+                 "status":  "published",
+                 "instructor":  {
+                                    "id":  2,
+                                    "name":  "Nguyễn Minh Khoa"
+                                },
+                 "category":  {
+                                  "id":  null,
+                                  "name":  null
+                              },
+                 "students_count":  0,
+                 "rating_avg":  0,
+                 "created_at":  "2026-01-10T08:00:00.000000Z",
+                 "updated_at":  "2026-06-20T10:00:00.000000Z"
+             }
+}

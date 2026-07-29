@@ -1,0 +1,4 @@
+﻿PHP 8.3.16 (cli) (built: Jan 14 2025 20:10:08) (ZTS Visual C++ 2019 x64)
+Copyright (c) The PHP Group
+Zend Engine v4.3.16, Copyright (c) Zend Technologies
+    with Xdebug v3.4.4, Copyright (c) 2002-2025, by Derick Rethans

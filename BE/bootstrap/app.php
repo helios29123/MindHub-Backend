@@ -27,6 +27,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
+        $middleware->api(prepend: [
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        ]);
         $middleware->alias([
             'auth.session' => AuthenticateSessionToken::class,
             'role' => RoleMiddleware::class,
