@@ -16,6 +16,11 @@ final class InstructorProfileRepository
             ->first();
     }
 
+    public function create(array $data): \App\Models\InstructorProfile
+    {
+        return \App\Models\InstructorProfile::create($data);
+    }
+
     public function findProfileByUserId(int $userId): ?InstructorProfile
     {
         return InstructorProfile::query()

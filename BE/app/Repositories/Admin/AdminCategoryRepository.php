@@ -74,7 +74,7 @@ final class AdminCategoryRepository
     public function findWithRelations(int $id): ?Category
     {
         $category = Category::query()
-            ->with(['parent', 'children' => fn ($query) => $query->orderBy('sort_order')->orderBy('id')])
+            ->with(['parent', 'children' => fn($query) => $query->orderBy('sort_order')->orderBy('id')])
             ->withCount('courses')
             ->find($id);
 
@@ -84,22 +84,22 @@ final class AdminCategoryRepository
 
         $categoryIds = collect([$category->id])
             ->merge($category->children->pluck('id'))
-            ->map(fn ($value): int => (int) $value)
+            ->map(fn($value): int => (int) $value)
             ->all();
 
         $courses = Course::query()
-            ->whereHas('categories', fn (Builder $query) => $query->whereIn('categories.id', $categoryIds))
+            ->whereHas('categories', fn(Builder $query) => $query->whereIn('categories.id', $categoryIds))
             ->with('instructor')
             ->orderByDesc('id')
             ->get();
 
-        $courseIds = $courses->pluck('id')->map(fn ($value): int => (int) $value)->all();
+        $courseIds = $courses->pluck('id')->map(fn($value): int => (int) $value)->all();
         $enrollmentCounts = empty($courseIds)
             ? collect()
             : DB::table('enrollments')->whereIn('course_id', $courseIds)
-                ->selectRaw('course_id, COUNT(*) as aggregate')
-                ->groupBy('course_id')
-                ->pluck('aggregate', 'course_id');
+            ->selectRaw('course_id, COUNT(*) as aggregate')
+            ->groupBy('course_id')
+            ->pluck('aggregate', 'course_id');
 
         $reviewQuery = DB::table('course_reviews')->whereIn('course_id', $courseIds);
         if (Schema::hasColumn('course_reviews', 'deleted_at')) {
@@ -107,10 +107,21 @@ final class AdminCategoryRepository
         }
         $reviewAggregates = empty($courseIds)
             ? collect()
-            : $reviewQuery->selectRaw('course_id, COUNT(*) as review_count, AVG(rating) as average_rating')
-                ->groupBy('course_id')
-                ->get()
-                ->keyBy('course_id');
+            : DB::table('course_reviews as reviews')
+            ->join('orders as orders', 'orders.id', '=', 'reviews.order_id')
+            ->whereIn('orders.course_id', $courseIds)
+            ->when(
+                Schema::hasColumn('course_reviews', 'deleted_at'),
+                fn($query) => $query->whereNull('reviews.deleted_at')
+            )
+            ->selectRaw(
+                'orders.course_id as course_id,
+             COUNT(reviews.id) as review_count,
+             AVG(reviews.rating) as average_rating'
+            )
+            ->groupBy('orders.course_id')
+            ->get()
+            ->keyBy('course_id');
 
         $courses->each(function (Course $course) use ($enrollmentCounts, $reviewAggregates): void {
             $review = $reviewAggregates->get($course->id);
@@ -121,7 +132,7 @@ final class AdminCategoryRepository
 
         $reviewCount = (int) $courses->sum('reviews_count');
         $weightedRatingTotal = $courses->sum(
-            fn ($course): float => (float) ($course->reviews_avg_rating ?? 0) * (int) ($course->reviews_count ?? 0)
+            fn($course): float => (float) ($course->reviews_avg_rating ?? 0) * (int) ($course->reviews_count ?? 0)
         );
 
         $category->setRelation('adminCourses', $courses);

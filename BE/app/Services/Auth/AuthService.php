@@ -31,8 +31,7 @@ class AuthService
         private readonly GoogleTokenVerifier $googleTokenVerifier,
         private readonly InstructorProfileRepository $instructorProfileRepository,
         private readonly PayoutAccountRepository $payoutAccountRepository
-    ) {
-    }
+    ) {}
 
     public function register(array $registerData): array
     {
@@ -197,7 +196,10 @@ class AuthService
 
         return DB::transaction(function () use ($user, $loginData, $request) {
             Auth::guard('web')->login($user);
-            $request->session()->regenerate();
+
+            if ($request->hasSession()) {
+                $request->session()->regenerate();
+            }
 
             $authPayload = $this->createAuthenticatedSession(
                 $user,
@@ -215,7 +217,10 @@ class AuthService
 
     public function googleLogin(array $googleLoginData, Request $request): array
     {
-        $googleUser = $this->googleTokenVerifier->verify($googleLoginData['google_token']);
+        $googleUser = $this->googleTokenVerifier->verify(
+            $googleLoginData['google_token']
+        );
+
         $user = $this->handleGoogleUser($googleUser, $request);
 
         return $this->createAuthenticatedSession(
@@ -237,7 +242,9 @@ class AuthService
             );
 
             if (! $user) {
-                $user = $this->userRepository->findByEmail($googleUser['email']);
+                $user = $this->userRepository->findByEmail(
+                    $googleUser['email']
+                );
             }
 
             if ($user) {
@@ -271,7 +278,10 @@ class AuthService
             }
 
             Auth::guard('web')->login($user);
-            $request->session()->regenerate();
+
+            if ($request->hasSession()) {
+                $request->session()->regenerate();
+            }
 
             return $user;
         });
