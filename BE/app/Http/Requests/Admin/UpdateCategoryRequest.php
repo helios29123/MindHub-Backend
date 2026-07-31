@@ -3,9 +3,10 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-class UpdateCategoryRequest extends FormRequest
+final class UpdateCategoryRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -14,36 +15,47 @@ class UpdateCategoryRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('id');
+        $categoryId = (int) $this->route('id');
+
         return [
-            'name' => ['sometimes', 'string', 'max:255'],
-            'slug' => ['sometimes', 'string', 'max:255', 'unique:categories,slug,' . $id . ',id,deleted_at,NULL'],
-            'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:categories,id,deleted_at,NULL'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'slug' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+                Rule::unique('categories', 'slug')->ignore($categoryId),
+            ],
+            'parent_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                Rule::exists('categories', 'id')->whereNull('deleted_at'),
+            ],
             'description' => ['sometimes', 'nullable', 'string'],
-            'sort_order' => ['sometimes', 'integer', 'min:0'],
-            'status' => ['sometimes', 'in:active,inactive'],
+            'sort_order' => ['sometimes', 'integer', 'min:1'],
+            'status' => ['sometimes', Rule::in(['active', 'inactive'])],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $allowedFields = [
-                'name',
-                'slug',
-                'parent_id',
-                'description',
-                'sort_order',
-                'status',
-            ];
+            $allowedFields = ['name', 'slug', 'parent_id', 'description', 'sort_order', 'status'];
 
-            $hasUpdateData = collect($allowedFields)->contains(
-                fn(string $field): bool => $this->has($field),
-            );
-
-            if (!$hasUpdateData) {
+            if (!collect($allowedFields)->contains(fn (string $field): bool => $this->has($field))) {
                 $validator->errors()->add('payload', 'Cần ít nhất một trường hợp lệ để cập nhật.');
             }
         });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'slug.regex' => 'Slug chỉ được chứa chữ thường, số và dấu gạch ngang.',
+            'slug.unique' => 'Slug danh mục đã tồn tại, kể cả trong danh mục đã xóa.',
+            'parent_id.exists' => 'Danh mục cha không tồn tại hoặc đã bị xóa.',
+        ];
     }
 }
