@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\AdminCategoryController;
 use App\Http\Controllers\AdminCourseApprovalController;
 use App\Http\Controllers\AdminCreditPackageController;
 use App\Http\Controllers\AdminInstructorCreditController;
@@ -96,25 +95,20 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         | Categories
         |--------------------------------------------------------------------------
         */
-        Route::get('/categories', [AdminCategoryController::class, 'index']);
-        Route::post('/categories', [AdminCategoryController::class, 'store']);
+        Route::get('/categories', [AdminController::class, 'categories']);
 
-        // Static route must stay before /categories/{id}.
-        Route::put('/categories/reorder', [AdminCategoryController::class, 'reorder']);
+        Route::post('/categories', [AdminController::class, 'storeCategory']);
 
-        Route::post('/categories/{id}/restore', [AdminCategoryController::class, 'restore'])
+        Route::get('/categories/{id}', [AdminController::class, 'showCategory'])
             ->whereNumber('id');
 
-        Route::get('/categories/{id}', [AdminCategoryController::class, 'show'])
+        Route::put('/categories/{id}', [AdminController::class, 'updateCategory'])
             ->whereNumber('id');
 
-        Route::put('/categories/{id}', [AdminCategoryController::class, 'update'])
+        Route::patch('/categories/{id}', [AdminController::class, 'updateCategory'])
             ->whereNumber('id');
 
-        Route::patch('/categories/{id}', [AdminCategoryController::class, 'update'])
-            ->whereNumber('id');
-
-        Route::delete('/categories/{id}', [AdminCategoryController::class, 'destroy'])
+        Route::delete('/categories/{id}', [AdminController::class, 'deleteCategory'])
             ->whereNumber('id');
 
         /*
