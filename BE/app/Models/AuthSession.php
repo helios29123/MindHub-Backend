@@ -4,11 +4,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AuthSession extends Model
 {
-    protected $table = 'auth_sessions';
+    protected $table = 'sessions';
     public $timestamps = false;
 
     protected $fillable = [
-        'id',
         'user_id',
         'refresh_token_hash',
         'device_name',
