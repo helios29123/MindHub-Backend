@@ -19,6 +19,9 @@ class CouponApplyService
 
     public function applyCoupon(array $couponData, int $userId): Order
     {
+        if (empty($couponData['order_id']) || empty($couponData['coupon_code'])) {
+            throw new BusinessException('Thông tin order_id và coupon_code là bắt buộc.', 422);
+        }
         return DB::transaction(function () use ($couponData, $userId) {
             $order = $this->orderRepository->findUserOrderForUpdate(
                 $couponData['order_id'],

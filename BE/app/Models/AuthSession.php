@@ -8,7 +8,6 @@ class AuthSession extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id',
         'user_id',
         'refresh_token_hash',
         'device_name',

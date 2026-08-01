@@ -29,7 +29,7 @@ final class StoreCategoryRequest extends FormRequest
                 Rule::exists('categories', 'id')->whereNull('deleted_at'),
             ],
             'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:1'],
+            'sort_order' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
         ];
     }

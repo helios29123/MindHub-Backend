@@ -137,7 +137,7 @@ final class AdminCategoryService
             foreach ($items as $item) {
                 Category::query()->whereKey((int) $item['id'])->update([
                     'parent_id' => $item['parent_id'],
-                    'sort_order' => (int) $item['sort_order'],
+                    'sort_order' => (string) $item['sort_order'],
                     'updated_at' => now(),
                 ]);
             }

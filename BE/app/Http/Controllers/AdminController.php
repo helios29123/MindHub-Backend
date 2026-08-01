@@ -14,16 +14,70 @@ class AdminController extends Controller
 {
     public function __construct(
         private readonly AdminService $adminService,
-        private readonly AdminOrderService $adminOrderService
+        private readonly AdminOrderService $adminOrderService,
+        private readonly \App\Services\Admin\AdminRevenueService $adminRevenueService
     ) {
     }
     public function orders(AdminOrderQueryRequest $request): JsonResponse
     {
         $orders = $this->adminOrderService->paginateOrders($request->validated());
-        return ApiResponse::paginated(
-            AdminOrderResource::collection($orders),
-            $orders,
-            'Lấy danh sách giao dịch và đơn hàng thành công.'
+        $summary = $this->adminOrderService->getOrdersSummary();
+
+        return ApiResponse::success(
+            data: [
+                'summary' => $summary,
+                'items' => AdminOrderResource::collection($orders)->resolve($request)
+            ],
+            message: 'Lấy danh sách giao dịch và đơn hàng thành công.',
+            status: 200,
+            meta: \App\Support\PaginationMeta::fromPaginator($orders)
+        );
+    }
+
+    public function showOrder(int $id): JsonResponse
+    {
+        $order = $this->adminOrderService->getOrder($id);
+        if (!$order) {
+            return ApiResponse::error('Đơn hàng không tồn tại.', [], 404);
+        }
+
+        return ApiResponse::success(
+            new AdminOrderResource($order),
+            'Lấy chi tiết đơn hàng thành công.',
+            200
+        );
+    }
+
+    public function revenues(Request $request): JsonResponse
+    {
+        $filters = $request->all();
+        $paginator = $this->adminRevenueService->paginate($filters);
+        $summary = $this->adminRevenueService->summary($filters);
+
+        return ApiResponse::success(
+            data: [
+                'summary' => $summary,
+                'items' => \App\Http\Resources\Admin\AdminRevenueResource::collection($paginator)->resolve($request),
+            ],
+            message: 'Lấy danh sách doanh thu thành công.',
+            status: 200,
+            meta: \App\Support\PaginationMeta::fromPaginator($paginator)
+        );
+    }
+
+    public function showRevenue(int $id): JsonResponse
+    {
+        $revenue = \App\Models\Revenue::find($id);
+        if (!$revenue) {
+            return ApiResponse::error('Bản ghi doanh thu không tồn tại.', [], 404);
+        }
+
+        $revenueLoaded = $this->adminRevenueService->show($revenue);
+
+        return ApiResponse::success(
+            new \App\Http\Resources\Admin\AdminRevenueResource($revenueLoaded),
+            'Lấy chi tiết doanh thu thành công.',
+            200
         );
     }
     public function banners(Request $request, mixed $id = null): JsonResponse
@@ -52,15 +106,26 @@ class AdminController extends Controller
             $queryValidator = Validator::make($request->query(), [
                 'page' => 'nullable|integer|min:1',
                 'per_page' => 'nullable|integer|min:1|max:100',
+                'search' => 'nullable|string|max:255',
+                'position' => 'nullable|string|max:100',
+                'status' => 'nullable|string|max:30',
+                'view_mode' => 'nullable|string|max:30',
             ]);
             if ($queryValidator->fails()) {
                 return ApiResponse::error('Dữ liệu không hợp lệ.', $queryValidator->errors()->toArray(), 422);
             }
-            $banners = $this->adminService->getBanners($queryValidator->validated());
-            return ApiResponse::paginated(
-                BannerResource::collection($banners),
-                $banners,
-                'Thao tác thành công'
+            $result = $this->adminService->getBanners($queryValidator->validated());
+            $banners = $result['paginator'];
+            $summary = $result['summary'];
+
+            return ApiResponse::success(
+                data: [
+                    'summary' => $summary,
+                    'items' => BannerResource::collection($banners)->resolve($request),
+                ],
+                message: 'Thao tác thành công',
+                status: 200,
+                meta: \App\Support\PaginationMeta::fromPaginator($banners)
             );
         }
         // 4. Handle POST for creating
@@ -79,7 +144,7 @@ class AdminController extends Controller
             }
             $banner = $this->adminService->createBanner($validator->validated());
             return ApiResponse::success(
-                json_encode(['id' => $banner->id, 'status' => 'updated']),
+                new BannerResource($banner),
                 'Thao tác thành công',
                 200
             );
@@ -100,7 +165,7 @@ class AdminController extends Controller
             }
             $banner = $this->adminService->updateBanner($id, $validator->validated());
             return ApiResponse::success(
-                json_encode(['id' => $banner->id, 'status' => 'updated']),
+                new BannerResource($banner),
                 'Thao tác thành công',
                 200
             );
@@ -170,10 +235,16 @@ class AdminController extends Controller
     public function courses(\App\Http\Requests\Admin\AdminCourseQueryRequest $request): JsonResponse
     {
         $courses = $this->adminService->getCourses($request->validated());
-        return ApiResponse::paginated(
-            \App\Http\Resources\Admin\AdminCourseResource::collection($courses),
-            $courses,
-            'Lấy danh sách khóa học thành công.'
+        $summary = $this->adminService->getCoursesSummary();
+
+        return ApiResponse::success(
+            data: [
+                'summary' => $summary,
+                'items' => \App\Http\Resources\Admin\AdminCourseResource::collection($courses)->resolve(request())
+            ],
+            message: 'Lấy danh sách khóa học thành công.',
+            status: 200,
+            meta: \App\Support\PaginationMeta::fromPaginator($courses)
         );
     }
 
@@ -199,11 +270,21 @@ class AdminController extends Controller
 
     public function users(\App\Http\Requests\Admin\UserQueryRequest $request): JsonResponse
     {
-        $users = $this->adminService->getUsers($request->validated());
-        return ApiResponse::paginated(
-            \App\Http\Resources\Admin\AdminUserResource::collection($users),
-            $users,
-            'Lấy danh sách người dùng thành công.'
+        $result = $this->adminService->getUsersReport($request->validated());
+        $paginator = $result['paginator'];
+
+        return ApiResponse::success(
+            data: [
+                'summary' => $result['summary'],
+                'items' => \App\Http\Resources\Admin\AdminUserResource::collection($paginator),
+            ],
+            message: 'Lấy danh sách người dùng thành công.',
+            meta: [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]
         );
     }
 

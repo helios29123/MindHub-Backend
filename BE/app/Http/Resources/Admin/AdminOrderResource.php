@@ -1,11 +1,18 @@
 <?php
 namespace App\Http\Resources\Admin;
+
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+
 class AdminOrderResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $isCanonicalPaid = $this->status === 'paid' && $this->payment_status === 'paid';
+        $paidHasEnrollment = $isCanonicalPaid ? ($this->enrollment !== null) : true;
+        $paidHasRevenue = $isCanonicalPaid ? ($this->revenue !== null) : true;
+        $amountsMatch = $isCanonicalPaid && $this->revenue ? ((float) $this->revenue->gross_amount === (float) $this->amount) : true;
+
         return [
             'id' => (int) $this->id,
             'order_code' => $this->order_code,
@@ -14,6 +21,7 @@ class AdminOrderResource extends JsonResource
             'payment_method' => $this->payment_method,
             'provider_transaction_id' => $this->provider_transaction_id,
             'price_snapshot' => $this->price_snapshot !== null ? (string) $this->price_snapshot : null,
+            'discount_amount' => $this->discount_amount !== null ? (string) $this->discount_amount : '0.00',
             'amount' => $this->amount !== null ? (string) $this->amount : null,
             'paid_at' => $this->paid_at?->toDateTimeString(),
             'created_at' => $this->created_at?->toDateTimeString(),
@@ -56,6 +64,22 @@ class AdminOrderResource extends JsonResource
                     'status' => $this->coupon->status,
                 ];
             }),
+            'enrollment' => $this->relationLoaded('enrollment') && $this->enrollment ? [
+                'id' => (int) $this->enrollment->id,
+                'progress_percent' => (string) $this->enrollment->progress_percent,
+                'status' => $this->enrollment->status,
+            ] : null,
+            'revenue' => $this->relationLoaded('revenue') && $this->revenue ? [
+                'id' => (int) $this->revenue->id,
+                'gross_amount' => (string) $this->revenue->gross_amount,
+                'instructor_amount' => (string) $this->revenue->instructor_amount,
+                'platform_amount' => (string) $this->revenue->platform_fee_amount,
+            ] : null,
+            'consistency' => [
+                'paid_has_enrollment' => $paidHasEnrollment,
+                'paid_has_revenue' => $paidHasRevenue,
+                'amounts_match' => $amountsMatch,
+            ]
         ];
     }
 }

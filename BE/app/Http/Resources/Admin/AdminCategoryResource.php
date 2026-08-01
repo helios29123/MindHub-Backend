@@ -15,7 +15,7 @@ final class AdminCategoryResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
-            'sort_order' => (int) $this->sort_order,
+            'sort_order' => $this->sort_order,
             'status' => $this->status,
             'course_count' => (int) ($this->getAttribute('courses_count') ?? 0),
             'created_at' => $this->created_at?->toIsoString(),
@@ -32,7 +32,7 @@ final class AdminCategoryResource extends JsonResource
                 'name' => $child->name,
                 'slug' => $child->slug,
                 'status' => $child->status,
-                'sort_order' => (int) $child->sort_order,
+                'sort_order' => $child->sort_order,
             ])->values()->all()),
             'statistics' => $this->when(
                 $this->getAttribute('category_statistics') !== null,

@@ -16,7 +16,7 @@ class MyCourseResource extends JsonResource
             'enrolled_at' => $this->enrolled_at ? $this->enrolled_at->toISOString() : null,
             'completed_at' => $this->completed_at ? $this->completed_at->toISOString() : null,
             'last_accessed_at' => $this->last_accessed_at ? $this->last_accessed_at->toISOString() : null,
-            'course' => [
+            'course' => $this->course ? [
                 'id' => $this->course->id,
                 'title' => $this->course->title,
                 'slug' => $this->course->slug,
@@ -27,11 +27,11 @@ class MyCourseResource extends JsonResource
                 'level' => $this->course->level,
                 'language' => $this->course->language,
                 'total_duration_seconds' => (int) $this->course->total_duration_seconds,
-                'instructor' => [
+                'instructor' => $this->course->instructor ? [
                     'id' => $this->course->instructor->id,
                     'full_name' => $this->course->instructor->full_name,
-                ],
-            ],
+                ] : null,
+            ] : null,
         ];
     }
 }

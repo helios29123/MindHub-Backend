@@ -21,6 +21,7 @@ class CourseModerationRepository
                         'status',
                     ]);
                 },
+                'categories'
             ])
             ->where('status', 'pending_review');
         if ($search !== '') {
@@ -32,6 +33,18 @@ class CourseModerationRepository
                             ->orWhere('email', 'like', '%' . $search . '%');
                     });
             });
+        }
+        if (!empty($filters['category_id'])) {
+            $categoryId = (int) $filters['category_id'];
+            $query->whereHas('categories', function (Builder $q) use ($categoryId): void {
+                $q->where('categories.id', $categoryId);
+            });
+        }
+        if (!empty($filters['date_from'])) {
+            $query->where('created_at', '>=', $filters['date_from'] . ' 00:00:00');
+        }
+        if (!empty($filters['date_to'])) {
+            $query->where('created_at', '<=', $filters['date_to'] . ' 23:59:59');
         }
         match ($sort) {
             'oldest' => $query->orderBy('id'),

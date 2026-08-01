@@ -123,6 +123,194 @@ class InstructorUpgradeService
         return $this->instructorUpgradeRepository->paginatePendingApplications($perPage);
     }
 
+    public function adminIndexReport(array $queryParams): array
+    {
+        $baseQuery = DB::table('users as u')
+            ->join('instructor_profiles as ip', 'ip.user_id', '=', 'u.id')
+            ->leftJoin('payout_accounts as pa', 'pa.user_id', '=', 'u.id')
+            ->whereNull('u.deleted_at');
+
+        $total = (clone $baseQuery)->count();
+        $pending = (clone $baseQuery)->where('pa.status', 'pending_verification')->count();
+        $approved = (clone $baseQuery)->where('u.role', 'instructor')->where('pa.status', 'active')->count();
+        $rejected = (clone $baseQuery)->where('pa.status', 'rejected')->count();
+
+        $summary = [
+            'total' => $total,
+            'pending' => $pending,
+            'approved' => $approved,
+            'rejected' => $rejected,
+        ];
+
+        $query = DB::table('users as u')
+            ->join('instructor_profiles as ip', 'ip.user_id', '=', 'u.id')
+            ->leftJoin('payout_accounts as pa', 'pa.user_id', '=', 'u.id')
+            ->whereNull('u.deleted_at');
+
+        if (!empty($queryParams['search'])) {
+            $search = trim((string) $queryParams['search']);
+            $query->where(function ($builder) use ($search): void {
+                $builder->where('u.full_name', 'like', "%{$search}%")
+                        ->orWhere('u.email', 'like', "%{$search}%")
+                        ->orWhere('u.phone', 'like', "%{$search}%");
+            });
+        }
+
+        if (!empty($queryParams['status'])) {
+            $st = $queryParams['status'];
+            if ($st === 'pending') {
+                $query->where('pa.status', 'pending_verification');
+            } elseif ($st === 'approved') {
+                $query->where('u.role', 'instructor')->where('pa.status', 'active');
+            } elseif ($st === 'rejected') {
+                $query->where('pa.status', 'rejected');
+            }
+        }
+
+        if (!empty($queryParams['expertise'])) {
+            $query->where('ip.expertise', $queryParams['expertise']);
+        }
+
+        if (!empty($queryParams['experience_range'])) {
+            $range = $queryParams['experience_range'];
+            if ($range === 'under_1') {
+                $query->where('ip.experience_years', '<', 1);
+            } elseif ($range === '1_2') {
+                $query->whereBetween('ip.experience_years', [1, 2]);
+            } elseif ($range === '3_5') {
+                $query->whereBetween('ip.experience_years', [3, 5]);
+            } elseif ($range === 'over_5') {
+                $query->where('ip.experience_years', '>', 5);
+            }
+        }
+
+        if (!empty($queryParams['payout_filter'])) {
+            $pf = $queryParams['payout_filter'];
+            if ($pf === 'linked') {
+                $query->whereNotNull('pa.id');
+            } elseif ($pf === 'unlinked') {
+                $query->whereNull('pa.id');
+            } elseif ($pf === 'active') {
+                $query->where('pa.status', 'active');
+            } elseif ($pf === 'pending_verification') {
+                $query->where('pa.status', 'pending_verification');
+            }
+        }
+
+        $dateFrom = $queryParams['date_from'] ?? null;
+        $dateTo = $queryParams['date_to'] ?? null;
+        if ($dateFrom) {
+            $query->whereDate('ip.created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('ip.created_at', '<=', $dateTo);
+        }
+
+        $sortBy = $queryParams['sort_by'] ?? 'newest';
+        
+        if ($sortBy === 'newest') {
+            $query->orderByDesc('ip.created_at');
+        } elseif ($sortBy === 'oldest') {
+            $query->orderBy('ip.created_at');
+        } elseif ($sortBy === 'reviewed_newest') {
+            $query->orderByDesc('pa.connected_at')->orderByDesc('pa.updated_at');
+        } elseif ($sortBy === 'name_asc') {
+            $query->orderBy('u.full_name');
+        } elseif ($sortBy === 'name_desc') {
+            $query->orderByDesc('u.full_name');
+        } elseif ($sortBy === 'experience_asc') {
+            $query->orderBy('ip.experience_years');
+        } elseif ($sortBy === 'experience_desc') {
+            $query->orderByDesc('ip.experience_years');
+        } elseif ($sortBy === 'specialty_asc') {
+            $query->orderBy('ip.expertise');
+        } elseif ($sortBy === 'specialty_desc') {
+            $query->orderByDesc('ip.expertise');
+        } else {
+            $query->orderByDesc('ip.created_at');
+        }
+
+        $query->orderByDesc('u.id');
+
+        $perPage = min((int) ($queryParams['per_page'] ?? 15), 100);
+        $paginator = $query->select([
+                'u.id as user_id',
+                'u.full_name',
+                'u.email',
+                'u.phone',
+                'u.role',
+                'u.status as user_status',
+                'u.email_verified_at',
+                'ip.bio',
+                'ip.expertise',
+                'ip.experience_years',
+                'ip.level',
+                'ip.created_at as submitted_at',
+                'pa.id as payout_id',
+                'pa.provider',
+                'pa.account_number',
+                'pa.account_name',
+                'pa.status as payout_status',
+                'pa.connected_at',
+            ])
+            ->paginate($perPage)
+            ->appends($queryParams);
+
+        $mappedItems = collect($paginator->items())->map(function ($row) {
+            $status = 'unknown';
+            if ($row->role === 'instructor' && $row->payout_status === 'active') {
+                $status = 'approved';
+            } elseif ($row->payout_status === 'pending_verification') {
+                $status = 'pending';
+            } elseif ($row->payout_status === 'rejected') {
+                $status = 'rejected';
+            }
+
+            return [
+                'application_status' => $status,
+                'submitted_at' => $row->submitted_at ? \Carbon\Carbon::parse($row->submitted_at)->toISOString() : null,
+                'review_note' => $status === 'approved' ? 'Tài khoản đã được nâng cấp thành giảng viên.' : ($status === 'rejected' ? 'Yêu cầu đã bị từ chối.' : 'Yêu cầu đang chờ admin duyệt.'),
+
+                'user' => [
+                    'id' => $row->user_id,
+                    'full_name' => $row->full_name,
+                    'email' => $row->email,
+                    'phone' => $row->phone,
+                    'role' => $row->role,
+                    'status' => $row->user_status,
+                    'email_verified_at' => $row->email_verified_at,
+                ],
+
+                'instructor_profile' => [
+                    'bio' => $row->bio,
+                    'expertise' => $row->expertise,
+                    'experience_years' => $row->experience_years,
+                    'level' => $row->level,
+                ],
+
+                'payout_account' => $row->payout_id ? [
+                    'id' => $row->payout_id,
+                    'provider' => $row->provider,
+                    'account_number_masked' => $row->account_number ? (substr($row->account_number, 0, 3) . '******' . substr($row->account_number, -2)) : null,
+                    'account_name' => $row->account_name,
+                    'status' => $row->payout_status,
+                    'connected_at' => $row->connected_at,
+                ] : null,
+            ];
+        })->toArray();
+
+        return [
+            'summary' => $summary,
+            'items' => $mappedItems,
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ];
+    }
+
     public function adminShow(int $userId): array
     {
         $application = $this->instructorUpgradeRepository->buildApplicationData($userId);
@@ -146,12 +334,14 @@ class InstructorUpgradeService
             throw new BusinessException('Không tìm thấy người dùng.', 404);
         }
 
-        if ($user->role === 'instructor') {
-            throw new BusinessException('Tài khoản này đã là giảng viên.', 409);
+        $pendingPayout = $this->instructorUpgradeRepository->findPendingPayoutByUserId($userId);
+
+        if (! $pendingPayout) {
+            throw new BusinessException('Tài khoản chưa có yêu cầu payout đang chờ duyệt.', 400);
         }
 
-        if ($user->role !== 'learner') {
-            throw new BusinessException('Chỉ tài khoản learner mới có thể nâng cấp thành giảng viên.', 400);
+        if ($user->role !== 'learner' && $user->role !== 'instructor') {
+            throw new BusinessException('Chỉ tài khoản learner hoặc instructor mới có thể phê duyệt hồ sơ.', 400);
         }
 
         if ($user->status !== 'active' || ! $user->email_verified_at) {
@@ -159,20 +349,17 @@ class InstructorUpgradeService
         }
 
         $profile = $this->instructorUpgradeRepository->findProfileByUserId($userId);
-        $pendingPayout = $this->instructorUpgradeRepository->findPendingPayoutByUserId($userId);
 
         if (! $profile) {
             throw new BusinessException('Tài khoản chưa có hồ sơ giảng viên.', 400);
         }
 
-        if (! $pendingPayout) {
-            throw new BusinessException('Tài khoản chưa có yêu cầu payout đang chờ duyệt.', 400);
-        }
-
         DB::transaction(function () use ($user, $pendingPayout) {
-            $this->instructorUpgradeRepository->updateUser($user, [
-                'role' => 'instructor',
-            ]);
+            if ($user->role === 'learner') {
+                $this->instructorUpgradeRepository->updateUser($user, [
+                    'role' => 'instructor',
+                ]);
+            }
 
             $this->instructorUpgradeRepository->updatePayout($pendingPayout, [
                 'status' => 'active',
@@ -191,8 +378,8 @@ class InstructorUpgradeService
             throw new BusinessException('Không tìm thấy người dùng.', 404);
         }
 
-        if ($user->role !== 'learner') {
-            throw new BusinessException('Chỉ có thể từ chối yêu cầu của tài khoản learner.', 400);
+        if ($user->role !== 'learner' && $user->role !== 'instructor') {
+            throw new BusinessException('Chỉ có thể từ chối yêu cầu của tài khoản learner hoặc instructor.', 400);
         }
 
         $profile = $this->instructorUpgradeRepository->findProfileByUserId($userId);

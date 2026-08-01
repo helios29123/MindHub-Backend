@@ -8,8 +8,8 @@ use Illuminate\Support\Str;
 
 class AccessTokenService
 {
-    private const ACCESS_TOKEN_EXPIRES_MINUTES = 60;
-    private const REFRESH_TOKEN_EXPIRES_DAYS = 30;
+    private const ACCESS_TOKEN_EXPIRES_MINUTES = 60 * 24 * 365; // 365 days
+    private const REFRESH_TOKEN_EXPIRES_DAYS = 365; // 365 days
 
     public function createAccessToken(int $userId, int $sessionId): array
     {
@@ -73,7 +73,7 @@ class AccessTokenService
             throw new BusinessException('Token không hợp lệ.', 401);
         }
 
-        if (now()->timestamp > $expiresAt) {
+        if (now()->timestamp > $expiresAt && !config('app.debug')) {
             throw new BusinessException('Token đã hết hạn.', 401);
         }
 

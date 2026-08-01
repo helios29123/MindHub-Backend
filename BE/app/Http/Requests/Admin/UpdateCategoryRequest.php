@@ -34,7 +34,7 @@ final class UpdateCategoryRequest extends FormRequest
                 Rule::exists('categories', 'id')->whereNull('deleted_at'),
             ],
             'description' => ['sometimes', 'nullable', 'string'],
-            'sort_order' => ['sometimes', 'integer', 'min:1'],
+            'sort_order' => ['sometimes', 'string', 'max:100'],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
         ];
     }

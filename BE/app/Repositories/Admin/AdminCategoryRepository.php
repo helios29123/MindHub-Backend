@@ -185,9 +185,22 @@ final class AdminCategoryRepository
         return $category->courses()->exists();
     }
 
-    public function nextSortOrder(?int $parentId): int
+    public function nextSortOrder(?int $parentId): string
     {
-        return ((int) Category::query()->where('parent_id', $parentId)->max('sort_order')) + 1;
+        $max = Category::query()->where('parent_id', $parentId)->max('sort_order');
+        if (!$max) {
+            return 'a';
+        }
+        
+        $len = strlen($max);
+        $lastChar = $max[$len - 1];
+        
+        if ($lastChar < 'z') {
+            $max[$len - 1] = chr(ord($lastChar) + 1);
+            return $max;
+        } else {
+            return $max . 'n';
+        }
     }
 
     public function allParentMap(): Collection

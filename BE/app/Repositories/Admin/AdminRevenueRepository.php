@@ -29,7 +29,7 @@ final class AdminRevenueRepository
     public function sourceBreakdown(array $filters = [])
 {
     $query = \App\Models\Revenue::query()
-        ->selectRaw('COALESCE(sale_channel, "unknown") as sale_channel')
+        ->selectRaw('COALESCE(sale_source, "unknown") as sale_channel')
         ->selectRaw('SUM(gross_amount) as gross_amount')
         ->selectRaw('SUM(instructor_amount) as instructor_amount')
         ->selectRaw('SUM(platform_fee_amount) as platform_fee_amount')
@@ -56,7 +56,7 @@ final class AdminRevenueRepository
     }
 
     return $query
-        ->groupByRaw('COALESCE(sale_channel, "unknown")')
+        ->groupByRaw('COALESCE(sale_source, "unknown")')
         ->orderByRaw('gross_amount DESC')
         ->get();
 }
