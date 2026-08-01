@@ -24,6 +24,7 @@ final class CategoryScenarioSeeder extends Seeder
             ];
 
             $rootIds = [];
+            $rootKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
             foreach ($roots as $index => [$label, $slugPart, $status]) {
                 $slug = 'test-category-root-' . $slugPart;
@@ -33,7 +34,7 @@ final class CategoryScenarioSeeder extends Seeder
                         'parent_id' => null,
                         'name' => 'TEST CATEGORY - ' . $label,
                         'description' => 'Dữ liệu kiểm thử trang quản lý danh mục. Có thể chạy lại seeder an toàn.',
-                        'sort_order' => $index + 1,
+                        'sort_order' => $rootKeys[$index] ?? 'z',
                         'status' => $status,
                         'created_at' => $now,
                         'updated_at' => $now,
@@ -69,16 +70,19 @@ final class CategoryScenarioSeeder extends Seeder
                 ['co-khoa-hoc', 'Danh mục con có khóa học', 'child-co-khoa-hoc', 'active'],
             ];
 
+            $childKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
             $childOrder = [];
             foreach ($children as [$parentKey, $label, $slugPart, $status]) {
                 $childOrder[$parentKey] = ($childOrder[$parentKey] ?? 0) + 1;
+                $idx = $childOrder[$parentKey] - 1;
+                $sortVal = $childKeys[$idx] ?? 'z';
                 DB::table('categories')->updateOrInsert(
                     ['slug' => 'test-category-child-' . $slugPart],
                     [
                         'parent_id' => $rootIds[$parentKey],
                         'name' => 'TEST CATEGORY - ' . $label,
                         'description' => 'Danh mục con phục vụ filter, phân trang và kéo thả.',
-                        'sort_order' => $childOrder[$parentKey],
+                        'sort_order' => $sortVal,
                         'status' => $status,
                         'created_at' => $now,
                         'updated_at' => $now,
@@ -87,6 +91,7 @@ final class CategoryScenarioSeeder extends Seeder
                 );
             }
 
+            $deletedKeys = ['u', 'v', 'w', 'x'];
             foreach ([1, 2, 3, 4] as $index) {
                 DB::table('categories')->updateOrInsert(
                     ['slug' => 'test-category-deleted-' . $index],
@@ -94,7 +99,7 @@ final class CategoryScenarioSeeder extends Seeder
                         'parent_id' => null,
                         'name' => 'TEST CATEGORY - Đã xóa ' . $index,
                         'description' => 'Dữ liệu kiểm thử bộ lọc danh mục đã xóa và khôi phục.',
-                        'sort_order' => 90 + $index,
+                        'sort_order' => $deletedKeys[$index - 1] ?? 'z',
                         'status' => $index % 2 === 0 ? 'inactive' : 'active',
                         'created_at' => $now,
                         'updated_at' => $now,

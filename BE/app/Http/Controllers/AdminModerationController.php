@@ -25,15 +25,31 @@ class AdminModerationController extends Controller
     public function pendingCourses(PendingCourseQueryRequest $request): JsonResponse
     {
         $courses = $this->courseModerationService->getPendingCourses($request->validated());
+        
+        $pendingCount = \App\Models\Course::where('status', 'pending_review')->count();
+        
+        $todayStart = now()->startOfDay()->toDateTimeString();
+        
+        $approvedToday = \App\Models\Course::whereIn('status', ['published', 'approved'])
+            ->where('updated_at', '>=', $todayStart)
+            ->count();
+            
+        $rejectedToday = \App\Models\Course::where('status', 'rejected')
+            ->where('updated_at', '>=', $todayStart)
+            ->count();
+
         return ApiResponse::success(
-            PendingCourseResource::collection($courses),
-            'Lấy dữ liệu thành công',
-            200,
-            [
-                'page' => $courses->currentPage(),
-                'per_page' => $courses->perPage(),
-                'total' => $courses->total(),
-            ]
+            data: [
+                'summary' => [
+                    'pending_count' => $pendingCount,
+                    'approved_today' => $approvedToday,
+                    'rejected_today' => $rejectedToday,
+                ],
+                'items' => PendingCourseResource::collection($courses)->resolve(request())
+            ],
+            message: 'Lấy dữ liệu thành công',
+            status: 200,
+            meta: \App\Support\PaginationMeta::fromPaginator($courses)
         );
     }
     public function approveCourse(ApproveCourseRequest $request, mixed $id): JsonResponse
@@ -95,5 +111,33 @@ class AdminModerationController extends Controller
             'Thao tác thành công',
             200
         );
+    }
+
+    public function moderationItems(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $res = $this->moderationService->getModerationItems($request->all());
+        return ApiResponse::success(
+            data: [
+                'summary' => $res['summary'],
+                'items' => $res['items'],
+            ],
+            message: 'Thao tác thành công',
+            status: 200,
+            meta: $res['meta']
+        );
+    }
+
+    public function moderationItemDetail(\Illuminate\Http\Request $request, string $targetType, mixed $id): JsonResponse
+    {
+        try {
+            $item = $this->moderationService->getModerationItemDetail($targetType, (int) $id);
+            return ApiResponse::success(
+                data: $item,
+                message: 'Thao tác thành công',
+                status: 200
+            );
+        } catch (ModelNotFoundException|\App\Exceptions\BusinessException $e) {
+            return ApiResponse::error($e->getMessage() ?: 'Không tìm thấy dữ liệu.', [], 404);
+        }
     }
 }

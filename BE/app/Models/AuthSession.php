@@ -4,7 +4,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AuthSession extends Model
 {
-    protected $table = 'sessions';
+    protected $table = 'auth_sessions';
     public $timestamps = false;
 
     protected $fillable = [

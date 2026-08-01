@@ -56,20 +56,13 @@ class InstructorUpgradeController extends Controller
 
     public function adminIndex(Request $request): JsonResponse
     {
-        $perPage = (int) $request->query('per_page', 15);
-        $perPage = max(1, min($perPage, 100));
-
-        $applications = $this->instructorUpgradeService->adminIndex($perPage);
+        $result = $this->instructorUpgradeService->adminIndexReport($request->all());
 
         return ApiResponse::success(
             [
-                'items' => InstructorUpgradeRequestResource::collection($applications->items()),
-                'meta' => [
-                    'current_page' => $applications->currentPage(),
-                    'per_page' => $applications->perPage(),
-                    'total' => $applications->total(),
-                    'last_page' => $applications->lastPage(),
-                ],
+                'summary' => $result['summary'],
+                'items' => InstructorUpgradeRequestResource::collection($result['items']),
+                'meta' => $result['meta'],
             ],
             'Lấy danh sách yêu cầu nâng cấp giảng viên thành công.'
         );

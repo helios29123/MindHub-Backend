@@ -30,10 +30,12 @@ class TopCourseReportResource extends JsonResource
                 ];
             }),
             'sold_count' => (int) ($this->sold_count ?? 0),
+            'sales_count' => (int) ($this->sold_count ?? 0),
             'enrollment_count' => $enrollmentCount,
             'completed_count' => $completedCount,
             'completion_rate' => $completionRate,
             'total_revenue' => (float) ($this->total_revenue ?? 0),
+            'gross_revenue' => (float) ($this->total_revenue ?? 0),
             'last_paid_at' => $this->last_paid_at ? \Carbon\Carbon::parse($this->last_paid_at)->toIso8601String() : null,
         ];
     }

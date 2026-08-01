@@ -17,6 +17,15 @@ class PendingCourseResource extends JsonResource
                     'status' => $this->instructor?->status,
                 ];
             }),
+            'category_name' => $this->categories->first()?->name ?? 'N/A',
+            'categories' => $this->whenLoaded('categories', function () {
+                return $this->categories->map(function ($cat) {
+                    return [
+                        'id' => $cat->id,
+                        'name' => $cat->name,
+                    ];
+                });
+            }),
             'title' => $this->title,
             'slug' => $this->slug,
             'short_description' => $this->short_description,

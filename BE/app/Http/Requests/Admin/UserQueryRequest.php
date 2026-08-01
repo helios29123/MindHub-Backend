@@ -19,7 +19,11 @@ class UserQueryRequest extends FormRequest
             'search' => ['nullable', 'string', 'max:255'],
             'role' => ['nullable', 'in:admin,instructor,learner'],
             'status' => ['nullable', 'in:active,inactive,locked'],
-            'sort_by' => ['nullable', 'in:id,full_name,email,role,status,created_at,last_login_at'],
+            'email_verified' => ['nullable', 'in:verified,unverified'],
+            'no_login' => ['nullable', 'in:true,false,1,0'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
+            'sort_by' => ['nullable', 'in:id,full_name,email,role,status,created_at,last_login_at,newest,oldest,name_asc,name_desc,last_login'],
             'sort_direction' => ['nullable', 'in:asc,desc'],
         ];
     }

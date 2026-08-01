@@ -129,4 +129,13 @@ public function scopePurchasable($query)
 }
 
 
+    public function lessons(): HasMany
+    {
+        return $this->hasMany(Lesson::class);
+    }
+
+    public function comments(): HasManyThrough
+    {
+        return $this->hasManyThrough(Comment::class, Lesson::class);
+    }
 }

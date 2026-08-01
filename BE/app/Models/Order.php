@@ -90,4 +90,9 @@ class Order extends Model
     {
         return $this->hasOne(Revenue::class);
     }
+
+    public function enrollment(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Enrollment::class);
+    }
 }

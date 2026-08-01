@@ -140,12 +140,12 @@ class ReportService
 
         $revenueQuery = DB::table('orders')
             ->join('courses', 'orders.course_id', '=', 'courses.id')
+            ->leftJoin('revenues', 'orders.id', '=', 'revenues.order_id')
             ->select('courses.instructor_id')
             ->selectRaw('COUNT(orders.id) as total_sold')
             ->selectRaw('SUM(orders.amount) as total_revenue')
-            // Since we use orders, instructor_amount might not be available unless we have a fixed percentage, or we just set it to total_revenue for now or 0.
-            ->selectRaw('0 as instructor_amount')
-            ->selectRaw('0 as platform_fee_amount')
+            ->selectRaw('SUM(COALESCE(revenues.instructor_amount, orders.amount * 0.7)) as instructor_amount')
+            ->selectRaw('SUM(COALESCE(revenues.platform_fee_amount, orders.amount * 0.3)) as platform_fee_amount')
             ->selectRaw('MAX(orders.paid_at) as last_activity_at')
             ->where('orders.status', 'paid')
             ->where('orders.payment_status', 'paid')
@@ -358,26 +358,18 @@ class ReportService
         $paidOrders = (clone $paidOrderQuery)->count();
         
         // Revenue
-        $revenueQuery = DB::table('revenues');
-        // Only valid revenues
-        // The table might not exist in some states, or might be empty. Fallback to orders
-        $hasRevenues = \Schema::hasTable('revenues') && DB::table('revenues')->exists();
-        
-        if ($hasRevenues) {
-            $applyDateFilter($revenueQuery, 'earned_at');
-            if ($courseId) $revenueQuery->where('course_id', $courseId);
+        $revenueQuery = DB::table('orders')
+            ->leftJoin('revenues', 'orders.id', '=', 'revenues.order_id')
+            ->where('orders.status', 'paid')
+            ->where('orders.payment_status', 'paid');
             
-            $grossAmount = (clone $revenueQuery)->sum('gross_amount');
-            $instructorAmount = (clone $revenueQuery)->sum('instructor_amount');
-            $platformFeeAmount = (clone $revenueQuery)->sum('platform_fee_amount');
-            $totalRevenue = $grossAmount;
-        } else {
-            // Fallback to orders.amount
-            $grossAmount = (clone $paidOrderQuery)->sum('amount');
-            $instructorAmount = 0; // cannot calculate without revenues table reliably
-            $platformFeeAmount = 0;
-            $totalRevenue = $grossAmount;
-        }
+        $applyDateFilter($revenueQuery, 'orders.paid_at');
+        if ($courseId) $revenueQuery->where('orders.course_id', $courseId);
+        
+        $grossAmount = (clone $revenueQuery)->sum('orders.amount');
+        $instructorAmount = (clone $revenueQuery)->sum(DB::raw('COALESCE(revenues.instructor_amount, orders.amount * 0.7)'));
+        $platformFeeAmount = (clone $revenueQuery)->sum(DB::raw('COALESCE(revenues.platform_fee_amount, orders.amount * 0.3)'));
+        $totalRevenue = $grossAmount;
 
         // Enrollments
         $enrollmentQuery = DB::table('enrollments');
@@ -393,14 +385,58 @@ class ReportService
         $completedEnrollments = (clone $enrollmentQuery)->where('status', 'completed')->count();
         $completionRate = $totalEnrollments > 0 ? round(($completedEnrollments / $totalEnrollments) * 100, 2) : 0;
 
-        // Recent
-        $latestOrdersQuery = DB::table('orders')->orderBy('id', 'desc')->limit(5);
+        // Recent orders (eager load user and course)
+        $latestOrdersQuery = \App\Models\Order::query()
+            ->with(['user:id,full_name', 'course:id,title,slug'])
+            ->orderBy('id', 'desc')
+            ->limit(5);
         if ($courseId) $latestOrdersQuery->where('course_id', $courseId);
         $latestOrders = $latestOrdersQuery->get();
 
-        $latestCoursesQuery = DB::table('courses')->whereNull('deleted_at')->orderBy('id', 'desc')->limit(5);
+        // Recent courses (eager load instructor and map to instructor_name)
+        $latestCoursesQuery = \App\Models\Course::query()
+            ->with(['instructor:id,full_name'])
+            ->whereNull('deleted_at')
+            ->orderBy('id', 'desc')
+            ->limit(5);
         if ($courseId) $latestCoursesQuery->where('id', $courseId);
-        $latestCourses = $latestCoursesQuery->get();
+        $latestCourses = $latestCoursesQuery->get()->map(function ($c) {
+            $c->instructor_name = $c->instructor?->full_name ?: 'N/A';
+            return $c;
+        });
+
+        // Withdrawals statistics
+        $withdrawalQuery = DB::table('withdraw_requests');
+        $applyDateFilter($withdrawalQuery, 'created_at');
+        
+        $pendingWithdrawRequests = (clone $withdrawalQuery)->where('status', 'pending')->get();
+        $approvedWithdrawRequests = (clone $withdrawalQuery)->where('status', 'approved')->get();
+        $paidWithdrawRequests = (clone $withdrawalQuery)->where('status', 'paid')->get();
+        
+        $pendingWithdrawCount = $pendingWithdrawRequests->count();
+        $approvedWithdrawCount = $approvedWithdrawRequests->count();
+        $pendingWithdrawAmount = $pendingWithdrawRequests->sum('amount');
+        $approvedWithdrawAmount = $approvedWithdrawRequests->sum('amount');
+        $paidWithdrawAmount = $paidWithdrawRequests->sum('amount');
+
+        // Action required backlog
+        $pendingCourseReviews = DB::table('courses')->whereNull('deleted_at')->where('status', 'pending_review')->count();
+        
+        $pendingInstructorUpgrades = DB::table('payout_accounts')
+            ->join('users', 'payout_accounts.user_id', '=', 'users.id')
+            ->where('payout_accounts.status', 'pending_verification')
+            ->where('users.role', 'learner')
+            ->whereNull('payout_accounts.deleted_at')
+            ->count();
+            
+        $pendingPayoutAccounts = DB::table('payout_accounts')
+            ->join('users', 'payout_accounts.user_id', '=', 'users.id')
+            ->where('payout_accounts.status', 'pending_verification')
+            ->where('users.role', 'instructor')
+            ->whereNull('payout_accounts.deleted_at')
+            ->count();
+            
+        $pendingWithdrawals = DB::table('withdraw_requests')->where('status', 'pending')->count();
 
         return [
             'summary' => [
@@ -434,6 +470,19 @@ class ReportService
                 'inactive' => $userStatusCounts['inactive'] ?? 0,
                 'locked' => $userStatusCounts['locked'] ?? 0,
             ],
+            'withdrawal_summary' => [
+                'pending_count' => $pendingWithdrawCount,
+                'approved_count' => $approvedWithdrawCount,
+                'pending_amount' => (float)$pendingWithdrawAmount,
+                'approved_amount' => (float)$approvedWithdrawAmount,
+                'paid_amount' => (float)$paidWithdrawAmount,
+            ],
+            'action_required' => [
+                'pending_course_reviews' => $pendingCourseReviews,
+                'pending_instructor_upgrades' => $pendingInstructorUpgrades,
+                'pending_withdrawals' => $pendingWithdrawals,
+                'pending_payout_accounts' => $pendingPayoutAccounts,
+            ],
             'recent' => [
                 'latest_orders' => $latestOrders,
                 'latest_courses' => $latestCourses,
@@ -454,50 +503,32 @@ class ReportService
         $sortBy = $filters['sort_by'] ?? 'date';
         $sortDirection = strtolower($filters['sort_direction'] ?? 'asc');
 
-        // Check if revenues table exists and has data
-        $hasRevenues = \Schema::hasTable('revenues') && DB::table('revenues')->exists();
-
-        $query = $hasRevenues ? DB::table('revenues') : DB::table('orders')->where('status', 'paid');
-        $dateColumn = $hasRevenues ? 'earned_at' : 'paid_at';
+        $query = DB::table('orders')
+            ->join('courses', 'orders.course_id', '=', 'courses.id')
+            ->leftJoin('revenues', 'orders.id', '=', 'revenues.order_id')
+            ->where('orders.status', 'paid')
+            ->where('orders.payment_status', 'paid');
+            
+        $dateColumn = 'orders.paid_at';
 
         // Apply filters
         if ($dateFrom) $query->whereDate($dateColumn, '>=', $dateFrom);
         if ($dateTo) $query->whereDate($dateColumn, '<=', $dateTo);
         if ($month) $query->whereMonth($dateColumn, $month);
         if ($year) $query->whereYear($dateColumn, $year);
-        if ($courseId) $query->where('course_id', $courseId);
-
-        if ($hasRevenues) {
-            if ($instructorId) $query->where('instructor_id', $instructorId);
-        } else {
-            // For orders, to filter by instructor_id, we need to join courses
-            if ($instructorId) {
-                $query->join('courses', 'orders.course_id', '=', 'courses.id')
-                      ->where('courses.instructor_id', $instructorId);
-            }
-        }
+        if ($courseId) $query->where('orders.course_id', $courseId);
+        if ($instructorId) $query->where('courses.instructor_id', $instructorId);
 
         // Calculate summary
         $summaryQuery = clone $query;
-        if ($hasRevenues) {
-            $summary = [
-                'total_gross_amount' => (float) $summaryQuery->sum('gross_amount'),
-                'total_instructor_amount' => (float) $summaryQuery->sum('instructor_amount'),
-                'total_platform_fee_amount' => (float) $summaryQuery->sum('platform_fee_amount'),
-                'order_count' => $summaryQuery->count(),
-                'course_count' => $summaryQuery->distinct()->count('course_id'),
-                'instructor_count' => $summaryQuery->distinct()->count('instructor_id'),
-            ];
-        } else {
-            $summary = [
-                'total_gross_amount' => (float) $summaryQuery->sum($instructorId ? 'orders.amount' : 'amount'),
-                'total_instructor_amount' => 0,
-                'total_platform_fee_amount' => 0,
-                'order_count' => $summaryQuery->count(),
-                'course_count' => $summaryQuery->distinct()->count($instructorId ? 'orders.course_id' : 'course_id'),
-                'instructor_count' => 0,
-            ];
-        }
+        $summary = [
+            'total_gross_amount' => (float) $summaryQuery->sum('orders.amount'),
+            'total_instructor_amount' => (float) $summaryQuery->sum(DB::raw('COALESCE(revenues.instructor_amount, orders.amount * 0.7)')),
+            'total_platform_fee_amount' => (float) $summaryQuery->sum(DB::raw('COALESCE(revenues.platform_fee_amount, orders.amount * 0.3)')),
+            'order_count' => $summaryQuery->count('orders.id'),
+            'course_count' => $summaryQuery->distinct()->count('orders.course_id'),
+            'instructor_count' => $summaryQuery->distinct()->count('courses.instructor_id'),
+        ];
 
         // Grouping
         $dbConnection = DB::connection()->getDriverName();
@@ -511,24 +542,12 @@ class ReportService
 
         $query->selectRaw("$dateFormat as period");
 
-        if ($hasRevenues) {
-            $query->selectRaw('SUM(gross_amount) as gross_amount')
-                  ->selectRaw('SUM(instructor_amount) as instructor_amount')
-                  ->selectRaw('SUM(platform_fee_amount) as platform_fee_amount')
-                  ->selectRaw('COUNT(id) as order_count')
-                  ->selectRaw('COUNT(DISTINCT course_id) as course_count')
-                  ->selectRaw('COUNT(DISTINCT instructor_id) as instructor_count');
-        } else {
-            $amtCol = $instructorId ? 'orders.amount' : 'amount';
-            $crsCol = $instructorId ? 'orders.course_id' : 'course_id';
-            $idCol = $instructorId ? 'orders.id' : 'id';
-            $query->selectRaw("SUM($amtCol) as gross_amount")
-                  ->selectRaw('0 as instructor_amount')
-                  ->selectRaw('0 as platform_fee_amount')
-                  ->selectRaw("COUNT($idCol) as order_count")
-                  ->selectRaw("COUNT(DISTINCT $crsCol) as course_count")
-                  ->selectRaw('0 as instructor_count');
-        }
+        $query->selectRaw('SUM(orders.amount) as gross_amount')
+              ->selectRaw('SUM(COALESCE(revenues.instructor_amount, orders.amount * 0.7)) as instructor_amount')
+              ->selectRaw('SUM(COALESCE(revenues.platform_fee_amount, orders.amount * 0.3)) as platform_fee_amount')
+              ->selectRaw('COUNT(orders.id) as order_count')
+              ->selectRaw('COUNT(DISTINCT orders.course_id) as course_count')
+              ->selectRaw('COUNT(DISTINCT courses.instructor_id) as instructor_count');
 
         $query->groupBy(DB::raw($dateFormat));
 

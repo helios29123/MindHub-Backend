@@ -28,7 +28,7 @@ final class ReorderCategoryRequest extends FormRequest
                 'integer',
                 Rule::exists('categories', 'id')->whereNull('deleted_at'),
             ],
-            'items.*.sort_order' => ['required', 'integer', 'min:1'],
+            'items.*.sort_order' => ['required', 'string', 'max:100'],
         ];
     }
 }

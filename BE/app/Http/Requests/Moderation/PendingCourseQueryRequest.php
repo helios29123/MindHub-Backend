@@ -17,6 +17,9 @@ class PendingCourseQueryRequest extends FormRequest
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'category_id' => ['sometimes', 'nullable', 'integer'],
+            'date_from' => ['sometimes', 'nullable', 'date'],
+            'date_to' => ['sometimes', 'nullable', 'date'],
             'sort' => ['sometimes', 'string', Rule::in([
                 'newest',
                 'oldest',
