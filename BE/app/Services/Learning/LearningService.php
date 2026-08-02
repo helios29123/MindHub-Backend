@@ -441,7 +441,13 @@ class LearningService
             }
         }
 
+        $isNewlyCompleted = $completed && !$progress->completed_at;
+
         $progress->update($updates);
+
+        if ($isNewlyCompleted) {
+            app(\App\Services\User\UserActivityService::class)->recordLessonCompletion($user, $lesson);
+        }
 
         // Fetch current second from video progress if any
         $currentSecond = 0;

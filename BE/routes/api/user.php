@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\InstructorProfileController;
 use App\Http\Controllers\UserProfileController;
+use App\Http\Controllers\UserActivityController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth.session', 'active.user', 'role:learner,instructor,admin'])
@@ -10,6 +11,7 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,instructor,admin
         Route::get('me', [UserProfileController::class, 'me']);
         Route::patch('me', [UserProfileController::class, 'updateMe']);
         Route::patch('me/password', [UserProfileController::class, 'changePassword']);
+        Route::get('me/activity', [UserActivityController::class, 'getActivityDashboard']);
     });
 
 Route::middleware(['auth.session', 'active.user', 'role:learner,instructor,admin'])

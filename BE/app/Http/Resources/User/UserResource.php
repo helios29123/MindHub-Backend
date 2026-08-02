@@ -22,6 +22,9 @@ final class UserResource extends JsonResource
             'email_verified_at' => $this->email_verified_at?->toDateTimeString(),
             'phone_verified_at' => !empty($this->phone) ? ($this->updated_at?->toDateTimeString()) : null,
             'last_login_at' => $this->last_login_at?->toDateTimeString(),
+            'xp' => (int) ($this->xp ?? 0),
+            'streak_count' => (int) ($this->streak_count ?? 0),
+            'last_active_date' => $this->last_active_date,
         ];
     }
 }
