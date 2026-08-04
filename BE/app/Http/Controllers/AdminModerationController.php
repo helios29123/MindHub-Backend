@@ -22,9 +22,9 @@ class AdminModerationController extends Controller
         private readonly CourseModerationService $courseModerationService
     ) {
     }
-    public function pendingCourses(PendingCourseQueryRequest $request): JsonResponse
+    public function courseReviews(PendingCourseQueryRequest $request): JsonResponse
     {
-        $courses = $this->courseModerationService->getPendingCourses($request->validated());
+        $courses = $this->courseModerationService->getCourseReviews($request->validated());
         
         $pendingCount = \App\Models\Course::where('status', 'pending_review')->count();
         
@@ -37,10 +37,12 @@ class AdminModerationController extends Controller
         $rejectedToday = \App\Models\Course::where('status', 'rejected')
             ->where('updated_at', '>=', $todayStart)
             ->count();
+        $totalCount = \App\Models\Course::whereIn('status', ['pending_review', 'approved', 'published', 'rejected'])->count();
 
         return ApiResponse::success(
             data: [
                 'summary' => [
+                    'total_count' => $totalCount,
                     'pending_count' => $pendingCount,
                     'approved_today' => $approvedToday,
                     'rejected_today' => $rejectedToday,

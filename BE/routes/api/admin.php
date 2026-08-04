@@ -43,7 +43,7 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         | Course moderation / review
         |--------------------------------------------------------------------------
         */
-        Route::get('/course-reviews', [AdminModerationController::class, 'pendingCourses']);
+        Route::get('/course-reviews', [AdminModerationController::class, 'courseReviews']);
 
         /*
          * Rule mới:

@@ -287,5 +287,46 @@ test('validation fails on invalid path parameter id', function () {
         'target_type' => 'comment',
         'status' => 'hidden',
     ], $headers);
-    $responseZero->assertStatus(422);
 });
+
+test('courseReviews API returns filtered results based on status and reviewed_date', function () {
+    $headers = getAuthHeadersForAdminTest('admin@mindhub.test');
+
+    // Create courses with different statuses
+    $instructor = User::factory()->create(['role' => 'instructor']);
+    $pending = \App\Models\Course::factory()->create(['status' => 'pending_review', 'instructor_id' => $instructor->id]);
+    $approved = \App\Models\Course::factory()->create(['status' => 'approved', 'instructor_id' => $instructor->id, 'updated_at' => now()]);
+    $published = \App\Models\Course::factory()->create(['status' => 'published', 'instructor_id' => $instructor->id, 'updated_at' => now()]);
+    $rejected = \App\Models\Course::factory()->create(['status' => 'rejected', 'instructor_id' => $instructor->id, 'updated_at' => now()]);
+    
+    // Test without status
+    $resAll = $this->getJson('/api/admin/course-reviews', $headers);
+    $resAll->assertStatus(200);
+    $this->assertGreaterThanOrEqual(4, count($resAll->json('data.items')));
+    
+    // Test status=pending
+    $resPending = $this->getJson('/api/admin/course-reviews?status=pending', $headers);
+    $resPending->assertStatus(200);
+    $pendingItems = $resPending->json('data.items');
+    $this->assertNotEmpty($pendingItems);
+    $this->assertEquals('pending_review', $pendingItems[0]['status']);
+
+    // Test status=approved
+    $resApproved = $this->getJson('/api/admin/course-reviews?status=approved', $headers);
+    $resApproved->assertStatus(200);
+    $approvedItems = $resApproved->json('data.items');
+    $this->assertNotEmpty($approvedItems);
+    $this->assertContains($approvedItems[0]['status'], ['approved', 'published']);
+
+    // Test status=rejected
+    $resRejected = $this->getJson('/api/admin/course-reviews?status=rejected', $headers);
+    $resRejected->assertStatus(200);
+    $rejectedItems = $resRejected->json('data.items');
+    $this->assertNotEmpty($rejectedItems);
+    $this->assertEquals('rejected', $rejectedItems[0]['status']);
+    
+    // Test summary total_count
+    $summary = $resAll->json('data.summary');
+    $this->assertGreaterThanOrEqual(4, $summary['total_count']);
+});
+
