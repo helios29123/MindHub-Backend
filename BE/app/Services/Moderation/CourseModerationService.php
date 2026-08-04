@@ -13,9 +13,9 @@ class CourseModerationService
         private readonly CourseModerationRepository $courseModerationRepository
     ) {
     }
-    public function getPendingCourses(array $filters): LengthAwarePaginator
+    public function getCourseReviews(array $filters): LengthAwarePaginator
     {
-        return $this->courseModerationRepository->paginatePendingCourses($filters);
+        return $this->courseModerationRepository->paginateCourseReviews($filters);
     }
     public function approveCourse(int $courseId): Course
     {

@@ -5,7 +5,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 class CourseModerationRepository
 {
-    public function paginatePendingCourses(array $filters): LengthAwarePaginator
+    public function paginateCourseReviews(array $filters): LengthAwarePaginator
     {
         $page = (int) ($filters['page'] ?? 1);
         $perPage = (int) ($filters['per_page'] ?? 10);
@@ -21,9 +21,25 @@ class CourseModerationRepository
                         'status',
                     ]);
                 },
-                'categories'
             ])
-            ->where('status', 'pending_review');
+            ->with('categories');
+
+        $status = $filters['status'] ?? null;
+        if ($status === 'pending') {
+            $query->where('status', 'pending_review');
+        } elseif ($status === 'approved') {
+            $query->whereIn('status', ['approved', 'published']);
+        } elseif ($status === 'rejected') {
+            $query->where('status', 'rejected');
+        } else {
+            $query->whereIn('status', ['pending_review', 'approved', 'published', 'rejected']);
+        }
+
+        $reviewedDate = $filters['reviewed_date'] ?? null;
+        if ($reviewedDate === 'today') {
+            $query->where('updated_at', '>=', now()->startOfDay()->toDateTimeString());
+        }
+
         if ($search !== '') {
             $query->where(function (Builder $query) use ($search): void {
                 $query->where('title', 'like', '%' . $search . '%')
