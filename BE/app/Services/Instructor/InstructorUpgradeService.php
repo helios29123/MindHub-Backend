@@ -125,9 +125,16 @@ class InstructorUpgradeService
 
     public function adminIndexReport(array $queryParams): array
     {
+        $latestPayoutQuery = DB::table('payout_accounts')
+            ->select('user_id', DB::raw('MAX(id) as payout_id'))
+            ->groupBy('user_id');
+
         $baseQuery = DB::table('users as u')
             ->join('instructor_profiles as ip', 'ip.user_id', '=', 'u.id')
-            ->leftJoin('payout_accounts as pa', 'pa.user_id', '=', 'u.id')
+            ->leftJoinSub($latestPayoutQuery, 'latest_pa', function ($join): void {
+                $join->on('latest_pa.user_id', '=', 'u.id');
+            })
+            ->leftJoin('payout_accounts as pa', 'pa.id', '=', 'latest_pa.payout_id')
             ->whereNull('u.deleted_at');
 
         $total = (clone $baseQuery)->count();
@@ -144,7 +151,10 @@ class InstructorUpgradeService
 
         $query = DB::table('users as u')
             ->join('instructor_profiles as ip', 'ip.user_id', '=', 'u.id')
-            ->leftJoin('payout_accounts as pa', 'pa.user_id', '=', 'u.id')
+            ->leftJoinSub($latestPayoutQuery, 'latest_pa', function ($join): void {
+                $join->on('latest_pa.user_id', '=', 'u.id');
+            })
+            ->leftJoin('payout_accounts as pa', 'pa.id', '=', 'latest_pa.payout_id')
             ->whereNull('u.deleted_at');
 
         if (!empty($queryParams['search'])) {
