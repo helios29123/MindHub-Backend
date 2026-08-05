@@ -214,6 +214,27 @@ class FaqAdminService
     }
 
     /**
+     * Bulk reorder FAQs
+     * @param array $items Array of ['id' => id, 'sort_order' => order]
+     * @return array
+     */
+    public function reorderFaqs(array $items): array
+    {
+        try {
+            DB::beginTransaction();
+            foreach ($items as $item) {
+                Faq::where('id', $item['id'])->update(['sort_order' => $item['sort_order']]);
+            }
+            DB::commit();
+            return ['success' => true, 'message' => 'Cập nhật thứ tự thành công.'];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Lỗi khi cập nhật thứ tự FAQs: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Đã xảy ra lỗi, vui lòng thử lại sau.'];
+        }
+    }
+
+    /**
      * Sync/link courses for a FAQ.
      */
     public function syncFaqCourses(int $id, array $courseIds): ?array

@@ -55,6 +55,40 @@ class AdminFaqController extends Controller
     }
 
     /**
+     * PATCH /api/admin/faqs/reorder
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'items' => ['required', 'array'],
+            'items.*.id' => ['required', 'integer', 'exists:faqs,id'],
+            'items.*.sort_order' => ['required', 'numeric'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $result = $this->faqService->reorderFaqs($validator->validated()['items']);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'] ?? 'Cập nhật thứ tự thành công.',
+        ]);
+    }
+
+    /**
      * POST /api/admin/faqs
      */
     public function store(Request $request): JsonResponse
