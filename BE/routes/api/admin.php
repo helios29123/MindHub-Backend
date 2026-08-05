@@ -214,6 +214,7 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         Route::get('/faqs/{id}', [AdminFaqController::class, 'show'])
             ->whereNumber('id');
         Route::post('/faqs', [AdminFaqController::class, 'store']);
+        Route::patch('/faqs/reorder', [AdminFaqController::class, 'reorder']);
         Route::patch('/faqs/{id}', [AdminFaqController::class, 'update'])
             ->whereNumber('id');
         Route::delete('/faqs/{id}', [AdminFaqController::class, 'destroy'])
