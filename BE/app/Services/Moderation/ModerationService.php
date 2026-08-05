@@ -63,6 +63,7 @@ class ModerationService
         $sortBy = $params['sort_by'] ?? 'created_at';
         $sortDirection = $params['sort_direction'] ?? 'desc';
         $replyStatus = $params['reply_status'] ?? $params['priority_filter'] ?? 'all';
+        $rating = $params['rating'] ?? 'all';
 
         // 1. Fetch comments and reviews with their relations
         $comments = Comment::with(['user', 'lesson.course', 'order.course', 'parent'])->get();
@@ -442,14 +443,30 @@ class ModerationService
             $filteredItems = array_filter($filteredItems, fn($item) => $item['status'] === $status);
         }
 
+        // G. Rating filter
+        if ($rating !== 'all') {
+            $filteredItems = array_filter($filteredItems, fn($item) => $item['target_type'] === 'review' && (int)$item['rating'] === (int)$rating);
+        }
+
         // 6. Sort
         usort($filteredItems, function ($a, $b) use ($sortBy, $sortDirection) {
-            $valA = $a[$sortBy] ?? null;
-            $valB = $b[$sortBy] ?? null;
+            $valA = null;
+            $valB = null;
 
-            if ($sortBy === 'created_at' || $sortBy === 'updated_at') {
-                $valA = $valA ? Carbon::parse($valA)->timestamp : 0;
-                $valB = $valB ? Carbon::parse($valB)->timestamp : 0;
+            if ($sortBy === 'user_name') {
+                $valA = mb_strtolower($a['user']['full_name'] ?? '', 'UTF-8');
+                $valB = mb_strtolower($b['user']['full_name'] ?? '', 'UTF-8');
+            } elseif ($sortBy === 'course_title') {
+                $valA = mb_strtolower($a['course']['title'] ?? '', 'UTF-8');
+                $valB = mb_strtolower($b['course']['title'] ?? '', 'UTF-8');
+            } else {
+                $valA = $a[$sortBy] ?? null;
+                $valB = $b[$sortBy] ?? null;
+
+                if ($sortBy === 'created_at' || $sortBy === 'updated_at') {
+                    $valA = $valA ? Carbon::parse($valA)->timestamp : 0;
+                    $valB = $valB ? Carbon::parse($valB)->timestamp : 0;
+                }
             }
 
             if ($valA === $valB) return 0;
