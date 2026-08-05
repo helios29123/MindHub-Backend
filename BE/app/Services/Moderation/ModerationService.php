@@ -333,12 +333,14 @@ class ModerationService
         }
 
         $needActionCount = count(array_filter($allItems, fn($i) => $i['is_needs_action']));
+        $violationCount = count(array_filter($allItems, fn($i) => $i['warning_type'] !== null));
 
         $summary = [
             'total_items' => count($allItems),
             'total_comments' => $totalComments,
             'total_reviews' => $totalReviews,
             'need_action_count' => $needActionCount,
+            'violation_count' => $violationCount,
             'visible_comments' => $visibleComments,
             'hidden_comments' => $hiddenComments,
             'deleted_comments' => $deletedComments,
@@ -407,6 +409,8 @@ class ModerationService
             $filteredItems = array_filter($filteredItems, function ($i) use ($replyStatus) {
                 if ($replyStatus === 'needs_action') {
                     return $i['is_needs_action'];
+                } elseif ($replyStatus === 'violation') {
+                    return $i['warning_type'] !== null;
                 } elseif ($replyStatus === 'overdue_response' || $replyStatus === 'overdue') {
                     return $i['is_response_overdue'];
                 } elseif ($replyStatus === 'low_rating_unanswered') {
