@@ -20,9 +20,12 @@ class CategoryRepository
             ->get();
     }
 
-    public function paginateActive(int $perPage = 10)
+    public function paginateActive(int $perPage = 50)
     {
         return Category::query()
+            ->withCount(['courses' => function ($q) {
+                $q->where('courses.status', 'published')->whereNull('courses.deleted_at');
+            }])
             ->where('status', 'active')
             ->whereNull('deleted_at')
             ->orderBy('sort_order')
