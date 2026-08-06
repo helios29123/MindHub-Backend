@@ -4,6 +4,7 @@ namespace App\Services\Payment;
 
 use App\Exceptions\BusinessException;
 use App\Models\Order;
+use App\Services\Payment\Contracts\PaymentGatewayInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -11,6 +12,11 @@ use Illuminate\Support\Facades\Schema;
 class PaymentService
 {
     public const PLATFORM_FEE_PERCENT = 30;
+
+    public function __construct(
+        private readonly PaymentGatewayInterface $gateway
+    ) {
+    }
 
     public function storePayment(array $data, ?int $userId = null): object
     {
@@ -29,7 +35,6 @@ class PaymentService
 
             $providerTransactionId = $data['provider_transaction_id']
                 ?? $data['transaction_id']
-                ?? $data['vnp_TxnRef']
                 ?? ('MANUAL-' . now()->format('YmdHis') . random_int(1000, 9999));
 
             $paymentMethod = $data['payment_method'] ?? 'manual';
@@ -48,10 +53,9 @@ class PaymentService
         });
     }
 
-    public function createVnpayPayment(array $data, ?int $userId = null): array
+    public function createSePayPayment(array $data, ?int $userId = null): array
     {
         $userId = $userId ?: (int) Auth::id();
-
         $orderId = (int) ($data['order_id'] ?? 0);
 
         if ($orderId <= 0) {
@@ -61,7 +65,7 @@ class PaymentService
         return DB::transaction(function () use ($orderId, $userId): array {
             $order = $this->findUserOrderForUpdate($orderId, $userId);
 
-            $this->assertOrderCanCreateVnpayPayment($order);
+            $this->assertOrderCanCreatePayment($order);
 
             $user = DB::table('users')
                 ->where('id', $userId)
@@ -74,18 +78,6 @@ class PaymentService
             $orderType = $this->resolveOrderType($order);
             $role = (string) ($user->role ?? '');
 
-            /*
-            |--------------------------------------------------------------------------
-            | Payment permission by role + order type
-            |--------------------------------------------------------------------------
-            | learner/member:
-            | - Chỉ được thanh toán đơn mua khóa học.
-            |
-            | instructor:
-            | - Được thanh toán đơn mua gói lượt tạo khóa học.
-            | - Được thanh toán đơn mua khóa học của giảng viên khác.
-            | - Không được thanh toán khóa học của chính mình.
-            */
             if (in_array($role, ['learner', 'member'], true) && $orderType !== Order::TYPE_COURSE_PURCHASE) {
                 throw new BusinessException('Học viên chỉ được thanh toán đơn mua khóa học.', 403);
             }
@@ -104,62 +96,41 @@ class PaymentService
                 throw new BusinessException('Số tiền thanh toán không hợp lệ.', 422);
             }
 
-            $txnRef = $this->generateVnpayTxnRef($order);
+            $txnRef = 'SEPAY-' . $order->id . '-' . now()->format('YmdHis');
 
-            /*
-            |--------------------------------------------------------------------------
-            | Không update payment_status = processing
-            |--------------------------------------------------------------------------
-            | DB hiện tại đang dùng unpaid/paid/failed.
-            | Vì vậy tạo link VNPAY chỉ lưu payment_method và provider_transaction_id.
-            | payment_status vẫn giữ unpaid cho đến khi VNPAY return/callback thành công.
-            */
             DB::table('orders')
                 ->where('id', $order->id)
                 ->update([
-                    'payment_method' => 'vnpay',
+                    'payment_method' => 'sepay',
                     'provider_transaction_id' => $txnRef,
                     'updated_at' => now(),
                 ]);
 
-            $paymentUrl = $this->buildVnpayPaymentUrl($order, $txnRef, $amount);
+            $paymentUrl = $this->gateway->createPaymentUrl($order, $amount);
 
             return [
                 'order_id' => (int) $order->id,
                 'order_code' => $order->order_code ?? null,
                 'order_type' => $orderType,
                 'amount' => $amount,
-                'payment_method' => 'vnpay',
+                'payment_method' => 'sepay',
                 'provider_transaction_id' => $txnRef,
                 'payment_url' => $paymentUrl,
             ];
         });
     }
 
-    public function vnpayReturn(array $params): array
+    public function webhook(array $payload): array
     {
-        return $this->handleVnpayReturn($params);
-    }
+        $details = $this->gateway->handleWebhook($payload);
+        
+        $orderId = $details['order_id'];
+        $amountPaid = $details['amount'];
+        $providerTransactionId = $details['provider_transaction_id'];
 
-    public function handleVnpayReturn(array $params): array
-    {
-        $isValid = $this->verifyVnpaySignature($params);
-
-        if (! $isValid) {
-            throw new BusinessException('Chữ ký VNPAY không hợp lệ.', 400);
-        }
-
-        $responseCode = (string) ($params['vnp_ResponseCode'] ?? '');
-        $transactionStatus = (string) ($params['vnp_TransactionStatus'] ?? '');
-        $txnRef = (string) ($params['vnp_TxnRef'] ?? '');
-
-        if ($txnRef === '') {
-            throw new BusinessException('Thiếu mã giao dịch VNPAY.', 422);
-        }
-
-        return DB::transaction(function () use ($responseCode, $transactionStatus, $txnRef, $params): array {
+        return DB::transaction(function () use ($orderId, $amountPaid, $providerTransactionId, $payload): array {
             $order = DB::table('orders')
-                ->where('provider_transaction_id', $txnRef)
+                ->where('id', $orderId)
                 ->lockForUpdate()
                 ->first();
 
@@ -167,59 +138,37 @@ class PaymentService
                 throw new BusinessException('Không tìm thấy đơn hàng.', 404);
             }
 
-            if ($responseCode === '00' && $transactionStatus === '00') {
-                if (($order->payment_status ?? null) !== Order::PAYMENT_PAID) {
-                    $this->markOrderAsPaid($order, 'vnpay', $txnRef);
+            $expectedAmount = $this->getOrderAmount($order);
 
-                    $paidOrder = DB::table('orders')
-                        ->where('id', $order->id)
-                        ->first();
+            if ($amountPaid < $expectedAmount) {
+                // If paid amount is less, we shouldn't mark it as paid, or mark it as partial
+                throw new BusinessException('Số tiền thanh toán không đủ.', 422);
+            }
 
-                    $this->applyPaidSideEffects($paidOrder);
-                }
+            if (($order->payment_status ?? null) !== Order::PAYMENT_PAID) {
+                $this->markOrderAsPaid($order, 'sepay', $providerTransactionId);
 
-                $latestOrder = DB::table('orders')
+                $paidOrder = DB::table('orders')
                     ->where('id', $order->id)
                     ->first();
 
-                return [
-                    'success' => true,
-                    'message' => 'Thanh toán VNPAY thành công.',
-                    'order_id' => (int) $order->id,
-                    'order_code' => $order->order_code ?? null,
-                    'order_type' => $this->resolveOrderType($order),
-                    'order' => $latestOrder,
-                    'vnpay' => $params,
-                ];
+                $this->applyPaidSideEffects($paidOrder);
             }
-
-            DB::table('orders')
-                ->where('id', $order->id)
-                ->update([
-                    'status' => Order::STATUS_FAILED,
-                    'payment_status' => Order::PAYMENT_FAILED,
-                    'updated_at' => now(),
-                ]);
 
             $latestOrder = DB::table('orders')
                 ->where('id', $order->id)
                 ->first();
 
             return [
-                'success' => false,
-                'message' => 'Thanh toán VNPAY thất bại.',
+                'success' => true,
+                'message' => 'Xác nhận thanh toán SePay thành công.',
                 'order_id' => (int) $order->id,
                 'order_code' => $order->order_code ?? null,
                 'order_type' => $this->resolveOrderType($order),
                 'order' => $latestOrder,
-                'vnpay' => $params,
+                'sepay' => $payload,
             ];
         });
-    }
-
-    public function webhook(array $payload): array
-    {
-        return $this->handleVnpayReturn($payload);
     }
 
     private function findUserOrderForUpdate(int $orderId, int $userId): object
@@ -242,7 +191,7 @@ class PaymentService
         return $order;
     }
 
-    private function assertOrderCanCreateVnpayPayment(object $order): void
+    private function assertOrderCanCreatePayment(object $order): void
     {
         $status = (string) ($order->status ?? '');
         $paymentStatus = (string) ($order->payment_status ?? '');
@@ -422,57 +371,50 @@ class PaymentService
     }
 
     private function createEnrollmentAfterCourseOrderPaid(object $order): void
-{
-    if (empty($order->course_id)) {
-        return;
+    {
+        if (empty($order->course_id)) {
+            return;
+        }
+
+        $query = DB::table('enrollments')
+            ->where('user_id', $order->user_id)
+            ->where('course_id', $order->course_id);
+
+        if (Schema::hasColumn('enrollments', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+
+        if ($query->exists()) {
+            return;
+        }
+
+        $insertData = [
+            'user_id' => $order->user_id,
+            'course_id' => $order->course_id,
+        ];
+
+        if (Schema::hasColumn('enrollments', 'order_id')) {
+            $insertData['order_id'] = $order->id;
+        }
+
+        if (Schema::hasColumn('enrollments', 'status')) {
+            $insertData['status'] = 'active';
+        }
+
+        if (Schema::hasColumn('enrollments', 'progress_percent')) {
+            $insertData['progress_percent'] = 0;
+        }
+
+        if (Schema::hasColumn('enrollments', 'created_at')) {
+            $insertData['created_at'] = now();
+        }
+
+        if (Schema::hasColumn('enrollments', 'updated_at')) {
+            $insertData['updated_at'] = now();
+        }
+
+        DB::table('enrollments')->insert($insertData);
     }
-
-    $query = DB::table('enrollments')
-        ->where('user_id', $order->user_id)
-        ->where('course_id', $order->course_id);
-
-    if (Schema::hasColumn('enrollments', 'deleted_at')) {
-        $query->whereNull('deleted_at');
-    }
-
-    if ($query->exists()) {
-        return;
-    }
-
-    $insertData = [
-        'user_id' => $order->user_id,
-        'course_id' => $order->course_id,
-    ];
-
-    /*
-    |--------------------------------------------------------------------------
-    | DB của bạn yêu cầu enrollments.order_id NOT NULL
-    |--------------------------------------------------------------------------
-    | Vì vậy khi thanh toán thành công phải lưu order_id để biết enrollment
-    | được tạo từ đơn hàng nào.
-    */
-    if (Schema::hasColumn('enrollments', 'order_id')) {
-        $insertData['order_id'] = $order->id;
-    }
-
-    if (Schema::hasColumn('enrollments', 'status')) {
-        $insertData['status'] = 'active';
-    }
-
-    if (Schema::hasColumn('enrollments', 'progress_percent')) {
-        $insertData['progress_percent'] = 0;
-    }
-
-    if (Schema::hasColumn('enrollments', 'created_at')) {
-        $insertData['created_at'] = now();
-    }
-
-    if (Schema::hasColumn('enrollments', 'updated_at')) {
-        $insertData['updated_at'] = now();
-    }
-
-    DB::table('enrollments')->insert($insertData);
-}
 
     private function createRevenueAfterCourseOrderPaid(object $order): void
     {
@@ -514,93 +456,5 @@ class PaymentService
             ?? 0;
 
         return (float) $amount;
-    }
-
-    private function generateVnpayTxnRef(object $order): string
-    {
-        return 'VNPAY-' . $order->id . '-' . now()->format('YmdHis') . '-' . random_int(1000, 9999);
-    }
-
-    private function buildVnpayPaymentUrl(object $order, string $txnRef, float $amount): string
-    {
-        $vnpUrl = config('services.vnpay.url')
-            ?: env('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
-
-        $tmnCode = config('services.vnpay.tmn_code')
-            ?: env('VNPAY_TMN_CODE');
-
-        $hashSecret = config('services.vnpay.hash_secret')
-            ?: env('VNPAY_HASH_SECRET');
-
-        $returnUrl = config('services.vnpay.return_url')
-            ?: env('VNPAY_RETURN_URL', url('/api/payments/vnpay-return'));
-
-        if (empty($tmnCode) || empty($hashSecret)) {
-            throw new BusinessException('Chưa cấu hình VNPAY_TMN_CODE hoặc VNPAY_HASH_SECRET.', 500);
-        }
-
-        $vnpParams = [
-            'vnp_Version' => '2.1.0',
-            'vnp_Command' => 'pay',
-            'vnp_TmnCode' => $tmnCode,
-            'vnp_Amount' => (int) round($amount * 100),
-            'vnp_CurrCode' => 'VND',
-            'vnp_TxnRef' => $txnRef,
-            'vnp_OrderInfo' => 'Thanh toan don hang ' . ($order->order_code ?? $order->id),
-            'vnp_OrderType' => 'other',
-            'vnp_Locale' => 'vn',
-            'vnp_ReturnUrl' => $returnUrl,
-            'vnp_IpAddr' => request()->ip() ?: '127.0.0.1',
-            'vnp_CreateDate' => now()->format('YmdHis'),
-        ];
-
-        ksort($vnpParams);
-
-        $hashData = $this->buildVnpayHashData($vnpParams);
-        $secureHash = hash_hmac('sha512', $hashData, $hashSecret);
-
-        $query = http_build_query($vnpParams);
-
-        return $vnpUrl . '?' . $query . '&vnp_SecureHash=' . $secureHash;
-    }
-
-    private function verifyVnpaySignature(array $params): bool
-    {
-        $hashSecret = config('services.vnpay.hash_secret')
-            ?: env('VNPAY_HASH_SECRET');
-
-        if (empty($hashSecret)) {
-            throw new BusinessException('Chưa cấu hình VNPAY_HASH_SECRET.', 500);
-        }
-
-        $secureHash = $params['vnp_SecureHash'] ?? null;
-
-        if (! $secureHash) {
-            return false;
-        }
-
-        unset($params['vnp_SecureHash'], $params['vnp_SecureHashType']);
-
-        $hashData = $this->buildVnpayHashData($params);
-        $calculatedHash = hash_hmac('sha512', $hashData, $hashSecret);
-
-        return hash_equals((string) $secureHash, $calculatedHash);
-    }
-
-    private function buildVnpayHashData(array $params): string
-    {
-        ksort($params);
-
-        $hashData = [];
-
-        foreach ($params as $key => $value) {
-            if ($value === null || $value === '') {
-                continue;
-            }
-
-            $hashData[] = urlencode((string) $key) . '=' . urlencode((string) $value);
-        }
-
-        return implode('&', $hashData);
     }
 }
