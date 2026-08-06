@@ -61,9 +61,9 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function createSePayPayment(StorePaymentRequest $request): JsonResponse
+    public function createSepayPayment(StorePaymentRequest $request): JsonResponse
     {
-        $result = $this->paymentService->createSePayPayment(
+        $result = $this->paymentService->createSepayPayment(
             $request->validated(),
             (int) $request->user()->id
         );
@@ -169,7 +169,7 @@ class PaymentController extends Controller
 
     public function retryPayment(int $orderId, Request $request): JsonResponse
     {
-        $result = $this->paymentService->createSePayPayment(
+        $result = $this->paymentService->createSepayPayment(
             [
                 'order_id' => $orderId,
                 'payment_method' => 'sepay',
