@@ -17,7 +17,7 @@ class InstructorEnrollmentChartRepository
             ->join('courses', 'courses.id', '=', 'enrollments.course_id')
             ->where('courses.instructor_id', $instructorId)
             ->whereNull('courses.deleted_at')
-            ->whereBetween('enrollments.enrolled_at', [$startDate->startOfDay(), $endDate->endOfDay()])
+            ->whereBetween('enrollments.enrolled_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
             ->selectRaw("
                 DATE_FORMAT(enrollments.enrolled_at, '$format') as period,
                 COUNT(enrollments.id) as enrollment_count,
@@ -30,11 +30,36 @@ class InstructorEnrollmentChartRepository
             $query->where('enrollments.course_id', (int) $filters['course_id']);
         }
 
-        return $query->get()->map(fn ($row) => [
-            'period' => $row->period,
-            'enrollment_count' => (int) $row->enrollment_count,
-            'completed_count' => (int) $row->completed_count,
-        ])->all();
+        $rawMap = $query->get()->keyBy('period');
+
+        $result = [];
+        if ($groupBy === 'month') {
+            $year = $startDate->year;
+            for ($m = 1; $m <= 12; $m++) {
+                $periodKey = sprintf('%04d-%02d', $year, $m);
+                $row = $rawMap->get($periodKey);
+                $result[] = [
+                    'period' => $periodKey,
+                    'enrollment_count' => (int) ($row ? $row->enrollment_count : 0),
+                    'completed_count' => (int) ($row ? $row->completed_count : 0),
+                ];
+            }
+        } else {
+            $curr = $startDate->copy()->startOfDay();
+            $end = $endDate->copy()->startOfDay();
+            while ($curr->lte($end)) {
+                $periodKey = $curr->format('Y-m-d');
+                $row = $rawMap->get($periodKey);
+                $result[] = [
+                    'period' => $periodKey,
+                    'enrollment_count' => (int) ($row ? $row->enrollment_count : 0),
+                    'completed_count' => (int) ($row ? $row->completed_count : 0),
+                ];
+                $curr->addDay();
+            }
+        }
+
+        return $result;
     }
 
     private function resolveDateRange(array &$filters): array

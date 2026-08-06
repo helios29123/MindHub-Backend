@@ -223,53 +223,55 @@ class InstructorQuestionService
         $isOfficial = isset($data['is_official']) ? (bool)$data['is_official'] : true;
         $notifyLearner = isset($data['notify_learner']) ? (bool)$data['notify_learner'] : true;
 
-        $reply = Comment::create([
-            'parent_id' => $comment->id,
-            'user_id' => $instructorId,
-            'lesson_id' => $comment->lesson_id,
-            'content' => $sanitizedContent,
-            'status' => 'visible',
-            'is_official' => $isOfficial,
-        ]);
+        return DB::transaction(function () use ($comment, $instructorId, $lesson, $sanitizedContent, $isOfficial, $notifyLearner) {
+            $reply = Comment::create([
+                'parent_id' => $comment->id,
+                'user_id' => $instructorId,
+                'lesson_id' => $comment->lesson_id,
+                'content' => $sanitizedContent,
+                'status' => 'visible',
+                'is_official' => $isOfficial,
+            ]);
 
-        // Trigger Notification if requested
-        if ($notifyLearner && $comment->user_id) {
-            // Check for recent duplicate within 5 seconds to prevent double click duplicates
-            $recent = DB::table('notifications')
-                ->where('user_id', $comment->user_id)
-                ->where('type', 'question_reply')
-                ->where('created_at', '>=', now()->subSeconds(5))
-                ->exists();
+            // Trigger Notification if requested
+            if ($notifyLearner && $comment->user_id) {
+                // Check for recent duplicate within 5 seconds to prevent double click duplicates
+                $recent = DB::table('notifications')
+                    ->where('user_id', $comment->user_id)
+                    ->where('type', 'question_reply')
+                    ->where('created_at', '>=', now()->subSeconds(5))
+                    ->exists();
 
-            if (!$recent) {
-                DB::table('notifications')->insert([
-                    'user_id' => $comment->user_id,
-                    'type' => 'question_reply',
-                    'title' => 'Giảng viên đã trả lời câu hỏi của bạn',
-                    'message' => 'Giảng viên đã trả lời câu hỏi trong bài học: ' . ($lesson->title ?? 'Bài học'),
-                    'data' => json_encode(['question_id' => $comment->id, 'reply_id' => $reply->id]),
-                    'action_url' => '/lessons/' . $comment->lesson_id . '?question_id=' . $comment->id,
-                    'channel' => 'database',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                if (!$recent) {
+                    DB::table('notifications')->insert([
+                        'user_id' => $comment->user_id,
+                        'type' => 'question_reply',
+                        'title' => 'Giảng viên đã trả lời câu hỏi của bạn',
+                        'message' => 'Giảng viên đã trả lời câu hỏi trong bài học: ' . ($lesson->title ?? 'Bài học'),
+                        'data' => json_encode(['question_id' => $comment->id, 'reply_id' => $reply->id]),
+                        'action_url' => '/lessons/' . $comment->lesson_id . '?question_id=' . $comment->id,
+                        'channel' => 'database',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
-        }
 
-        $answerCount = Comment::where('parent_id', $comment->id)
-            ->where('user_id', $instructorId)
-            ->where('status', 'visible')
-            ->count();
+            $answerCount = Comment::where('parent_id', $comment->id)
+                ->where('user_id', $instructorId)
+                ->where('status', 'visible')
+                ->count();
 
-        return [
-            'reply' => $reply,
-            'question_status' => [
-                'is_answered' => $answerCount > 0,
-                'answer_count' => $answerCount,
-                'status' => $answerCount > 0 ? 'answered' : 'unanswered',
-                'status_label' => $answerCount > 0 ? 'Đã trả lời' : 'Chưa trả lời',
-            ]
-        ];
+            return [
+                'reply' => $reply,
+                'question_status' => [
+                    'is_answered' => $answerCount > 0,
+                    'answer_count' => $answerCount,
+                    'status' => $answerCount > 0 ? 'answered' : 'unanswered',
+                    'status_label' => $answerCount > 0 ? 'Đã trả lời' : 'Chưa trả lời',
+                ]
+            ];
+        });
     }
 
     public function updateReply(int $instructorId, int $questionId, int $replyId, array $data): Comment

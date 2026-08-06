@@ -15,7 +15,7 @@ class InstructorRevenueChartRepository
 
         $query = DB::table('revenues')
             ->where('instructor_id', $instructorId)
-            ->whereBetween('earned_at', [$startDate->startOfDay(), $endDate->endOfDay()])
+            ->whereBetween('earned_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
             ->whereIn('status', ['available', 'withdrawn'])
             ->selectRaw("
                 DATE_FORMAT(earned_at, '$format') as period,
@@ -30,12 +30,38 @@ class InstructorRevenueChartRepository
             $query->where('course_id', (int) $filters['course_id']);
         }
 
-        return $query->get()->map(fn ($row) => [
-            'period' => $row->period,
-            'gross_amount' => $this->money($row->gross_amount),
-            'instructor_amount' => $this->money($row->instructor_amount),
-            'platform_fee_amount' => $this->money($row->platform_fee_amount),
-        ])->all();
+        $rawMap = $query->get()->keyBy('period');
+
+        $result = [];
+        if ($groupBy === 'month') {
+            $year = $startDate->year;
+            for ($m = 1; $m <= 12; $m++) {
+                $periodKey = sprintf('%04d-%02d', $year, $m);
+                $row = $rawMap->get($periodKey);
+                $result[] = [
+                    'period' => $periodKey,
+                    'gross_amount' => $this->money($row ? $row->gross_amount : 0),
+                    'instructor_amount' => $this->money($row ? $row->instructor_amount : 0),
+                    'platform_fee_amount' => $this->money($row ? $row->platform_fee_amount : 0),
+                ];
+            }
+        } else {
+            $curr = $startDate->copy()->startOfDay();
+            $end = $endDate->copy()->startOfDay();
+            while ($curr->lte($end)) {
+                $periodKey = $curr->format('Y-m-d');
+                $row = $rawMap->get($periodKey);
+                $result[] = [
+                    'period' => $periodKey,
+                    'gross_amount' => $this->money($row ? $row->gross_amount : 0),
+                    'instructor_amount' => $this->money($row ? $row->instructor_amount : 0),
+                    'platform_fee_amount' => $this->money($row ? $row->platform_fee_amount : 0),
+                ];
+                $curr->addDay();
+            }
+        }
+
+        return $result;
     }
 
     private function resolveDateRange(array &$filters): array

@@ -37,6 +37,7 @@ class InstructorProfileSettingsTest extends TestCase
         ]);
 
         $token = $response->json('data.access_token');
+        app('auth')->forgetGuards();
         return [
             'Authorization' => "Bearer $token",
         ];

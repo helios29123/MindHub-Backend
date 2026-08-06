@@ -11,9 +11,15 @@ class AccessTokenService
     private const ACCESS_TOKEN_EXPIRES_MINUTES = 60 * 24 * 365; // 365 days
     private const REFRESH_TOKEN_EXPIRES_DAYS = 365; // 365 days
 
+    private function getAccessTokenExpiresMinutes(): int
+    {
+        return (int) env('ACCESS_TOKEN_EXPIRES_MINUTES', 10080);
+    }
+
     public function createAccessToken(int $userId, int $sessionId): array
     {
-        $expiresAt = now()->addMinutes(self::ACCESS_TOKEN_EXPIRES_MINUTES);
+        $expiresMinutes = $this->getAccessTokenExpiresMinutes();
+        $expiresAt = now()->addMinutes($expiresMinutes);
 
         $payload = [
             'user_id' => $userId,
@@ -28,7 +34,7 @@ class AccessTokenService
         return [
             'token' => $encodedPayload . '.' . $signature,
             'expires_at' => $expiresAt,
-            'expires_in' => self::ACCESS_TOKEN_EXPIRES_MINUTES * 60,
+            'expires_in' => $expiresMinutes * 60,
         ];
     }
 

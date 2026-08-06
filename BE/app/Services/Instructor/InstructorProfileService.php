@@ -441,8 +441,9 @@ final class InstructorProfileService
     {
         $existing = $this->getMetadata($user);
         $merged = array_replace_recursive($existing, $data);
-        $user->locked_reason = json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $user->save();
+        $json = json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        DB::table('users')->where('id', $user->id)->update(['locked_reason' => $json]);
+        $user->refresh();
     }
 
     public function updateAccount(User $authUser, array $data): User

@@ -160,9 +160,11 @@ class AuthController extends Controller
             }
 
             $googleUser = $this->googleTokenVerifier->verify($idToken);
-            $this->authService->handleGoogleUser($googleUser, $request);
+            $user = $this->authService->handleGoogleUser($googleUser, $request);
+            $authPayload = $this->authService->createAuthenticatedSession($user, 'google_oauth', $request);
+            $token = $authPayload['access_token'] ?? '';
 
-            return redirect("{$frontendUrl}/auth/google/callback?status=success");
+            return redirect("{$frontendUrl}/auth/google/callback?status=success&token={$token}");
         } catch (\App\Exceptions\BusinessException $e) {
             $errorCode = $e->getStatusCode() === 403 ? 'account_disabled' : 'google_auth_failed';
             return redirect("{$frontendUrl}/auth/google/callback?status=error&code={$errorCode}");

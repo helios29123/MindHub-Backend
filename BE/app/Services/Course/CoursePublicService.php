@@ -21,8 +21,13 @@ class CoursePublicService
 
     public function show(string $slug): array
     {
-        // 1. Fetch the course
-        $course = Course::where('slug', $slug)
+        // 1. Fetch the course by slug or numeric ID
+        $course = Course::where(function ($query) use ($slug) {
+                $query->where('slug', $slug);
+                if (is_numeric($slug)) {
+                    $query->orWhere('id', (int) $slug);
+                }
+            })
             ->where('status', 'published')
             ->first();
 
@@ -247,14 +252,15 @@ class CoursePublicService
         $currentUser = $this->resolveOptionalUser();
 
         // Enforce Privacy Visibility Settings
-        $rawMeta = $user->locked_reason;
-        $meta = ($rawMeta && str_starts_with(trim($rawMeta), '{')) ? json_decode($rawMeta, true) : [];
+        $userModel = $user->fresh() ?? $user;
+        $rawMeta = $userModel->locked_reason;
+        $meta = ($rawMeta && str_starts_with(trim((string)$rawMeta), '{')) ? json_decode((string)$rawMeta, true) : [];
         $privacy = data_get($meta, 'privacy_settings', [
             'profile_visibility' => 'public',
         ]);
 
         $visibility = $privacy['profile_visibility'] ?? 'public';
-        $isOwner = $currentUser && (int)$currentUser->id === (int)$user->id;
+        $isOwner = $currentUser && (int)$currentUser->id === (int)$id;
 
         if (!$isOwner) {
             if ($visibility === 'private') {
@@ -343,13 +349,12 @@ class CoursePublicService
 
     private function resolveOptionalUser()
     {
-        if (request()->user()) {
-            return request()->user();
-        }
-
         $plainAccessToken = request()->bearerToken();
 
         if (!$plainAccessToken) {
+            if (request()->header('Authorization')) {
+                return request()->user();
+            }
             return null;
         }
 

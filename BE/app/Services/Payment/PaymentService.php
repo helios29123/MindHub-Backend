@@ -120,7 +120,145 @@ class PaymentService
         });
     }
 
+<<<<<<< HEAD
     public function webhook(array $payload): array
+=======
+    public function createSepayPayment(array $validated, int $userId): array
+    {
+        $orderId = (int) $validated['order_id'];
+
+        return DB::transaction(function () use ($orderId, $userId): array {
+            $order = $this->findUserOrderForUpdate($orderId, $userId);
+
+            if (($order->payment_status ?? null) === Order::PAYMENT_PAID) {
+                throw new BusinessException('Đơn hàng này đã được thanh toán.', 422);
+            }
+
+            $amount = $this->getOrderAmount($order);
+            if ($amount <= 0) {
+                throw new BusinessException('Số tiền thanh toán không hợp lệ.', 422);
+            }
+
+            $bankName = env('SEPAY_BANK_NAME', 'MBBank');
+            $accountNumber = env('SEPAY_ACC_NUMBER', '0987654321');
+            $accountName = env('SEPAY_ACC_NAME', 'MINDHUB E-LEARNING');
+            $transferContent = $order->order_code ?? ('MH' . $order->id);
+
+            DB::table('orders')
+                ->where('id', $order->id)
+                ->update([
+                    'payment_method' => 'sepay',
+                    'provider_transaction_id' => $transferContent,
+                    'updated_at' => now(),
+                ]);
+
+            $qrUrl = "https://qr.sepay.vn/img?bank=" . urlencode($bankName)
+                . "&acc=" . urlencode($accountNumber)
+                . "&template=compact&amount=" . (int) round($amount)
+                . "&des=" . urlencode($transferContent);
+
+            return [
+                'order_id' => (int) $order->id,
+                'order_code' => $transferContent,
+                'amount' => $amount,
+                'bank_name' => $bankName,
+                'account_number' => $accountNumber,
+                'account_name' => $accountName,
+                'transfer_content' => $transferContent,
+                'qr_url' => $qrUrl,
+                'payment_method' => 'sepay',
+            ];
+        });
+    }
+
+    public function handleSepayWebhook(array $payload): array
+    {
+        $content = (string) ($payload['content'] ?? '');
+        $transferAmount = (float) ($payload['transferAmount'] ?? 0);
+        $referenceCode = (string) ($payload['referenceCode'] ?? $payload['id'] ?? '');
+
+        if (empty($content)) {
+            return ['success' => false, 'message' => 'Nội dung chuyển khoản trống.'];
+        }
+
+        return DB::transaction(function () use ($content, $transferAmount, $referenceCode): array {
+            $order = DB::table('orders')
+                ->where('status', '!=', Order::STATUS_PAID)
+                ->where(function ($q) use ($content) {
+                    $q->whereRaw('? LIKE CONCAT("%", order_code, "%")', [$content])
+                      ->orWhereRaw('? LIKE CONCAT("%", provider_transaction_id, "%")', [$content])
+                      ->orWhere('provider_transaction_id', $content);
+                })
+                ->lockForUpdate()
+                ->first();
+
+            if (! $order) {
+                preg_match('/MH\d+/i', $content, $matches);
+                if (! empty($matches[0])) {
+                    $order = DB::table('orders')
+                        ->where('order_code', $matches[0])
+                        ->orWhere('provider_transaction_id', $matches[0])
+                        ->lockForUpdate()
+                        ->first();
+                }
+            }
+
+            if (! $order) {
+                return ['success' => false, 'message' => 'Không tìm thấy đơn hàng cho nội dung: ' . $content];
+            }
+
+            $orderAmount = $this->getOrderAmount($order);
+            if ($transferAmount < ($orderAmount - 100)) {
+                return ['success' => false, 'message' => 'Số tiền chuyển khoản chưa đủ.'];
+            }
+
+            if (($order->payment_status ?? null) !== Order::PAYMENT_PAID) {
+                $this->markOrderAsPaid($order, 'sepay', $referenceCode ?: ('SEPAY-' . time()));
+
+                $paidOrder = DB::table('orders')
+                    ->where('id', $order->id)
+                    ->first();
+
+                $this->applyPaidSideEffects($paidOrder);
+            }
+
+            return [
+                'success' => true,
+                'message' => 'Xử lý thanh toán SePay thành công.',
+                'order_id' => $order->id,
+                'order_code' => $order->order_code ?? null,
+            ];
+        });
+    }
+
+    public function confirmSepayPayment(array $validated, int $userId): array
+    {
+        $orderId = (int) $validated['order_id'];
+
+        return DB::transaction(function () use ($orderId, $userId): array {
+            $order = $this->findUserOrderForUpdate($orderId, $userId);
+
+            if (($order->payment_status ?? null) !== Order::PAYMENT_PAID) {
+                $this->markOrderAsPaid($order, 'sepay', 'SEPAY-CONFIRM-' . time());
+
+                $paidOrder = DB::table('orders')
+                    ->where('id', $order->id)
+                    ->first();
+
+                $this->applyPaidSideEffects($paidOrder);
+            }
+
+            return [
+                'success' => true,
+                'message' => 'Xác nhận thanh toán thành công.',
+                'order_id' => $order->id,
+                'order_code' => $order->order_code ?? null,
+            ];
+        });
+    }
+
+    public function vnpayReturn(array $params): array
+>>>>>>> 0b76ec9 (feat(backend): update course pricing discount, instructor management, payment & user profile APIs)
     {
         $details = $this->gateway->handleWebhook($payload);
         
@@ -456,5 +594,114 @@ class PaymentService
             ?? 0;
 
         return (float) $amount;
+    }
+
+    private function generateVnpayTxnRef(object $order): string
+    {
+        return $order->id . date('His') . random_int(100, 999);
+    }
+
+    private function buildVnpayPaymentUrl(object $order, string $txnRef, float $amount): string
+    {
+        $vnpUrl = config('vnpay.url')
+            ?: config('services.vnpay.url')
+            ?: env('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
+
+        $tmnCode = config('vnpay.tmn_code')
+            ?: config('services.vnpay.tmn_code')
+            ?: env('VNPAY_TMN_CODE');
+
+        $hashSecret = config('vnpay.hash_secret')
+            ?: config('services.vnpay.hash_secret')
+            ?: env('VNPAY_HASH_SECRET');
+
+        $returnUrl = config('vnpay.return_url')
+            ?: config('services.vnpay.return_url')
+            ?: env('VNPAY_RETURN_URL', url('/api/payments/vnpay-return'));
+
+        if (empty($tmnCode) || empty($hashSecret)) {
+            throw new BusinessException('Chưa cấu hình VNPAY_TMN_CODE hoặc VNPAY_HASH_SECRET.', 500);
+        }
+
+        $clientIp = request()->ip();
+        if (! $clientIp || $clientIp === '::1' || ! filter_var($clientIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $clientIp = '127.0.0.1';
+        }
+
+        $vnpParams = [
+            'vnp_Version' => '2.1.0',
+            'vnp_Command' => 'pay',
+            'vnp_TmnCode' => $tmnCode,
+            'vnp_Amount' => (int) round($amount * 100),
+            'vnp_CurrCode' => 'VND',
+            'vnp_TxnRef' => $txnRef,
+            'vnp_OrderInfo' => 'Thanh toan don hang ' . ($order->order_code ?? $order->id),
+            'vnp_OrderType' => 'other',
+            'vnp_Locale' => 'vn',
+            'vnp_ReturnUrl' => $returnUrl,
+            'vnp_IpAddr' => $clientIp,
+            'vnp_CreateDate' => date('YmdHis'),
+        ];
+
+        ksort($vnpParams);
+
+        $query = "";
+        $i = 0;
+        $hashData = "";
+        foreach ($vnpParams as $key => $value) {
+            if ($value !== null && $value !== '') {
+                if ($i == 1) {
+                    $hashData .= '&' . urlencode((string)$key) . "=" . urlencode((string)$value);
+                } else {
+                    $hashData .= urlencode((string)$key) . "=" . urlencode((string)$value);
+                    $i = 1;
+                }
+                $query .= urlencode((string)$key) . "=" . urlencode((string)$value) . '&';
+            }
+        }
+
+        $secureHash = hash_hmac('sha512', $hashData, $hashSecret);
+
+        return $vnpUrl . '?' . $query . 'vnp_SecureHash=' . $secureHash;
+    }
+
+    private function verifyVnpaySignature(array $params): bool
+    {
+        $hashSecret = config('services.vnpay.hash_secret')
+            ?: env('VNPAY_HASH_SECRET');
+
+        if (empty($hashSecret)) {
+            throw new BusinessException('Chưa cấu hình VNPAY_HASH_SECRET.', 500);
+        }
+
+        $secureHash = $params['vnp_SecureHash'] ?? null;
+
+        if (! $secureHash) {
+            return false;
+        }
+
+        unset($params['vnp_SecureHash'], $params['vnp_SecureHashType']);
+
+        $hashData = $this->buildVnpayHashData($params);
+        $calculatedHash = hash_hmac('sha512', $hashData, $hashSecret);
+
+        return hash_equals((string) $secureHash, $calculatedHash);
+    }
+
+    private function buildVnpayHashData(array $params): string
+    {
+        ksort($params);
+
+        $hashData = [];
+
+        foreach ($params as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $hashData[] = urlencode((string) $key) . '=' . urlencode((string) $value);
+        }
+
+        return implode('&', $hashData);
     }
 }

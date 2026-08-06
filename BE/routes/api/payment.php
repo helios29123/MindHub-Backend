@@ -33,22 +33,23 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructo
 
 /*
 |--------------------------------------------------------------------------
-| SePay create payment URL
+| Payment create URL (VNPAY & SePay VietQR)
 |--------------------------------------------------------------------------
-| learner/member/instructor đều được tạo URL thanh toán cho order của chính mình.
+| learner/member/instructor đều được tạo thông tin thanh toán cho order của chính mình.
 */
 Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructor'])
     ->group(function (): void {
-        Route::post('/payments/sepay/create', [PaymentController::class, 'createSePayPayment']);
+        Route::post('/payments/vnpay/create', [PaymentController::class, 'createVnpayPayment']);
+        Route::post('/payments/sepay/create', [PaymentController::class, 'createSepayPayment']);
+        Route::post('/payments/sepay/confirm', [PaymentController::class, 'confirmSepayPayment']);
     });
 
 /*
 |--------------------------------------------------------------------------
-| Public payment webhook for SePay
+| Payment webhooks (Public / Admin)
 |--------------------------------------------------------------------------
-| SePay server sends webhook directly, verified via secret.
+| SePay Webhook is public and authenticated via SePay API key / payload.
 */
-Route::post('/payments/sepay/webhook', [PaymentController::class, 'webhook']);
-
-// Keep the old webhook route for backward compatibility if needed, but remove admin middleware
+Route::post('/payments/sepay/webhook', [PaymentController::class, 'sepayWebhook']);
 Route::post('/payments/webhook', [PaymentController::class, 'webhook']);
+Route::get('/payments/vnpay-return', [PaymentController::class, 'vnpayReturn']);

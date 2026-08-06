@@ -26,14 +26,28 @@ final class UserProfileRepository
 
     public function updateProfileById(int $id, array $data): bool
     {
-        $allowedData = array_intersect_key($data, array_flip([
+        $user = User::find($id);
+        if (!$user) {
+            return false;
+        }
+
+        $allowedUserData = array_intersect_key($data, array_flip([
             'full_name',
             'phone',
         ]));
 
-        return User::query()
-            ->whereKey($id)
-            ->update($allowedData);
+        if (! empty($allowedUserData)) {
+            $user->update($allowedUserData);
+        }
+
+        if (array_key_exists('bio', $data) && $user->role === User::ROLE_INSTRUCTOR) {
+            \App\Models\InstructorProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                ['bio' => $data['bio']]
+            );
+        }
+
+        return true;
     }
 
     public function findPasswordCredentialById(int $id): User

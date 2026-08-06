@@ -250,18 +250,25 @@ class AuthService
             if ($user) {
                 $this->ensureUserCanLoginForGoogle($user);
 
-                $user = $this->userRepository->update($user, [
+                $updateData = [
                     'oauth_account_login' => json_encode([
                         'provider' => $provider,
                         'provider_id' => $providerId,
                     ], JSON_THROW_ON_ERROR),
                     'email_verified_at' => $user->email_verified_at ?? now(),
                     'last_login_at' => now(),
-                ]);
+                ];
+
+                if (! empty($googleUser['avatar'])) {
+                    $updateData['avatar_url'] = $googleUser['avatar'];
+                }
+
+                $user = $this->userRepository->update($user, $updateData);
             } else {
                 $user = $this->userRepository->create([
                     'full_name' => $googleUser['full_name'],
                     'email' => $googleUser['email'],
+                    'avatar_url' => $googleUser['avatar'] ?? null,
                     'password_hash' => null,
                     'phone' => null,
                     'oauth_account_login' => json_encode([
@@ -364,8 +371,10 @@ class AuthService
             $this->userSessionRepository->revoke($session);
         }
         Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
     }
 
     private function ensureEmailAndPhoneAreUnique(string $email, ?string $phone): void
@@ -412,7 +421,7 @@ class AuthService
         }
     }
 
-    private function createAuthenticatedSession(User $user, ?string $deviceName, Request $request): array
+    public function createAuthenticatedSession(User $user, ?string $deviceName, Request $request): array
     {
         $refreshToken = $this->accessTokenService->createRefreshToken();
 

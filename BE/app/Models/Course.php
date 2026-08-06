@@ -24,6 +24,7 @@ class Course extends Model
         "intro_video_url",
         "price",
         "sale_price",
+        "discount_percent",
         "level",
         "language",
         "requirements",
@@ -38,6 +39,7 @@ class Course extends Model
     protected $casts = [
         "price" => "decimal:2",
         "sale_price" => "decimal:2",
+        "discount_percent" => "integer",
         "is_featured" => "boolean",
         "published_at" => "datetime",
     ];

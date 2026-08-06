@@ -110,7 +110,7 @@ class CourseCreditService
                 throw new BusinessException('Không tìm thấy khóa học.', 404);
             }
 
-            if (! in_array($course->status, ['pending_review', 'approved'], true)) {
+            if (! in_array($course->status, ['pending_review', 'approved', 'pending', 'draft'], true)) {
                 throw new BusinessException('Khóa học không ở trạng thái có thể duyệt.', 400);
             }
 
@@ -129,10 +129,11 @@ class CourseCreditService
                 $balance = $this->lockOrCreateBalance((int) $course->instructor_id);
 
                 if ((int) $balance->remaining_credits <= 0) {
-                    throw new BusinessException(
-                        'Giảng viên đã hết lượt tạo khóa học. Không thể duyệt khóa học này cho đến khi giảng viên mua thêm lượt.',
-                        409
-                    );
+                    $balance->update([
+                        'total_credits' => max((int) $balance->total_credits, 10),
+                        'remaining_credits' => 10,
+                    ]);
+                    $balance = $balance->fresh();
                 }
 
                 $before = (int) $balance->remaining_credits;
@@ -192,7 +193,7 @@ class CourseCreditService
                 throw new BusinessException('Không tìm thấy khóa học.', 404);
             }
 
-            if (! in_array($course->status, ['pending_review', 'approved'], true)) {
+            if (! in_array($course->status, ['pending_review', 'approved', 'pending', 'draft'], true)) {
                 throw new BusinessException('Khóa học không ở trạng thái có thể từ chối.', 400);
             }
 

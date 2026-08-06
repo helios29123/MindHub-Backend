@@ -35,6 +35,16 @@ class CatalogCourseRepository
             });
         }
 
+        if (! empty($filters['category_slug'])) {
+            $categorySlug = trim((string) $filters['category_slug']);
+
+            $query->whereHas('categories', function (Builder $categoryQuery) use ($categorySlug) {
+                $categoryQuery->where('categories.slug', $categorySlug)
+                    ->where('categories.status', 'active')
+                    ->whereNull('categories.deleted_at');
+            });
+        }
+
         if (! empty($filters['level'])) {
             $query->where('courses.level', $filters['level']);
         }
@@ -83,6 +93,20 @@ class CatalogCourseRepository
         $perPage = (int) ($filters['per_page'] ?? 10);
 
         $query = $this->publicCourseQuery()
+            ->orderByDesc('courses.published_at')
+            ->orderByDesc('courses.id');
+
+        return $query->paginate($perPage);
+    }
+
+    public function discounted(array $filters)
+    {
+        $perPage = (int) ($filters['per_page'] ?? 10);
+
+        $query = $this->publicCourseQuery()
+            ->whereNotNull('courses.sale_price')
+            ->whereRaw('courses.sale_price < courses.price')
+            ->orderByRaw('(courses.price - courses.sale_price) / courses.price DESC')
             ->orderByDesc('courses.published_at')
             ->orderByDesc('courses.id');
 

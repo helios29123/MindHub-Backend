@@ -18,12 +18,13 @@ class CourseSearchRequest extends FormRequest
         return [
             'search' => ['nullable', 'string', 'max:100'],
             'category_id' => ['nullable', 'integer', 'min:1'],
+            'category_slug' => ['nullable', 'string', 'max:100'],
             'instructor_id' => ['nullable', 'integer', 'min:1'],
             'level' => ['nullable', 'string', 'in:beginner,intermediate,advanced,all_levels'],
             'language' => ['nullable', 'string', 'max:20'],
             'min_price' => ['nullable', 'numeric', 'min:0'],
             'max_price' => ['nullable', 'numeric', 'min:0', 'gte:min_price'],
-            'sort' => ['nullable', 'string', 'in:latest,price_asc,price_desc,rating_desc,best_selling,featured'],
+            'sort' => ['nullable', 'string', 'in:latest,price_asc,price_desc,rating_desc,best_selling,featured,popular'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];

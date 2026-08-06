@@ -26,7 +26,10 @@ class AdminCourseResource extends JsonResource
             'outcomes' => $this->outcomes,
             'status' => $this->status,
             'is_featured' => $this->is_featured,
-            'total_duration_seconds' => $this->total_duration_seconds,
+            'total_duration_seconds' => (int) ($this->total_duration_seconds ?: \Illuminate\Support\Facades\DB::table('lessons')
+                ->where('course_id', $this->id)
+                ->whereNull('deleted_at')
+                ->sum('video_duration_seconds')),
             'published_at' => $this->published_at?->toIsoString(),
             'admin_reject_reason' => $this->admin_reject_reason,
             'created_at' => $this->created_at?->toIsoString(),

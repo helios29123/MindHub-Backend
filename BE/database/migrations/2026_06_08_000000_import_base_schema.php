@@ -13,9 +13,15 @@ return new class extends Migration
     {
         // If comments table is missing (which happens during migrate:fresh), import the base SQL dump
         if (!Schema::hasTable('comments')) {
-            $sqlPath = database_path('sql/elearning_erd_full_with_notebooklm_video_seed.sql');
-            if (file_exists($sqlPath)) {
-                DB::unprepared(file_get_contents($sqlPath));
+            $paths = [
+                database_path('sql/elearning_erd_full_with_notebooklm_video_seed.sql'),
+                base_path('../elearning_erd_full_with_notebooklm_video_seed.sql'),
+            ];
+            foreach ($paths as $sqlPath) {
+                if (file_exists($sqlPath)) {
+                    DB::unprepared(file_get_contents($sqlPath));
+                    break;
+                }
             }
         }
     }

@@ -18,7 +18,7 @@ class InstructorResource extends JsonResource
             'show_social_links' => true,
         ]);
 
-        $currentUser = $request->user();
+        $currentUser = $request->bearerToken() ? $request->user() : null;
         $isOwner = $currentUser && (int)$currentUser->id === (int)$this->id;
 
         $showEmail = $isOwner || (bool)($privacy['show_email'] ?? false);

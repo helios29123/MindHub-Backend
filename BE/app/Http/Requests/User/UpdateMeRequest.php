@@ -11,6 +11,7 @@ final class UpdateMeRequest extends FormRequest
     private const SUPPORTED_FIELDS = [
         'full_name',
         'phone',
+        'bio',
     ];
 
     public function authorize(): bool
@@ -38,6 +39,7 @@ final class UpdateMeRequest extends FormRequest
         return [
             'full_name' => ['sometimes', 'string', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'bio' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ];
     }
 

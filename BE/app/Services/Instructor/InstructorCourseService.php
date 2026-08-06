@@ -34,6 +34,7 @@ final class InstructorCourseService
 
             $this->removeForbiddenFields($validatedData);
             $this->validateCategoryIds($categoryIds);
+            $this->processCoursePriceData($validatedData);
 
             $title = trim((string) $validatedData['title']);
             $slugSource = $validatedData['slug'] ?? $title;
@@ -472,6 +473,7 @@ final class InstructorCourseService
             );
         }
 
+        $this->processCoursePriceData($data, $course);
         $this->validateSalePrice($course, $data);
 
         $categoryIds = null;
@@ -500,6 +502,52 @@ final class InstructorCourseService
         });
     }
 
+    private function processCoursePriceData(array &$data, ?Course $existingCourse = null): void
+    {
+        $hasPriceKey = array_key_exists('original_price', $data) || array_key_exists('price', $data);
+        if ($hasPriceKey || !$existingCourse) {
+            $originalPrice = array_key_exists('original_price', $data)
+                ? (float) $data['original_price']
+                : (array_key_exists('price', $data) ? (float) $data['price'] : ($existingCourse ? (float) $existingCourse->price : 0.0));
+
+            if ($originalPrice < 0) {
+                $originalPrice = 0.0;
+            }
+            $data['price'] = $originalPrice;
+        } else {
+            $originalPrice = (float) $existingCourse->price;
+        }
+
+        unset($data['original_price']);
+
+        $hasDiscount = false;
+        if (array_key_exists('has_discount', $data)) {
+            $hasDiscount = filter_var($data['has_discount'], FILTER_VALIDATE_BOOLEAN);
+        } elseif (array_key_exists('discount_percent', $data)) {
+            $hasDiscount = $data['discount_percent'] !== null && (int) $data['discount_percent'] > 0;
+        } elseif ($existingCourse) {
+            $hasDiscount = $existingCourse->discount_percent !== null && (int) $existingCourse->discount_percent > 0;
+        }
+
+        unset($data['has_discount']);
+
+        if ($hasDiscount) {
+            $discountPercent = array_key_exists('discount_percent', $data)
+                ? ($data['discount_percent'] !== null ? (int) $data['discount_percent'] : ($existingCourse ? (int) $existingCourse->discount_percent : 0))
+                : ($existingCourse ? (int) $existingCourse->discount_percent : 0);
+
+            if ($discountPercent < 1 || $discountPercent > 99) {
+                throw new BusinessException('Phần trăm giảm giá phải từ 1% đến 99%.', 422);
+            }
+
+            $data['discount_percent'] = $discountPercent;
+            $data['sale_price'] = (float) round($originalPrice * (100 - $discountPercent) / 100);
+        } else {
+            $data['discount_percent'] = null;
+            $data['sale_price'] = $originalPrice;
+        }
+    }
+
     private function validateSalePrice(Course $course, array $data): void
     {
         $effectivePrice = array_key_exists("price", $data)
@@ -515,7 +563,7 @@ final class InstructorCourseService
             (float) $effectiveSalePrice > (float) $effectivePrice
         ) {
             throw new BusinessException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Giá khuyến mãi không được lớn hơn giá gốc.",
                 422,
             );
         }
@@ -1098,6 +1146,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
 
             $this->removeForbiddenFields($data);
             $this->validateCategoryIds($categoryIds);
+            $this->processCoursePriceData($data);
 
             $title = trim((string) ($data['title'] ?? ''));
 
@@ -1201,6 +1250,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
             unset($data['slug']);
         }
 
+        $this->processCoursePriceData($data, $course);
         $this->validateSalePrice($course, $data);
 
         return DB::transaction(function () use ($course, $data, $categoryIds): Course {

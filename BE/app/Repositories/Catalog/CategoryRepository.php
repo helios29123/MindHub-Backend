@@ -9,11 +9,14 @@ class CategoryRepository
     public function getActiveForHome()
     {
         return Category::query()
+            ->withCount(['courses' => function ($q) {
+                $q->where('courses.status', 'published')->whereNull('courses.deleted_at');
+            }])
             ->where('status', 'active')
             ->whereNull('deleted_at')
             ->orderBy('sort_order')
             ->orderByDesc('id')
-            ->limit(8)
+            ->limit(12)
             ->get();
     }
 

@@ -75,6 +75,44 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function sepayWebhook(Request $request): JsonResponse
+    {
+        $result = $this->paymentService->handleSepayWebhook($request->all());
+
+        return response()->json([
+            'success' => $result['success'] ?? true,
+            'message' => $result['message'] ?? 'Xử lý SePay webhook thành công.',
+            'data' => $result,
+        ]);
+    }
+
+    public function confirmSepayPayment(StorePaymentRequest $request): JsonResponse
+    {
+        $result = $this->paymentService->confirmSepayPayment(
+            $request->validated(),
+            (int) $request->user()->id
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Xác nhận thanh toán SePay thành công.',
+            'data' => $result,
+        ]);
+    }
+
+    public function vnpayReturn(Request $request)
+    {
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+
+        try {
+            $result = $this->paymentService->vnpayReturn($request->all());
+            $query = http_build_query($request->all());
+            return redirect("{$frontendUrl}/vnpay-return?{$query}");
+        } catch (\Throwable $e) {
+            $query = http_build_query($request->all());
+            return redirect("{$frontendUrl}/vnpay-return?{$query}&error=" . urlencode($e->getMessage()));
+        }
+    }
 
     public function webhook(Request $request): JsonResponse
     {

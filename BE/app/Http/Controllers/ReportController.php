@@ -327,12 +327,17 @@ final class ReportController extends Controller
 
     public function incompleteCourses(Request $request): JsonResponse
     {
-        $instructorId = (int) $request->user()->id;
+        $user = $request->user();
+        if (! $user) {
+            return ApiResponse::error('Chưa đăng nhập.', 401);
+        }
+        $instructorId = (int) $user->id;
         $limit = min(max((int) ($request->query('limit') ?? $request->query('per_page') ?? 5), 1), 20);
 
         $courses = \Illuminate\Support\Facades\DB::table('courses')
             ->where('instructor_id', $instructorId)
             ->whereNull('deleted_at')
+            ->orderBy('updated_at', 'desc')
             ->get();
 
         $incomplete = [];
@@ -340,30 +345,29 @@ final class ReportController extends Controller
 
         foreach ($courses as $course) {
             try {
-                $checklist = $checklistService->getChecklist($instructorId, $course->id);
-                if (!$checklist['passed']) {
-                    $checks = $checklist['checks'] ?? [];
-                    $totalChecks = count($checks);
-                    $passedChecks = 0;
-                    foreach ($checks as $chk) {
-                        if (!empty($chk['passed'])) {
-                            $passedChecks++;
-                        }
-                    }
-                    $completionPercentage = $totalChecks > 0 ? (int) round(($passedChecks / $totalChecks) * 100) : 0;
+                $completion = $checklistService->calculateCompletion($instructorId, $course);
 
-                    $incomplete[] = [
-                        'id' => (int) $course->id,
-                        'title' => $course->title,
-                        'status' => $course->status,
-                        'completion_percentage' => $completionPercentage,
-                        'missing_items' => $checklist['missing_items'],
-                        'warnings' => $checklist['warnings'],
-                    ];
+                // Exclude courses that are fully completed (100%) AND published/active
+                if ($completion['passed'] && in_array($course->status, ['published', 'active'], true)) {
+                    continue;
+                }
 
-                    if (count($incomplete) >= $limit) {
-                        break;
-                    }
+                $incomplete[] = [
+                    'id' => (int) $course->id,
+                    'title' => $course->title,
+                    'status' => $course->status,
+                    'completion_percentage' => $completion['completion_percent'],
+                    'completion_percent' => $completion['completion_percent'],
+                    'completed_items' => $completion['completed_items'],
+                    'total_items' => $completion['total_items'],
+                    'missing_items' => $completion['missing_items'],
+                    'next_step' => $completion['next_step'],
+                    'action_label' => $completion['action_label'],
+                    'updated_at' => $course->updated_at,
+                ];
+
+                if (count($incomplete) >= $limit) {
+                    break;
                 }
             } catch (\Exception $e) {
                 // Skip if error

@@ -74,6 +74,7 @@ class InstructorDashboardRepository
         $completedEnrollments = (int) (clone $query)->where('enrollments.status', 'completed')->count();
 
         $newThisMonth = (int) (clone $query)->whereBetween('enrollments.enrolled_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])->count();
+        $newThisYear = (int) (clone $query)->whereBetween('enrollments.enrolled_at', [now()->startOfYear(), now()->endOfYear()])->count();
 
         $diffDays = $startDate->diffInDays($endDate) + 1;
         $prevStartDate = $startDate->copy()->subDays($diffDays);
@@ -88,6 +89,7 @@ class InstructorDashboardRepository
             'active_enrollments' => $activeEnrollments,
             'completed_enrollments' => $completedEnrollments,
             'new_this_month' => $newThisMonth,
+            'new_this_year' => $newThisYear,
             'previous_period_enrollments' => $previousPeriodEnrollments,
             'change_percentage' => $this->calculateChangePercentage($newThisMonth, $previousPeriodEnrollments),
         ];
@@ -123,12 +125,20 @@ class InstructorDashboardRepository
             ->selectRaw('COALESCE(SUM(instructor_amount), 0) as total_instructor_amount')
             ->first();
 
+        $yearRow = DB::table('revenues')
+            ->where('instructor_id', $instructorId)
+            ->whereBetween('earned_at', [now()->startOfYear(), now()->endOfYear()])
+            ->whereIn('status', ['available', 'withdrawn'])
+            ->selectRaw('COALESCE(SUM(instructor_amount), 0) as instructor_amount_this_year')
+            ->first();
+
         $currentAmount = (float) ($row->instructor_amount_this_month ?? 0);
         $previousAmount = (float) ($prevRow->previous_period_instructor_amount ?? 0);
 
         return [
             'gross_amount_this_month' => $this->money($row->gross_amount_this_month ?? 0),
             'instructor_amount_this_month' => $this->money($currentAmount),
+            'instructor_amount_this_year' => $this->money($yearRow->instructor_amount_this_year ?? 0),
             'total_instructor_amount' => $this->money($totalRow->total_instructor_amount ?? 0),
             'platform_fee_this_month' => $this->money($row->platform_fee_this_month ?? 0),
             'previous_period_instructor_amount' => $this->money($previousAmount),

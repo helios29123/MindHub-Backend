@@ -64,7 +64,8 @@ final class InstructorCourseRepository
 
     public function getChecklistCategories(int $courseId): \Illuminate\Support\Collection
     {
-        return \Illuminate\Support\Facades\DB::table('course_categories as cc')
+        $table = \Illuminate\Support\Facades\Schema::hasTable('course_category') ? 'course_category' : 'course_categories';
+        return \Illuminate\Support\Facades\DB::table("{$table} as cc")
             ->join('categories as c', 'c.id', '=', 'cc.category_id')
             ->where('cc.course_id', $courseId)
             ->whereNull('c.deleted_at')

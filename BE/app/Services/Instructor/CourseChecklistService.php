@@ -13,6 +13,209 @@ class CourseChecklistService
     ) {
     }
 
+    public function calculateCompletion(int $instructorId, object|int $courseOrId): array
+    {
+        $course = is_object($courseOrId) ? $courseOrId : $this->instructorCourseRepository->findCourseForChecklist((int) $courseOrId);
+        if (! $course) {
+            return [
+                'completion_percent' => 0,
+                'completed_items' => 0,
+                'total_items' => 11,
+                'missing_items' => [],
+                'next_step' => null,
+                'action_label' => 'Bắt đầu cập nhật',
+                'passed' => false,
+            ];
+        }
+
+        $courseId = (int) $course->id;
+        $categories = $this->instructorCourseRepository->getChecklistCategories($courseId);
+        $sections = $this->instructorCourseRepository->getChecklistSections($courseId);
+        $lessons = $this->instructorCourseRepository->getChecklistLessons($courseId);
+
+        $items = [
+            [
+                'key' => 'title',
+                'label' => 'Tên khóa học',
+                'passed' => ! $this->blank($course->title),
+                'route_step' => 1,
+            ],
+            [
+                'key' => 'short_description',
+                'label' => 'Mô tả ngắn khóa học',
+                'passed' => ! $this->blank($course->short_description),
+                'route_step' => 1,
+            ],
+            [
+                'key' => 'description',
+                'label' => 'Mô tả chi tiết khóa học',
+                'passed' => ! $this->blank($course->description),
+                'route_step' => 1,
+            ],
+            [
+                'key' => 'thumbnail',
+                'label' => 'Ảnh đại diện (thumbnail)',
+                'passed' => ! $this->blank($course->thumbnail_url),
+                'route_step' => 1,
+            ],
+            [
+                'key' => 'category',
+                'label' => 'Danh mục khóa học',
+                'passed' => $categories->isNotEmpty(),
+                'route_step' => 1,
+            ],
+            [
+                'key' => 'price',
+                'label' => 'Giá khóa học',
+                'passed' => $course->price !== null && (float) $course->price >= 0,
+                'route_step' => 1,
+            ],
+            [
+                'key' => 'section',
+                'label' => 'Chương học (Section)',
+                'passed' => $sections->isNotEmpty(),
+                'route_step' => 2,
+            ],
+            [
+                'key' => 'published_section',
+                'label' => 'Xuất bản chương học',
+                'passed' => $sections->where('status', 'published')->isNotEmpty(),
+                'route_step' => 2,
+            ],
+            [
+                'key' => 'lesson',
+                'label' => 'Bài học',
+                'passed' => $lessons->isNotEmpty(),
+                'route_step' => 2,
+            ],
+            [
+                'key' => 'published_lesson',
+                'label' => 'Xuất bản bài học',
+                'passed' => $lessons->where('status', 'published')->isNotEmpty(),
+                'route_step' => 2,
+            ],
+            [
+                'key' => 'lesson_media',
+                'label' => 'Nội dung/Video bài học',
+                'passed' => $lessons->where('status', 'published')->filter(function ($l) {
+                    $lType = strtolower((string) ($l->lesson_type ?? 'video'));
+                    if ($lType === 'video') {
+                        $vUrl = (string) ($l->video_url ?? '');
+                        return ! $this->blank($vUrl) && ! str_starts_with($vUrl, 'blob:');
+                    }
+                    return ! $this->blank($l->content ?? '');
+                })->isNotEmpty() || $lessons->isEmpty(),
+                'route_step' => 2,
+            ],
+        ];
+
+        $totalItems = count($items);
+        $completedItems = 0;
+        $missingItems = [];
+
+        foreach ($items as $item) {
+            if ($item['passed']) {
+                $completedItems++;
+            } else {
+                $missingItems[] = [
+                    'key' => $item['key'],
+                    'label' => $item['label'],
+                    'route_step' => $item['route_step'],
+                ];
+            }
+        }
+
+        $completionPercent = (int) round(($completedItems / $totalItems) * 100);
+        $completionPercent = max(0, min(100, $completionPercent));
+
+        $nextStep = null;
+        if (! empty($missingItems)) {
+            $firstMissing = $missingItems[0];
+            $missingKey = $firstMissing['key'];
+
+            $stepName = 'basic-info';
+            $routeStep = 1;
+            $focusTarget = $missingKey;
+            $sectionId = null;
+            $lessonId = null;
+
+            if (in_array($missingKey, ['title', 'short_description', 'description', 'category', 'will_learn', 'requirements', 'outcomes'], true)) {
+                $stepName = 'basic-info';
+                $routeStep = 1;
+                $focusTarget = match ($missingKey) {
+                    'title' => 'title',
+                    'short_description' => 'short_description',
+                    'description' => 'description',
+                    'category' => 'category',
+                    'will_learn', 'outcomes' => 'will_learn',
+                    'requirements' => 'requirements',
+                    default => 'title'
+                };
+            } elseif ($missingKey === 'price') {
+                $stepName = 'pricing';
+                $routeStep = 2;
+                $focusTarget = 'price';
+            } elseif (in_array($missingKey, ['thumbnail', 'intro_video'], true)) {
+                $stepName = 'media';
+                $routeStep = 3;
+                $focusTarget = match ($missingKey) {
+                    'thumbnail' => 'thumbnail',
+                    'intro_video' => 'intro_video',
+                    default => 'thumbnail'
+                };
+            } elseif (in_array($missingKey, ['section', 'published_section', 'lesson', 'published_lesson', 'lesson_media'], true)) {
+                $stepName = 'curriculum';
+                $routeStep = 4;
+                if ($missingKey === 'published_section') {
+                    $draftSec = $sections->where('status', '!=', 'published')->first();
+                    $sectionId = $draftSec?->id ?? $sections->first()?->id;
+                    $focusTarget = 'published_section';
+                } elseif (in_array($missingKey, ['lesson', 'published_lesson', 'lesson_media'], true)) {
+                    $sectionId = $sections->first()?->id;
+                    $focusTarget = 'add-lesson';
+                } else {
+                    $focusTarget = 'add-section';
+                }
+            }
+
+            $queryParams = "step={$stepName}&focus={$focusTarget}";
+            if ($sectionId) {
+                $queryParams .= "&section_id={$sectionId}";
+            }
+
+            $nextStep = [
+                'key' => $missingKey,
+                'label' => 'Thêm ' . mb_strtolower($firstMissing['label'], 'UTF-8'),
+                'step' => $stepName,
+                'route_step' => $routeStep,
+                'section_id' => $sectionId,
+                'lesson_id' => $lessonId,
+                'focus' => $focusTarget,
+                'anchor' => "focus-{$focusTarget}",
+                'route' => "/instructor/courses/{$courseId}/edit?{$queryParams}",
+            ];
+        }
+
+        $actionLabel = 'Tiếp tục cập nhật';
+        if ($course->status === 'rejected') {
+            $actionLabel = 'Xem lý do';
+        } elseif ($completionPercent === 100 && $course->status === 'draft') {
+            $actionLabel = 'Gửi duyệt';
+        } elseif ($completionPercent === 0) {
+            $actionLabel = 'Bắt đầu cập nhật';
+        }
+
+        return [
+            'completion_percent' => $completionPercent,
+            'completed_items' => $completedItems,
+            'total_items' => $totalItems,
+            'missing_items' => $missingItems,
+            'next_step' => $nextStep,
+            'action_label' => $actionLabel,
+            'passed' => $completedItems === $totalItems,
+        ];
+    }
+
     public function getChecklist(int $instructorId, int $courseId, array $filters = []): array
     {
         $strict = (bool) ($filters['strict'] ?? false);
@@ -31,8 +234,6 @@ class CourseChecklistService
         $sections = $this->instructorCourseRepository->getChecklistSections($courseId);
         $lessons = $this->instructorCourseRepository->getChecklistLessons($courseId);
         $assetCount = $this->instructorCourseRepository->countChecklistLessonAssets($courseId);
-        $quizzes = $this->instructorCourseRepository->getChecklistQuizzes($courseId);
-        $questionStats = $this->instructorCourseRepository->getChecklistQuizQuestionStats($courseId);
 
         $missingItems = [];
         $warnings = [];
@@ -42,7 +243,6 @@ class CourseChecklistService
         $this->checkCategories($categories, $checks, $missingItems, $warnings);
         $this->checkSections($sections, $checks, $missingItems, $warnings);
         $this->checkLessons($lessons, $assetCount, $checks, $missingItems, $warnings, $strict);
-        $this->checkQuizzes($quizzes, $questionStats, $checks, $missingItems, $warnings);
 
         $missingItems = array_values(array_unique($missingItems));
         $warnings = array_values(array_unique($warnings));
@@ -62,9 +262,6 @@ class CourseChecklistService
                 'lessons_count' => $lessons->count(),
                 'published_lessons_count' => $lessons->where('status', 'published')->count(),
                 'lesson_assets_count' => $assetCount,
-                'quizzes_count' => $quizzes->count(),
-                'published_quizzes_count' => $quizzes->where('status', 'published')->count(),
-                'quiz_questions_count' => $questionStats->count(),
             ],
             'checks' => $checks,
         ];
