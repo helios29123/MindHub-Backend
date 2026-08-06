@@ -103,4 +103,121 @@ class LearningDashboardRepository
             'current_lesson' => $currentLessonData
         ];
     }
+    public function getHeatmap(int $userId, int $month, int $year): array
+    {
+        $startDate = sprintf('%04d-%02d-01', $year, $month);
+        $endDate = date('Y-m-t', strtotime($startDate));
+
+        $records = DB::table('lesson_progress')
+            ->where('user_id', $userId)
+            ->whereBetween(DB::raw('DATE(updated_at)'), [$startDate, $endDate])
+            ->select(
+                DB::raw('DATE(updated_at) as date'),
+                DB::raw('SUM(learning_duration_seconds) as total_time_seconds')
+            )
+            ->groupBy(DB::raw('DATE(updated_at)'))
+            ->get();
+
+        $heatmap = [];
+        foreach ($records as $record) {
+            $totalTime = (int) $record->total_time_seconds;
+            $intensity = 0;
+            if ($totalTime > 0 && $totalTime < 900) {
+                $intensity = 1;
+            } elseif ($totalTime >= 900 && $totalTime < 2700) {
+                $intensity = 2;
+            } elseif ($totalTime >= 2700) {
+                $intensity = 3;
+            }
+
+            $heatmap[] = [
+                'date' => $record->date,
+                'total_time_seconds' => $totalTime,
+                'intensity' => $intensity,
+            ];
+        }
+
+        return $heatmap;
+    }
+
+    public function getStreak(int $userId): array
+    {
+        $dates = DB::table('lesson_progress')
+            ->where('user_id', $userId)
+            ->where('learning_duration_seconds', '>', 0)
+            ->select(DB::raw('DATE(updated_at) as date'))
+            ->groupBy(DB::raw('DATE(updated_at)'))
+            ->orderBy('date', 'desc')
+            ->pluck('date')
+            ->toArray();
+
+        $current = 0;
+        $longest = 0;
+
+        if (empty($dates)) {
+            return ['current' => $current, 'longest' => $longest];
+        }
+
+        // Calculate Longest Streak
+        $tempLongest = 1;
+        $longest = 1;
+        for ($i = 0; $i < count($dates) - 1; $i++) {
+            $date1 = new \DateTime($dates[$i]);
+            $date2 = new \DateTime($dates[$i + 1]);
+            $diff = $date1->diff($date2)->days;
+
+            if ($diff == 1) {
+                $tempLongest++;
+                if ($tempLongest > $longest) {
+                    $longest = $tempLongest;
+                }
+            } else {
+                $tempLongest = 1;
+            }
+        }
+
+        // Calculate Current Streak
+        $today = date('Y-m-d');
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
+
+        $hasToday = in_array($today, $dates);
+        $hasYesterday = in_array($yesterday, $dates);
+
+        if (!$hasToday && !$hasYesterday) {
+            $current = 0;
+        } else {
+            $currentStreakTemp = 0;
+            $checkDate = $hasToday ? $today : $yesterday;
+            
+            while (in_array($checkDate, $dates)) {
+                $currentStreakTemp++;
+                $checkDate = date('Y-m-d', strtotime($checkDate . ' -1 day'));
+            }
+            $current = $currentStreakTemp;
+        }
+
+        return [
+            'current' => $current,
+            'longest' => $longest,
+        ];
+    }
+
+    public function getDailyMission(int $userId): array
+    {
+        $target = 2; // Hardcoded for now based on requirement
+        
+        $completedCount = DB::table('lesson_progress')
+            ->where('user_id', $userId)
+            ->where('status', 'completed')
+            ->where(DB::raw('DATE(completed_at)'), DB::raw('CURDATE()'))
+            ->count();
+
+        return [
+            'title' => 'Hoàn thành 2 bài học',
+            'target' => $target,
+            'progress' => min($completedCount, $target),
+            'is_completed' => $completedCount >= $target,
+            'reward_xp' => 50,
+        ];
+    }
 }

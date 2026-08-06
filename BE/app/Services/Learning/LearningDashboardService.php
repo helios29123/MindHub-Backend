@@ -23,4 +23,17 @@ class LearningDashboardService
             'recent_course' => $recentCourse,
         ];
     }
+
+    public function getActivityCalendar(int $userId, int $month, int $year): array
+    {
+        $streak = $this->learningDashboardRepository->getStreak($userId);
+        $dailyMission = $this->learningDashboardRepository->getDailyMission($userId);
+        $heatmap = $this->learningDashboardRepository->getHeatmap($userId, $month, $year);
+
+        return [
+            'streak' => $streak,
+            'daily_mission' => $dailyMission,
+            'heatmap' => $heatmap,
+        ];
+    }
 }

@@ -436,6 +436,23 @@ final class LearningController extends Controller
         );
     }
 
+    public function activityCalendar(\Illuminate\Http\Request $request, \App\Services\Learning\LearningDashboardService $service): \Illuminate\Http\JsonResponse
+    {
+        $month = (int) $request->query('month', (int) date('m'));
+        $year = (int) $request->query('year', (int) date('Y'));
+        
+        $calendar = $service->getActivityCalendar(
+            (int) $request->user()->id,
+            $month,
+            $year
+        );
+
+        return \App\Support\ApiResponse::success(
+            $calendar,
+            'Lấy thông tin lịch hoạt động thành công.'
+        );
+    }
+
     /**
      * Get watermark info for a video lesson.
      *

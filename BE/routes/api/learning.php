@@ -25,6 +25,7 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
 });
 Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function () {
     Route::get('/me/learning-dashboard', [LearningController::class, 'dashboard']);
+    Route::get('/me/activity-calendar', [LearningController::class, 'activityCalendar']);
 });
 
 /*
