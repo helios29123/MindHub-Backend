@@ -36,17 +36,28 @@ class SePayGateway implements PaymentGatewayInterface
 
     public function handleWebhook(array $payload): array
     {
-        // 1. Authenticate (optional based on SePay webhook config)
+        // 1. Authenticate SePay Webhook using HMAC-SHA256
         $secret = config('sepay.webhook_secret');
-        if (!empty($secret)) {
-            $authHeader = request()->header('Authorization');
-            if (empty($authHeader) || $authHeader !== 'Bearer ' . $secret) {
-                // For better flexibility if it's sent differently
-                $authHeader2 = request()->header('Apikey');
-                if ($authHeader2 !== $secret) {
-                    throw new BusinessException('Xác thực SePay Webhook thất bại.', 401);
-                }
-            }
+        
+        if (empty($secret)) {
+            Log::error('SePay Webhook Verification Failed: Missing webhook_secret configuration.');
+            throw new BusinessException('Cấu hình SePay Webhook chưa đầy đủ.', 500);
+        }
+
+        $signatureHeader = (string) request()->header('X-SePay-Signature');
+        
+        if (empty($signatureHeader)) {
+            Log::warning('SePay Webhook Verification Failed: Missing X-SePay-Signature header.');
+            throw new BusinessException('Thiếu chữ ký xác thực SePay Webhook.', 401);
+        }
+
+        $rawRequestBody = request()->getContent();
+        
+        $expectedSignature = hash_hmac('sha256', $rawRequestBody, $secret);
+
+        if (!hash_equals($expectedSignature, $signatureHeader)) {
+            Log::warning('SePay Webhook Verification Failed: Signature mismatch.');
+            throw new BusinessException('Xác thực SePay Webhook thất bại. Chữ ký không hợp lệ.', 401);
         }
 
         // 2. Validate payload
