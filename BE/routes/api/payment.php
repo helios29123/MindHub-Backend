@@ -33,28 +33,22 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructo
 
 /*
 |--------------------------------------------------------------------------
-| VNPAY create payment URL
+| SePay create payment URL
 |--------------------------------------------------------------------------
 | learner/member/instructor đều được tạo URL thanh toán cho order của chính mình.
 */
 Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructor'])
     ->group(function (): void {
-        Route::post('/payments/vnpay/create', [PaymentController::class, 'createVnpayPayment']);
+        Route::post('/payments/sepay/create', [PaymentController::class, 'createSePayPayment']);
     });
 
 /*
 |--------------------------------------------------------------------------
-| Admin payment webhook
+| Public payment webhook for SePay
 |--------------------------------------------------------------------------
+| SePay server sends webhook directly, verified via secret.
 */
-Route::middleware(['auth.session', 'active.user', 'role:admin'])
-    ->group(function (): void {
-        Route::post('/payments/webhook', [PaymentController::class, 'webhook']);
-    });
+Route::post('/payments/sepay/webhook', [PaymentController::class, 'webhook']);
 
-/*
-|--------------------------------------------------------------------------
-| VNPAY return URL
-|--------------------------------------------------------------------------
-*/
-Route::get('/payments/vnpay-return', [PaymentController::class, 'vnpayReturn']);
+// Keep the old webhook route for backward compatibility if needed, but remove admin middleware
+Route::post('/payments/webhook', [PaymentController::class, 'webhook']);

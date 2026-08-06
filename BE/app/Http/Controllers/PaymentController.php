@@ -61,30 +61,20 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function createVnpayPayment(StorePaymentRequest $request): JsonResponse
+    public function createSePayPayment(StorePaymentRequest $request): JsonResponse
     {
-        $result = $this->paymentService->createVnpayPayment(
+        $result = $this->paymentService->createSePayPayment(
             $request->validated(),
             (int) $request->user()->id
         );
 
         return response()->json([
             'success' => true,
-            'message' => 'Tạo URL thanh toán VNPAY thành công.',
+            'message' => 'Tạo thông tin thanh toán SePay thành công.',
             'data' => $result,
         ]);
     }
 
-    public function vnpayReturn(Request $request): JsonResponse
-    {
-        $result = $this->paymentService->vnpayReturn($request->all());
-
-        return response()->json([
-            'success' => true,
-            'message' => $result['message'] ?? 'Cập nhật thanh toán VNPAY thành công.',
-            'data' => $result,
-        ]);
-    }
 
     public function webhook(Request $request): JsonResponse
     {
@@ -141,10 +131,10 @@ class PaymentController extends Controller
 
     public function retryPayment(int $orderId, Request $request): JsonResponse
     {
-        $result = $this->paymentService->createVnpayPayment(
+        $result = $this->paymentService->createSePayPayment(
             [
                 'order_id' => $orderId,
-                'payment_method' => 'vnpay',
+                'payment_method' => 'sepay',
             ],
             (int) $request->user()->id
         );
