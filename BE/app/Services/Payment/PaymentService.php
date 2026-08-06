@@ -53,6 +53,9 @@ class PaymentService
         });
     }
 
+    /**
+     * Create SePay VietQR payment info.
+     */
     public function createSepayPayment(array $validated, ?int $userId = null): array
     {
         $userId = $userId ?: (int) Auth::id();
