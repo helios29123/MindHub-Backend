@@ -53,79 +53,14 @@ class PaymentService
         });
     }
 
-    public function createSePayPayment(array $data, ?int $userId = null): array
+    public function createSepayPayment(array $validated, ?int $userId = null): array
     {
         $userId = $userId ?: (int) Auth::id();
-        $orderId = (int) ($data['order_id'] ?? 0);
+        $orderId = (int) ($validated['order_id'] ?? 0);
 
         if ($orderId <= 0) {
             throw new BusinessException('Thiếu mã đơn hàng.', 422);
         }
-
-        return DB::transaction(function () use ($orderId, $userId): array {
-            $order = $this->findUserOrderForUpdate($orderId, $userId);
-
-            $this->assertOrderCanCreatePayment($order);
-
-            $user = DB::table('users')
-                ->where('id', $userId)
-                ->first();
-
-            if (! $user) {
-                throw new BusinessException('Không tìm thấy người dùng.', 404);
-            }
-
-            $orderType = $this->resolveOrderType($order);
-            $role = (string) ($user->role ?? '');
-
-            if (in_array($role, ['learner', 'member'], true) && $orderType !== Order::TYPE_COURSE_PURCHASE) {
-                throw new BusinessException('Học viên chỉ được thanh toán đơn mua khóa học.', 403);
-            }
-
-            if ($role === 'instructor' && ! in_array($orderType, [Order::TYPE_COURSE_PURCHASE, Order::TYPE_INSTRUCTOR_CREDIT], true)) {
-                throw new BusinessException('Giảng viên không được thanh toán loại đơn hàng này.', 403);
-            }
-
-            if ($role === 'instructor' && $orderType === Order::TYPE_COURSE_PURCHASE) {
-                $this->assertInstructorCanPayCourseOrder($order, $userId);
-            }
-
-            $amount = $this->getOrderAmount($order);
-
-            if ($amount <= 0) {
-                throw new BusinessException('Số tiền thanh toán không hợp lệ.', 422);
-            }
-
-            $txnRef = 'SEPAY-' . $order->id . '-' . now()->format('YmdHis');
-
-            DB::table('orders')
-                ->where('id', $order->id)
-                ->update([
-                    'payment_method' => 'sepay',
-                    'provider_transaction_id' => $txnRef,
-                    'updated_at' => now(),
-                ]);
-
-            $paymentUrl = $this->gateway->createPaymentUrl($order, $amount);
-
-            return [
-                'order_id' => (int) $order->id,
-                'order_code' => $order->order_code ?? null,
-                'order_type' => $orderType,
-                'amount' => $amount,
-                'payment_method' => 'sepay',
-                'provider_transaction_id' => $txnRef,
-                'payment_url' => $paymentUrl,
-            ];
-        });
-    }
-
-<<<<<<< HEAD
-    public function webhook(array $payload): array
-=======
-    public function createSepayPayment(array $validated, int $userId): array
-    {
-        $orderId = (int) $validated['order_id'];
 
         return DB::transaction(function () use ($orderId, $userId): array {
             $order = $this->findUserOrderForUpdate($orderId, $userId);
@@ -257,8 +192,7 @@ class PaymentService
         });
     }
 
-    public function vnpayReturn(array $params): array
->>>>>>> 0b76ec9 (feat(backend): update course pricing discount, instructor management, payment & user profile APIs)
+    public function webhook(array $payload): array
     {
         $details = $this->gateway->handleWebhook($payload);
         
