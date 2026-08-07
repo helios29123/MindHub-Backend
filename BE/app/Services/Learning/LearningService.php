@@ -718,5 +718,60 @@ class LearningService
 
         return null;
     }
+
+    public function getLessonNotes(int $lessonId, User $user)
+    {
+        return \App\Models\LessonNote::where('user_id', $user->id)
+            ->where('lesson_id', $lessonId)
+            ->orderBy('note_time_second', 'asc')
+            ->get();
+    }
+
+    public function createLessonNote(int $lessonId, array $data, User $user): \App\Models\LessonNote
+    {
+        $lesson = \App\Models\Lesson::find($lessonId);
+        if (!$lesson) {
+            throw new BusinessException('Không tìm thấy bài học.', 404);
+        }
+
+        return \App\Models\LessonNote::create([
+            'user_id' => $user->id,
+            'course_id' => $lesson->course_id,
+            'lesson_id' => $lessonId,
+            'content' => $data['content'],
+            'note_time_second' => $data['note_time_second'] ?? 0,
+        ]);
+    }
+
+    public function updateLessonNote(int $noteId, array $data, User $user): \App\Models\LessonNote
+    {
+        $note = \App\Models\LessonNote::where('id', $noteId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$note) {
+            throw new BusinessException('Không tìm thấy ghi chú.', 404);
+        }
+
+        $note->update([
+            'content' => $data['content'] ?? $note->content,
+            'note_time_second' => isset($data['note_time_second']) ? $data['note_time_second'] : $note->note_time_second,
+        ]);
+
+        return $note;
+    }
+
+    public function deleteLessonNote(int $noteId, User $user): bool
+    {
+        $note = \App\Models\LessonNote::where('id', $noteId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$note) {
+            throw new BusinessException('Không tìm thấy ghi chú.', 404);
+        }
+
+        return (bool) $note->delete();
+    }
 }
 

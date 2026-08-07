@@ -270,6 +270,8 @@ test('empty or too long content validation fails', function () {
 test('instructor can reply to comment on their own published course lesson', function () {
     $headers = getAuthHeadersForCommentTest('instructor1@mindhub.test');
 
+    \App\Models\Comment::where('id', 1)->update(['lesson_id' => 2]);
+
     $response = $this->postJson('/api/comments/1/replies', [
         'content' => 'Chào em, đây là câu trả lời từ giảng viên.',
     ], $headers);
