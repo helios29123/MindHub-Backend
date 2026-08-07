@@ -47,6 +47,38 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function checkCoupon(Request $request): JsonResponse
+    {
+        $code = $request->query('code');
+        $courseId = $request->query('course_id');
+
+        if (!$code) {
+            return response()->json(['success' => false, 'message' => 'Thiếu mã giảm giá.'], 422);
+        }
+
+        $couponRepo = app(\App\Repositories\Payment\CouponRepository::class);
+        $coupon = $couponRepo->findByCode($code);
+
+        if (!$coupon || !$coupon->isActiveNow()) {
+            return response()->json(['success' => false, 'message' => 'Mã giảm giá không hợp lệ hoặc đã hết hạn.'], 400);
+        }
+
+        if ($coupon->course_id !== null && $courseId !== null && (int) $coupon->course_id !== (int) $courseId) {
+            return response()->json(['success' => false, 'message' => 'Mã giảm giá không áp dụng cho khóa học này.'], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mã giảm giá hợp lệ.',
+            'data' => [
+                'code' => $coupon->code,
+                'discount_type' => $coupon->discount_type,
+                'discount_value' => (float) $coupon->discount_value,
+                'max_order_amount' => $coupon->max_order_amount ? (float) $coupon->max_order_amount : null,
+            ]
+        ]);
+    }
+
     public function storePayment(StorePaymentRequest $request): JsonResponse
     {
         $order = $this->paymentService->storePayment(

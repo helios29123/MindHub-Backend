@@ -16,6 +16,7 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructo
         Route::post('/orders', [PaymentController::class, 'storeOrder']);
 
         Route::post('/orders/apply-coupon', [PaymentController::class, 'applyCoupon']);
+        Route::get('/orders/check-coupon', [PaymentController::class, 'checkCoupon']);
 
         Route::post('/payments', [PaymentController::class, 'storePayment']);
 

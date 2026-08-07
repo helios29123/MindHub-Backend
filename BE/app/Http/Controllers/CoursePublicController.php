@@ -21,6 +21,39 @@ class CoursePublicController extends Controller
     ) {
     }
 
+    public function index(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $filters = $request->only(['query', 'categories', 'minRating', 'priceType', 'sortBy']);
+        if (isset($filters['categories']) && is_string($filters['categories'])) {
+            $filters['categories'] = explode(',', $filters['categories']);
+        }
+        $perPage = (int) $request->query('limit', 12);
+        
+        $repo = app(\App\Repositories\Course\CoursePublicRepository::class);
+        $paginator = $repo->searchPublicCourses($filters, $perPage);
+
+        $courses = $paginator->map(function ($c) {
+            return [
+                'id' => (string) $c->id,
+                'title' => $c->title,
+                'instructorName' => $c->instructor->full_name ?? 'Giảng viên',
+                'image' => $c->thumbnail_url ?? 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800',
+                'price' => (float) $c->price,
+                'salePrice' => $c->sale_price ? (float) $c->sale_price : null,
+                'rating' => (float) ($c->rating_avg ?? 0),
+                'enrolledCount' => $c->enrolled_count ?? 0,
+                'createdAt' => $c->created_at,
+                'category' => $c->categories->first()->name ?? 'Khác'
+            ];
+        });
+
+        return ApiResponse::success([
+            'items' => $courses,
+            'totalItems' => $paginator->total(),
+            'totalPages' => $paginator->lastPage(),
+        ], 'Lấy danh sách khóa học thành công.');
+    }
+
     public function show(string $slug): JsonResponse
     {
         // Validate path parameter
