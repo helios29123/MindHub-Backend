@@ -23,6 +23,7 @@ class TopCourseReportRequest extends BaseApiRequest
             'year' => 'nullable|integer|min:2000|max:2100',
             'sort_by' => 'nullable|in:sold_count,total_revenue,completed_count,completion_rate,last_paid_at',
             'sort_direction' => 'nullable|in:asc,desc',
+            'timeframe' => 'nullable|string',
         ];
     }
 }
