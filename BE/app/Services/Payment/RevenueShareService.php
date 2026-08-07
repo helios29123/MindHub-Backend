@@ -40,7 +40,7 @@ final class RevenueShareService
 
         $this->validateRates($instructorRate, $platformRate);
 
-        $grossAmount = (float) $order->amount;
+        $grossAmount = (float) ($order->final_amount ?? $order->amount ?? 0.0);
 
         if ($grossAmount <= 0) {
             $instructorAmount = 0.0;
@@ -65,7 +65,7 @@ final class RevenueShareService
     /**
      * Main entry point to create revenue for a paid order.
      * Uses DB transaction and row locking to ensure idempotency.
-     * Sets initial status to PENDING and calculates available_at based on refund hold period.
+     * Sets initial status to PENDING (or AVAILABLE if holdDays is 0) and calculates available_at based on refund hold period.
      */
     public function createRevenueForPaidOrder(int|Order $order): Revenue
     {
@@ -118,6 +118,7 @@ final class RevenueShareService
             $holdDays = (int) config('revenue.refund_hold_days', 30);
             $earnedAt = $orderModel->paid_at ? Carbon::parse($orderModel->paid_at) : now();
             $availableAt = (clone $earnedAt)->addDays($holdDays);
+            $initialStatus = $holdDays <= 0 ? Revenue::STATUS_AVAILABLE : Revenue::STATUS_PENDING;
 
             try {
                 return Revenue::query()->create([
@@ -127,7 +128,7 @@ final class RevenueShareService
                     'gross_amount' => $calc['gross_amount'],
                     'instructor_amount' => $calc['instructor_amount'],
                     'platform_fee_amount' => $calc['platform_fee_amount'],
-                    'status' => Revenue::STATUS_PENDING,
+                    'status' => $initialStatus,
                     'earned_at' => $earnedAt,
                     'available_at' => $availableAt,
                     'created_at' => now(),
@@ -163,6 +164,30 @@ final class RevenueShareService
     public function calculateForPaidOrder(int|Order $order): Revenue
     {
         return $this->createRevenueForPaidOrder($order);
+    }
+
+    /**
+     * Auto-sync revenue records for any paid orders that don't have one yet.
+     */
+    public function syncMissingPaidOrderRevenues(): int
+    {
+        $paidOrders = Order::query()
+            ->where('status', Order::STATUS_PAID)
+            ->whereNotNull('course_id')
+            ->whereDoesntHave('revenue')
+            ->get();
+
+        $count = 0;
+        foreach ($paidOrders as $order) {
+            try {
+                $this->createRevenueForPaidOrder($order);
+                $count++;
+            } catch (Throwable $e) {
+                Log::error("Failed to auto-sync revenue for paid order {$order->id}: {$e->getMessage()}");
+            }
+        }
+
+        return $count;
     }
 
     /**
