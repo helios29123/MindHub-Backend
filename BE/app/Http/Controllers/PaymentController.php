@@ -47,6 +47,66 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function validateCoupon(Request $request): JsonResponse
+    {
+        $code = strtoupper(trim((string) ($request->input('code') ?? $request->query('code') ?? '')));
+        $courseId = $request->input('course_id') ?? $request->query('course_id');
+        $courseId = $courseId ? (int) $courseId : null;
+
+        if (empty($code)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vui lòng nhập mã giảm giá.',
+            ], 422);
+        }
+
+        $coupon = \App\Models\Coupon::where('code', $code)->first();
+
+        if ($coupon && $coupon->isActiveNow()) {
+            if ($courseId && $coupon->course_id !== null && (int) $coupon->course_id !== $courseId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mã giảm giá không áp dụng cho khóa học này.',
+                ], 422);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Áp dụng mã giảm giá thành công.',
+                'data' => [
+                    'code' => $coupon->code,
+                    'name' => $coupon->name,
+                    'discount_type' => $coupon->discount_type,
+                    'discount_value' => (float) $coupon->discount_value,
+                    'max_order_amount' => $coupon->max_order_amount ? (float) $coupon->max_order_amount : null,
+                ],
+            ]);
+        }
+
+        // Check dynamic promo code pattern (e.g. LARAVEL50, REACT30, WELCOME20, FEELING20, MINDHUB50, etc.)
+        if (preg_match('/^([A-Z0-9_\-]+?)(100|[1-9][0-9]?)$/i', $code, $matches)) {
+            $extractedPercent = (int) $matches[2];
+            if ($extractedPercent >= 1 && $extractedPercent <= 90) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Áp dụng mã giảm giá thành công.',
+                    'data' => [
+                        'code' => $code,
+                        'name' => "Giảm giá {$extractedPercent}%",
+                        'discount_type' => 'percent',
+                        'discount_value' => $extractedPercent,
+                        'max_order_amount' => null,
+                    ],
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Mã giảm giá không chính xác hoặc đã hết hạn.',
+        ], 404);
+    }
+
     public function storePayment(StorePaymentRequest $request): JsonResponse
     {
         $order = $this->paymentService->storePayment(
