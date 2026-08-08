@@ -77,12 +77,45 @@ class CatalogCourseRepository
     public function featured(array $filters)
     {
         $perPage = (int) ($filters['per_page'] ?? 10);
+        $timeframe = now()->subDays(90);
+
+        // Find global E_max in the last 90 days for normalization
+        $eMax = \Illuminate\Support\Facades\DB::table('enrollments')
+            ->where('enrolled_at', '>=', $timeframe)
+            ->whereIn('status', ['active', 'completed'])
+            ->selectRaw('COUNT(id) as e_count')
+            ->groupBy('course_id')
+            ->orderByDesc('e_count')
+            ->value('e_count');
+            
+        $eMax = max((float)$eMax, 1.0);
 
         $query = $this->publicCourseQuery()
-            ->where('courses.is_featured', true)
+            ->selectSub(function ($query) use ($timeframe) {
+                $query->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->where('enrollments.enrolled_at', '>=', $timeframe)
+                    ->whereIn('enrollments.status', ['active', 'completed'])
+                    ->selectRaw('COUNT(enrollments.id)');
+            }, 'recent_enrollments')
+            ->selectSub(function ($query) use ($timeframe) {
+                $query->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->where('enrollments.enrolled_at', '>=', $timeframe)
+                    ->whereIn('enrollments.status', ['active', 'completed'])
+                    ->selectRaw('COALESCE(AVG(enrollments.progress_percent), 0)');
+            }, 'recent_progress')
+            ->orderByDesc('courses.is_featured')
+            ->orderByRaw("
+                IF(recent_enrollments >= 10,
+                    (0.4 * (recent_enrollments / $eMax)) + 
+                    (0.4 * (recent_progress / 100)) + 
+                    (0.2 * (average_rating / 5)),
+                    0
+                ) DESC
+            ")
             ->orderByDesc('enrollments_count')
             ->orderByDesc('average_rating')
-            ->orderByDesc('courses.published_at')
             ->orderByDesc('courses.id');
 
         return $query->paginate($perPage);
@@ -280,7 +313,7 @@ class CatalogCourseRepository
             }, 'enrollments_count');
     }
 
-    private function applySort($query, ?string $sort): void
+    private function applySort(Builder $query, ?string $sort): void
     {
         match ($sort) {
             'latest' => $query
