@@ -36,6 +36,9 @@ class CatalogCourseResource extends JsonResource
                 return [
                     'id' => $this->instructor?->id,
                     'full_name' => $this->instructor?->full_name,
+                    'avatar_url' => $this->instructor?->avatar_url,
+                    'bio' => $this->instructor?->instructorProfile?->bio ?? 'Senior Software Engineer với nhiều năm kinh nghiệm giảng dạy và phát triển sản phẩm phần mềm thực tế.',
+                    'headline' => $this->instructor?->instructorProfile?->expertise ?? 'Giảng viên MindHub',
                 ];
             }),
 

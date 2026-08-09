@@ -54,3 +54,4 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructo
 Route::post('/payments/sepay/webhook', [PaymentController::class, 'sepayWebhook']);
 Route::post('/payments/webhook', [PaymentController::class, 'webhook']);
 Route::get('/payments/vnpay-return', [PaymentController::class, 'vnpayReturn']);
+Route::match(['get', 'post'], '/coupons/validate', [PaymentController::class, 'validateCoupon']);

@@ -45,7 +45,8 @@ class InteractionService
         
         return Comment::where('lesson_id', $lesson->id)
             ->where('status', 'visible')
-            ->with('user')
+            ->whereNull('parent_id')
+            ->with(['user', 'replies.user'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
     }

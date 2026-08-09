@@ -718,5 +718,242 @@ class LearningService
 
         return null;
     }
+
+    public function getLessonNotes(int $lessonId, User $user)
+    {
+        return \App\Models\LessonNote::where('user_id', $user->id)
+            ->where('lesson_id', $lessonId)
+            ->orderBy('note_time_second', 'asc')
+            ->get();
+    }
+
+    public function createLessonNote(int $lessonId, array $data, User $user): \App\Models\LessonNote
+    {
+        $lesson = \App\Models\Lesson::find($lessonId);
+        if (!$lesson) {
+            throw new BusinessException('Không tìm thấy bài học.', 404);
+        }
+
+        return \App\Models\LessonNote::create([
+            'user_id' => $user->id,
+            'course_id' => $lesson->course_id,
+            'lesson_id' => $lessonId,
+            'content' => $data['content'],
+            'note_time_second' => $data['note_time_second'] ?? 0,
+        ]);
+    }
+
+    public function updateLessonNote(int $noteId, array $data, User $user): \App\Models\LessonNote
+    {
+        $note = \App\Models\LessonNote::where('id', $noteId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$note) {
+            throw new BusinessException('Không tìm thấy ghi chú.', 404);
+        }
+
+        $note->update([
+            'content' => $data['content'] ?? $note->content,
+            'note_time_second' => isset($data['note_time_second']) ? $data['note_time_second'] : $note->note_time_second,
+        ]);
+
+        return $note;
+    }
+
+    public function deleteLessonNote(int $noteId, User $user): bool
+    {
+        $note = \App\Models\LessonNote::where('id', $noteId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$note) {
+            throw new BusinessException('Không tìm thấy ghi chú.', 404);
+        }
+
+        return (bool) $note->delete();
+    }
+
+    public function getLearningStreak(?User $user = null): array
+    {
+        $today = now()->format('Y-m-d');
+        if (! $user) {
+            $startOfWeek = now()->startOfWeek(\Carbon\Carbon::MONDAY);
+            $weekDays = [];
+            $dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+            for ($i = 0; $i < 7; $i++) {
+                $dStr = (clone $startOfWeek)->addDays($i)->format('Y-m-d');
+                $weekDays[] = [
+                    'day' => $dayLabels[$i],
+                    'date' => $dStr,
+                    'active' => false,
+                    'isToday' => ($dStr === $today),
+                    'is_today' => ($dStr === $today),
+                ];
+            }
+            return [
+                'current_streak' => 0,
+                'longest_streak' => 0,
+                'total_active_days' => 0,
+                'is_maintaining' => false,
+                'status_label' => 'Chưa bắt đầu',
+                'completed_days_in_week' => 0,
+                'total_days_in_week' => 7,
+                'week_days' => $weekDays,
+                'encouragement' => [
+                    'days_needed' => 7,
+                    'next_milestone' => 7,
+                    'badge_name' => 'Chiến binh Chăm chỉ',
+                    'message' => 'Hãy bắt đầu bài học đầu tiên hôm nay để thiết lập chuỗi học tập!',
+                ],
+            ];
+        }
+
+        $loginDates = [$today];
+
+        if (!empty($user->last_login_at)) {
+            $loginDates[] = \Carbon\Carbon::parse($user->last_login_at)->format('Y-m-d');
+        }
+
+        try {
+            if (empty($user->last_login_at) || \Carbon\Carbon::parse($user->last_login_at)->format('Y-m-d') !== $today) {
+                \DB::table('users')->where('id', $user->id)->update(['last_login_at' => now()]);
+            }
+        } catch (\Throwable $e) {}
+
+        $progressDates = [];
+        try {
+            if (\Schema::hasTable('lesson_progress')) {
+                $progressDates = \DB::table('lesson_progress')
+                    ->where('user_id', $user->id)
+                    ->selectRaw('DISTINCT DATE(updated_at) as d')
+                    ->pluck('d')
+                    ->filter()
+                    ->toArray();
+            }
+        } catch (\Throwable $e) {}
+
+        $videoDates = [];
+        try {
+            if (\Schema::hasTable('video_progress')) {
+                $videoDates = \DB::table('video_progress')
+                    ->where('user_id', $user->id)
+                    ->selectRaw('DISTINCT DATE(updated_at) as d')
+                    ->pluck('d')
+                    ->filter()
+                    ->toArray();
+            }
+        } catch (\Throwable $e) {}
+
+        $enrollmentDates = [];
+        try {
+            if (\Schema::hasTable('enrollments')) {
+                $enrollmentDates = \DB::table('enrollments')
+                    ->where('user_id', $user->id)
+                    ->selectRaw('DISTINCT DATE(created_at) as d')
+                    ->pluck('d')
+                    ->filter()
+                    ->toArray();
+            }
+        } catch (\Throwable $e) {}
+
+        $loginSessionDates = [];
+        try {
+            if (\Schema::hasTable('auth_sessions')) {
+                $loginSessionDates = \DB::table('auth_sessions')
+                    ->where('user_id', $user->id)
+                    ->selectRaw('DISTINCT DATE(created_at) as d')
+                    ->pluck('d')
+                    ->filter()
+                    ->toArray();
+            }
+        } catch (\Throwable $e) {}
+
+        $allDatesSet = array_unique(array_filter(array_merge($loginSessionDates, $progressDates, $videoDates, $enrollmentDates, $loginDates)));
+        rsort($allDatesSet);
+        $yesterday = now()->subDay()->format('Y-m-d');
+
+        $currentStreak = 0;
+        $checkDate = now();
+        $isTodayActive = in_array($today, $allDatesSet, true);
+        $isYesterdayActive = in_array($yesterday, $allDatesSet, true);
+
+        $isMaintaining = $isTodayActive || $isYesterdayActive;
+
+        if (!$isTodayActive && $isYesterdayActive) {
+            $checkDate = now()->subDay();
+        }
+
+        if ($isMaintaining) {
+            while (true) {
+                $dStr = $checkDate->format('Y-m-d');
+                if (in_array($dStr, $allDatesSet, true)) {
+                    $currentStreak++;
+                    $checkDate->subDay();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if ($currentStreak === 0 && $isMaintaining) {
+            $currentStreak = 1;
+        }
+        if ($currentStreak === 0 && count($allDatesSet) > 0) {
+            $currentStreak = 1;
+        }
+
+        $longestStreak = max($currentStreak, count($allDatesSet));
+        $totalActiveDays = count($allDatesSet);
+
+        $startOfWeek = now()->startOfWeek(\Carbon\Carbon::MONDAY);
+        $weekDays = [];
+        $dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        $completedDaysCount = 0;
+
+        for ($i = 0; $i < 7; $i++) {
+            $currentDayDate = (clone $startOfWeek)->addDays($i);
+            $dStr = $currentDayDate->format('Y-m-d');
+            $isActive = in_array($dStr, $allDatesSet, true);
+            $isToday = ($dStr === $today);
+
+            if ($isActive) {
+                $completedDaysCount++;
+            }
+
+            $weekDays[] = [
+                'day' => $dayLabels[$i],
+                'date' => $dStr,
+                'active' => $isActive,
+                'isToday' => $isToday,
+                'is_today' => $isToday,
+            ];
+        }
+
+        $daysNeeded = max(0, 7 - $currentStreak);
+        $nextMilestone = 7;
+        $badgeName = 'Chiến binh Chăm chỉ';
+
+        $message = $daysNeeded > 0
+            ? "Học thêm {$daysNeeded} ngày nữa để đạt mốc {$nextMilestone} ngày liên tiếp và mở khóa huy hiệu {$badgeName}!"
+            : "Chúc mừng bạn đã hoàn thành xuất sắc chuỗi 7 ngày học liên tiếp trong tuần!";
+
+        return [
+            'current_streak' => $currentStreak,
+            'longest_streak' => $longestStreak,
+            'total_active_days' => $totalActiveDays,
+            'is_maintaining' => $isMaintaining,
+            'status_label' => $isMaintaining ? 'Đang duy trì' : 'Chưa bắt đầu',
+            'completed_days_in_week' => $completedDaysCount,
+            'total_days_in_week' => 7,
+            'week_days' => $weekDays,
+            'encouragement' => [
+                'days_needed' => $daysNeeded,
+                'next_milestone' => $nextMilestone,
+                'badge_name' => $badgeName,
+                'message' => $message,
+            ],
+        ];
+    }
 }
 

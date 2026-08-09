@@ -15,6 +15,8 @@ class InstructorLearnerResource extends JsonResource
                 'id' => (int) $this->learner_id,
                 'full_name' => $this->learner_name,
                 'email' => $this->learner_email,
+                'avatar_url' => property_exists($this->resource, 'learner_avatar_url') && $this->learner_avatar_url ? (str_starts_with($this->learner_avatar_url, 'http') ? $this->learner_avatar_url : url($this->learner_avatar_url)) : null,
+                'avatar' => property_exists($this->resource, 'learner_avatar_url') && $this->learner_avatar_url ? (str_starts_with($this->learner_avatar_url, 'http') ? $this->learner_avatar_url : url($this->learner_avatar_url)) : null,
             ],
             'course' => [
                 'id' => (int) $this->course_id,

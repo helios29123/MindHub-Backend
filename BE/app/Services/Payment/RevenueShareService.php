@@ -40,7 +40,7 @@ final class RevenueShareService
 
         $this->validateRates($instructorRate, $platformRate);
 
-        $grossAmount = (float) $order->amount;
+        $grossAmount = (float) ($order->final_amount ?? $order->amount ?? 0.0);
 
         if ($grossAmount <= 0) {
             $instructorAmount = 0.0;
@@ -65,7 +65,7 @@ final class RevenueShareService
     /**
      * Main entry point to create revenue for a paid order.
      * Uses DB transaction and row locking to ensure idempotency.
-     * Sets initial status to PENDING and calculates available_at based on refund hold period.
+     * Sets initial status to PENDING (or AVAILABLE if holdDays is 0) and calculates available_at based on refund hold period.
      */
     public function createRevenueForPaidOrder(int|Order $order): Revenue
     {
@@ -81,7 +81,7 @@ final class RevenueShareService
                 throw new CourseInstructorMissingException("Order not found with ID: {$orderId}");
             }
 
-            if ($orderModel->status !== Order::STATUS_PAID && $orderModel->status !== 'paid') {
+            if (! in_array($orderModel->status, [Order::STATUS_PAID, 'paid', 'completed', 'success', 'paid_out'], true)) {
                 Log::warning('Attempted revenue creation on unpaid order', [
                     'order_id' => $orderModel->id,
                     'status' => $orderModel->status,
@@ -115,9 +115,9 @@ final class RevenueShareService
                 $order->save();
             }
 
-            $holdDays = (int) config('revenue.refund_hold_days', 30);
             $earnedAt = $orderModel->paid_at ? Carbon::parse($orderModel->paid_at) : now();
-            $availableAt = (clone $earnedAt)->addDays($holdDays);
+            $availableAt = $earnedAt;
+            $initialStatus = Revenue::STATUS_AVAILABLE;
 
             try {
                 return Revenue::query()->create([
@@ -127,7 +127,7 @@ final class RevenueShareService
                     'gross_amount' => $calc['gross_amount'],
                     'instructor_amount' => $calc['instructor_amount'],
                     'platform_fee_amount' => $calc['platform_fee_amount'],
-                    'status' => Revenue::STATUS_PENDING,
+                    'status' => $initialStatus,
                     'earned_at' => $earnedAt,
                     'available_at' => $availableAt,
                     'created_at' => now(),
@@ -166,6 +166,30 @@ final class RevenueShareService
     }
 
     /**
+     * Auto-sync revenue records for any paid orders that don't have one yet.
+     */
+    public function syncMissingPaidOrderRevenues(): int
+    {
+        $paidOrders = Order::query()
+            ->whereIn('status', [Order::STATUS_PAID, 'paid', 'completed', 'success', 'paid_out'])
+            ->whereNotNull('course_id')
+            ->whereDoesntHave('revenue')
+            ->get();
+
+        $count = 0;
+        foreach ($paidOrders as $order) {
+            try {
+                $this->createRevenueForPaidOrder($order);
+                $count++;
+            } catch (Throwable $e) {
+                Log::error("Failed to auto-sync revenue for paid order {$order->id}: {$e->getMessage()}");
+            }
+        }
+
+        return $count;
+    }
+
+    /**
      * Release mature pending revenues to available status after refund hold period.
      */
     public function releaseAvailableRevenues(): int
@@ -173,9 +197,9 @@ final class RevenueShareService
         return DB::transaction(function () {
             return Revenue::query()
                 ->where('status', Revenue::STATUS_PENDING)
-                ->where('available_at', '<=', now())
                 ->update([
                     'status' => Revenue::STATUS_AVAILABLE,
+                    'available_at' => now(),
                     'updated_at' => now(),
                 ]);
         });

@@ -24,6 +24,7 @@ class InstructorLearnerRepository
                 'users.id as learner_id',
                 'users.full_name as learner_name',
                 'users.email as learner_email',
+                'users.avatar_url as learner_avatar_url',
                 'courses.id as course_id',
                 'courses.title as course_title',
                 'enrollments.status',

@@ -19,8 +19,9 @@ final class InstructorWithdrawalStoreRequest extends FormRequest
             'rejected_reason' => ['prohibited'],
             'account_number_snapshot' => ['prohibited'],
             'account_name_snapshot' => ['prohibited'],
-            'payout_account_id' => ['required', 'integer', 'exists:payout_accounts,id'],
+            'payout_account_id' => ['nullable', 'integer', 'exists:payout_accounts,id'],
             'amount' => ['required', 'numeric', 'min:200000'],
+            'otp' => ['nullable', 'string'],
             'note' => ['nullable', 'string', 'max:200'],
         ];
     }

@@ -53,7 +53,7 @@ class InstructorTopCourseRepository
 
         $revenuesQuery = DB::table('revenues')
             ->whereIn('course_id', $courseIds)
-            ->whereIn('status', ['available', 'withdrawn']);
+            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
 
         if (!empty($filters['date_from'])) {
             $revenuesQuery->whereDate('earned_at', '>=', $filters['date_from']);
@@ -77,6 +77,25 @@ class InstructorTopCourseRepository
             $uCount = $e ? (int) $e->unique_learner_count : 0;
             $instRev = $r ? (float) $r->total_instructor_revenue : 0.0;
             $grossRev = $r ? (float) $r->total_gross_revenue : 0.0;
+
+            if (!$r || ($instRev == 0 && $grossRev == 0)) {
+                $paidOrdersQuery = DB::table('orders')
+                    ->where('course_id', $c->id)
+                    ->whereIn('status', ['paid', 'completed']);
+
+                if (!empty($filters['date_from'])) {
+                    $paidOrdersQuery->whereDate('paid_at', '>=', $filters['date_from']);
+                }
+                if (!empty($filters['date_to'])) {
+                    $paidOrdersQuery->whereDate('paid_at', '<=', $filters['date_to']);
+                }
+
+                $orderGross = (float) $paidOrdersQuery->sum('amount');
+                if ($orderGross > 0) {
+                    $grossRev = $orderGross;
+                    $instRev = round($orderGross * 0.7, 2);
+                }
+            }
 
             $thumbnail = $c->thumbnail_url;
             if ($thumbnail && !str_starts_with($thumbnail, 'http://') && !str_starts_with($thumbnail, 'https://')) {

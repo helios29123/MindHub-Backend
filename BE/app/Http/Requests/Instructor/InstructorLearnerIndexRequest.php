@@ -11,20 +11,51 @@ class InstructorLearnerIndexRequest extends FormRequest
         return $this->user()?->role === 'instructor';
     }
 
+    protected function prepareForValidation(): void
+    {
+        $courseId = $this->input('courseId') ?? $this->input('course_id');
+        $status = $this->input('status');
+        $perPage = $this->input('per_page') ?? $this->input('limit');
+
+        $mergeData = [];
+
+        if ($courseId === 'all' || $courseId === '0' || $courseId === '') {
+            $mergeData['course_id'] = null;
+        } elseif ($courseId !== null && is_numeric($courseId)) {
+            $mergeData['course_id'] = (int) $courseId;
+        }
+
+        if ($status === 'all' || $status === '') {
+            $mergeData['status'] = null;
+        }
+
+        if ($perPage !== null && is_numeric($perPage)) {
+            $mergeData['per_page'] = (int) $perPage;
+        }
+
+        $this->merge($mergeData);
+    }
+
     public function rules(): array
     {
         return [
-            'course_id' => ['nullable', 'integer', 'exists:courses,id'],
-            'status' => ['nullable', 'in:active,completed,learning'],
+            'course_id' => ['nullable', 'integer'],
+            'status' => ['nullable', 'string'],
             'search' => ['nullable', 'string', 'max:255'],
-            'preset' => ['nullable', 'string', 'in:7d,30d,90d,this_month,last_month,this_year,custom'],
-            'date_from' => ['nullable', 'date_format:Y-m-d'],
-            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
-            'enrolled_from' => ['nullable', 'date'],
-            'enrolled_to' => ['nullable', 'date', 'after_or_equal:enrolled_from'],
-            'sort' => ['nullable', 'in:newest,oldest,progress_asc,progress_desc'],
+            'preset' => ['nullable', 'string'],
+            'date_from' => ['nullable', 'string'],
+            'date_to' => ['nullable', 'string'],
+            'enrolled_from' => ['nullable', 'string'],
+            'enrolled_to' => ['nullable', 'string'],
+            'sort' => ['nullable', 'string'],
             'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'minProgress' => ['nullable'],
+            'maxProgress' => ['nullable'],
+            'startDate' => ['nullable'],
+            'endDate' => ['nullable'],
+            'courseId' => ['nullable'],
         ];
     }
 }

@@ -7,13 +7,25 @@ class InstructorWithdrawalResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $bankName = $this->bank_name ?: ($this->payoutAccount->bank_name ?? 'Techcombank');
+        $accountName = $this->account_name_snapshot ?: ($this->payoutAccount->account_name ?? '');
+        $accountNumber = $this->account_number_snapshot ?: ($this->payoutAccount->account_number ?? '');
+
         return [
             'id' => (int) $this->id,
+            'code' => $this->displayCode((int) $this->id),
             'display_code' => $this->displayCode((int) $this->id),
+            'type' => $this->type,
             'amount' => (float) $this->amount,
+            'bank_name' => $bankName,
+            'account_name_snapshot' => $accountName,
+            'account_number_snapshot' => $accountNumber,
+            'account_number_masked' => $this->maskAccountNumber($accountNumber),
             'account' => [
-                'account_name_snapshot' => $this->account_name_snapshot,
-                'account_number_snapshot_masked' => $this->maskAccountNumber($this->account_number_snapshot),
+                'bank_name' => $bankName,
+                'account_name' => $accountName,
+                'account_name_snapshot' => $accountName,
+                'account_number_snapshot_masked' => $this->maskAccountNumber($accountNumber),
             ],
             'status' => $this->status,
             'status_label' => $this->statusLabel($this->status),

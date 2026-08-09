@@ -177,7 +177,30 @@ class CourseCreditService
 
             DB::table('courses')->where('id', $courseId)->update($updateData);
 
-            return DB::table('courses')->where('id', $courseId)->first();
+            $result = DB::table('courses')->where('id', $courseId)->first();
+
+            // Send Email & Notification to Instructor
+            try {
+                $courseModel = \App\Models\Course::with(['categories', 'instructor'])->find($courseId);
+                if ($courseModel && $courseModel->instructor && !empty($courseModel->instructor->email)) {
+                    \Illuminate\Support\Facades\Mail::to($courseModel->instructor->email)->send(
+                        new \App\Mail\CourseApprovedNotificationMail($courseModel->instructor, $courseModel)
+                    );
+
+                    \App\Models\Notification::create([
+                        'user_id' => $courseModel->instructor->id,
+                        'type' => 'course_approved',
+                        'title' => '🎉 Khóa học của bạn đã được duyệt',
+                        'message' => "Khóa học \"{$courseModel->title}\" đã được phê duyệt và xuất bản công khai.",
+                        'action_url' => "/courses/" . ($courseModel->slug ?: $courseModel->id),
+                        'channel' => 'database',
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed to send course approval notification to instructor: ' . $e->getMessage());
+            }
+
+            return $result;
         });
     }
 

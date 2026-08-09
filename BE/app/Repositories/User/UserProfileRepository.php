@@ -31,20 +31,26 @@ final class UserProfileRepository
             return false;
         }
 
-        $allowedUserData = array_intersect_key($data, array_flip([
-            'full_name',
-            'phone',
-        ]));
+        $fullName = $data['full_name'] ?? $data['name'] ?? null;
+        $allowedUserData = [];
+        if ($fullName !== null) {
+            $allowedUserData['full_name'] = $fullName;
+        }
+        if (array_key_exists('phone', $data)) {
+            $allowedUserData['phone'] = $data['phone'];
+        }
 
         if (! empty($allowedUserData)) {
             $user->update($allowedUserData);
         }
 
-        if (array_key_exists('bio', $data) && $user->role === User::ROLE_INSTRUCTOR) {
-            \App\Models\InstructorProfile::updateOrCreate(
-                ['user_id' => $user->id],
-                ['bio' => $data['bio']]
-            );
+        if (array_key_exists('bio', $data) && $data['bio'] !== null) {
+            if ($user->role === User::ROLE_INSTRUCTOR) {
+                \App\Models\InstructorProfile::updateOrCreate(
+                    ['user_id' => $user->id],
+                    ['bio' => $data['bio']]
+                );
+            }
         }
 
         return true;

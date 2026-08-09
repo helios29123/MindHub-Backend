@@ -243,13 +243,14 @@ class InstructorQuestionService
                     ->exists();
 
                 if (!$recent) {
+                    $courseId = $lesson->course_id ?? 1;
                     DB::table('notifications')->insert([
                         'user_id' => $comment->user_id,
                         'type' => 'question_reply',
                         'title' => 'Giảng viên đã trả lời câu hỏi của bạn',
                         'message' => 'Giảng viên đã trả lời câu hỏi trong bài học: ' . ($lesson->title ?? 'Bài học'),
                         'data' => json_encode(['question_id' => $comment->id, 'reply_id' => $reply->id]),
-                        'action_url' => '/lessons/' . $comment->lesson_id . '?question_id=' . $comment->id,
+                        'action_url' => '/learn/' . $courseId . '?question_id=' . $comment->id,
                         'channel' => 'database',
                         'created_at' => now(),
                         'updated_at' => now(),

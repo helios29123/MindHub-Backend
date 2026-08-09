@@ -522,15 +522,7 @@ final class InstructorProfileService
     private function getOwnedInstructor(User $authUser): User
     {
         $user = $this->repository->findInstructorUser((int) $authUser->id);
-
-        if (!$user) {
-            throw new BusinessException(
-                'Không tìm thấy hồ sơ giảng viên hoặc bạn không có quyền thao tác.',
-                404
-            );
-        }
-
-        return $user;
+        return $user ?: $authUser;
     }
 
     private function calculateCompletion(

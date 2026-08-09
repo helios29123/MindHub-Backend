@@ -307,9 +307,35 @@ final class InstructorCourseService
                     422,
                 );
             }
-            return $this->instructorCourseRepository->markAsPendingReview(
+            $updatedCourse = $this->instructorCourseRepository->markAsPendingReview(
                 $course,
             );
+
+            // Send Email to Admin & Create DB Notification for Admin
+            try {
+                $adminEmail = env('ADMIN_EMAIL', config('mail.admin_address', 'dominhdang3010@gmail.com'));
+                \Illuminate\Support\Facades\Mail::to($adminEmail)->send(
+                    new \App\Mail\CourseSubmittedForReviewMail($instructor, $updatedCourse)
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed to send admin course review email: ' . $e->getMessage());
+            }
+
+            try {
+                $adminUsers = User::where('role', 'admin')->get();
+                foreach ($adminUsers as $admin) {
+                    \App\Models\Notification::create([
+                        'user_id' => $admin->id,
+                        'type' => 'course_submitted',
+                        'title' => 'Yêu cầu duyệt khóa học mới',
+                        'message' => "Giảng viên {$instructor->full_name} đã gửi yêu cầu duyệt khóa học: {$updatedCourse->title}",
+                        'action_url' => '/admin/courses',
+                        'channel' => 'database',
+                    ]);
+                }
+            } catch (\Throwable $e) {}
+
+            return $updatedCourse;
         });
     }
     public function getRejectedReviewNotes(

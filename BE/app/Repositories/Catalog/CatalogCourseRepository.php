@@ -27,9 +27,14 @@ class CatalogCourseRepository
 
         if (! empty($filters['category_id'])) {
             $categoryId = (int) $filters['category_id'];
+            $categoryIds = [$categoryId];
+            $childIds = \App\Models\Category::where('parent_id', $categoryId)->pluck('id')->toArray();
+            if (! empty($childIds)) {
+                $categoryIds = array_merge($categoryIds, $childIds);
+            }
 
-            $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryId) {
-                $categoryQuery->where('categories.id', $categoryId)
+            $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryIds) {
+                $categoryQuery->whereIn('categories.id', $categoryIds)
                     ->where('categories.status', 'active')
                     ->whereNull('categories.deleted_at');
             });
@@ -37,12 +42,27 @@ class CatalogCourseRepository
 
         if (! empty($filters['category_slug'])) {
             $categorySlug = trim((string) $filters['category_slug']);
+            $catModel = \App\Models\Category::where('slug', $categorySlug)->first();
 
-            $query->whereHas('categories', function (Builder $categoryQuery) use ($categorySlug) {
-                $categoryQuery->where('categories.slug', $categorySlug)
-                    ->where('categories.status', 'active')
-                    ->whereNull('categories.deleted_at');
-            });
+            if ($catModel) {
+                $categoryIds = [$catModel->id];
+                $childIds = \App\Models\Category::where('parent_id', $catModel->id)->pluck('id')->toArray();
+                if (! empty($childIds)) {
+                    $categoryIds = array_merge($categoryIds, $childIds);
+                }
+
+                $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryIds) {
+                    $categoryQuery->whereIn('categories.id', $categoryIds)
+                        ->where('categories.status', 'active')
+                        ->whereNull('categories.deleted_at');
+                });
+            } else {
+                $query->whereHas('categories', function (Builder $categoryQuery) use ($categorySlug) {
+                    $categoryQuery->where('categories.slug', $categorySlug)
+                        ->where('categories.status', 'active')
+                        ->whereNull('categories.deleted_at');
+                });
+            }
         }
 
         if (! empty($filters['level'])) {

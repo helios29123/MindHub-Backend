@@ -42,6 +42,11 @@ final class InstructorCouponService
         $instructorId = $this->instructorId($authUser);
         $courseId = (int) ($data['course_id'] ?? 0);
         $this->ensureCourseOwnedByInstructor($courseId, $instructorId);
+        $this->assertCouponLimits(
+            $instructorId,
+            $courseId,
+            isset($data['usage_limit']) ? (int) $data['usage_limit'] : null
+        );
         $this->assertDiscountRule(
             (string) ($data['discount_type'] ?? ''),
             $data['discount_value'] ?? null
@@ -244,6 +249,37 @@ final class InstructorCouponService
     {
         return strtoupper(trim($code));
     }
+    private function assertCouponLimits(int $instructorId, int $courseId, ?int $usageLimit = null): void
+    {
+        $activeInstructorCount = Coupon::query()
+            ->where('user_id', $instructorId)
+            ->where('status', Coupon::STATUS_ACTIVE)
+            ->count();
+
+        if ($activeInstructorCount >= 20) {
+            throw new BusinessException('Bạn đã đạt giới hạn tối đa 20 mã giảm giá đang hoạt động.', 422, [
+                'code' => ['Bạn đã đạt giới hạn tối đa 20 mã giảm giá đang hoạt động.'],
+            ]);
+        }
+
+        $activeCourseCount = Coupon::query()
+            ->where('user_id', $instructorId)
+            ->where('course_id', $courseId)
+            ->where('status', Coupon::STATUS_ACTIVE)
+            ->count();
+
+        if ($activeCourseCount >= 5) {
+            throw new BusinessException('Khóa học này đã đạt giới hạn tối đa 5 mã giảm giá đang hoạt động.', 422, [
+                'course_id' => ['Khóa học này đã đạt giới hạn tối đa 5 mã giảm giá đang hoạt động.'],
+            ]);
+        }
+
+        if ($usageLimit !== null && (int) $usageLimit > 10000) {
+            throw new BusinessException('Giới hạn lượt dùng tối đa cho một mã giảm giá là 10,000 lượt.', 422, [
+                'usage_limit' => ['Giới hạn lượt dùng tối đa cho một mã giảm giá là 10,000 lượt.'],
+            ]);
+        }
+    }
     private function assertDiscountRule(string $discountType, mixed $discountValue): void
     {
         $value = (float) $discountValue;
@@ -259,7 +295,12 @@ final class InstructorCouponService
         }
         if ($discountType === Coupon::TYPE_PERCENT && $value > 100) {
             throw new BusinessException('Giá trị phần trăm giảm không hợp lệ.', 422, [
-                'discount_value' => ['Giá trị phần trăm giảm không được vượt quá 100.'],
+                'discount_value' => ['Giá trị phần trăm giảm không được vượt quá 100%.'],
+            ]);
+        }
+        if ($discountType === Coupon::TYPE_FIXED && $value > 10000000) {
+            throw new BusinessException('Mức giảm giá cố định không được vượt quá 10,000,000đ.', 422, [
+                'discount_value' => ['Mức giảm giá cố định không được vượt quá 10,000,000đ.'],
             ]);
         }
     }
@@ -268,9 +309,17 @@ final class InstructorCouponService
         if ($startAt === null || $endAt === null) {
             return;
         }
-        if (Carbon::parse($endAt)->lt(Carbon::parse($startAt))) {
+        $start = Carbon::parse($startAt);
+        $end = Carbon::parse($endAt);
+
+        if ($end->lt($start)) {
             throw new BusinessException('Ngày kết thúc không được trước ngày bắt đầu.', 422, [
                 'end_at' => ['Ngày kết thúc không được trước ngày bắt đầu.'],
+            ]);
+        }
+        if ($end->diffInDays($start) > 365) {
+            throw new BusinessException('Thời hạn hiệu lực của mã giảm giá không được vượt quá 1 năm (365 ngày).', 422, [
+                'end_at' => ['Thời hạn hiệu lực của mã giảm giá không được vượt quá 1 năm (365 ngày).'],
             ]);
         }
     }

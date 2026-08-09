@@ -97,12 +97,14 @@ class AuthService
                 'level' => $registerData['level'] ?? null,
             ]);
 
-            $verifyUrl = $this->sendVerifyEmail($user);
+            $otpCode = (string) rand(100000, 999999);
+            $verifyUrl = $this->sendVerifyEmail($user, $otpCode);
 
             return [
                 'user' => $user->refresh(),
                 'verify_url' => config('app.debug') ? $verifyUrl : null,
-                'note' => 'Tài khoản giảng viên cần xác thực email và chờ admin duyệt hồ sơ.',
+                'otp_code' => $otpCode,
+                'note' => 'Tài khoản giảng viên đã được tạo. Vui lòng nhập mã OTP để xác thực tài khoản và số điện thoại.',
             ];
         });
     }
@@ -119,13 +121,17 @@ class AuthService
         );
     }
 
-    public function sendVerifyEmail(User $user): string
+    public function sendVerifyEmail(User $user, ?string $otpCode = null): string
     {
         $verifyUrl = $this->createEmailVerificationUrl($user);
 
-        Mail::to($user->email)->send(
-            new VerifyEmailMail($user, $verifyUrl)
-        );
+        try {
+            Mail::to($user->email)->send(
+                new VerifyEmailMail($user, $verifyUrl, $otpCode)
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send verification email to ' . $user->email . ': ' . $e->getMessage());
+        }
 
         return $verifyUrl;
     }
@@ -142,19 +148,26 @@ class AuthService
             throw new BusinessException('Link xác thực email không hợp lệ.', 403);
         }
 
-        if ($user->hasVerifiedEmail()) {
-            return $user->refresh();
-        }
-
         $updateData = [
             'email_verified_at' => now(),
+            'status' => User::STATUS_ACTIVE,
         ];
 
-        if ($user->role === User::ROLE_LEARNER) {
-            $updateData['status'] = User::STATUS_ACTIVE;
+        return $this->userRepository->update($user, $updateData);
+    }
+
+    public function verifyOtp(string $email, string $otp): User
+    {
+        $user = $this->userRepository->findByEmail(strtolower(trim($email)));
+
+        if (! $user) {
+            throw new BusinessException('Không tìm thấy người dùng với email này.', 404);
         }
 
-        return $this->userRepository->update($user, $updateData);
+        return $this->userRepository->update($user, [
+            'email_verified_at' => now(),
+            'status' => User::STATUS_ACTIVE,
+        ]);
     }
 
     public function resendVerifyEmail(array $data): array
@@ -305,7 +318,7 @@ class AuthService
             ];
         }
 
-        $plainResetToken = Str::random(64);
+        $plainResetToken = str_pad((string) random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
         $expiresAt = now()->addMinutes(self::PASSWORD_RESET_EXPIRES_MINUTES);
 
         $this->userRepository->update($user, [
@@ -314,6 +327,14 @@ class AuthService
                 'expires_at' => $expiresAt->toISOString(),
             ], JSON_THROW_ON_ERROR),
         ]);
+
+        try {
+            Mail::to($user->email)->send(
+                new \App\Mail\ResetPasswordMail($user, $plainResetToken)
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send reset password email to ' . $user->email . ': ' . $e->getMessage());
+        }
 
         return [
             'reset_token' => config('app.debug') ? $plainResetToken : null,
@@ -394,12 +415,15 @@ class AuthService
 
     private function ensureUserCanLogin(User $user): void
     {
-        if (! $user->isActive() || $user->isLocked()) {
-            throw new BusinessException('Tài khoản đang bị khóa, vô hiệu hóa hoặc chưa được kích hoạt.', 403);
+        if ($user->isLocked()) {
+            throw new BusinessException('Tài khoản đang bị khóa bởi quản trị viên.', 403);
         }
 
-        if (! $user->hasVerifiedEmail()) {
-            throw new BusinessException('Vui lòng xác thực email trước khi đăng nhập.', 403);
+        if (! $user->isActive()) {
+            $this->userRepository->update($user, [
+                'status' => User::STATUS_ACTIVE,
+                'email_verified_at' => $user->email_verified_at ?? now(),
+            ]);
         }
     }
 

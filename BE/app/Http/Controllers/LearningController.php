@@ -510,4 +510,52 @@ final class LearningController extends Controller
             (int) $id,
             $request
         );
-    }}
+    }
+
+    public function getLessonNotes(Request $request, mixed $id): JsonResponse
+    {
+        $notes = $this->learningService->getLessonNotes((int) $id, $request->user());
+        return ApiResponse::success($notes, 'Lấy danh sách ghi chú thành công');
+    }
+
+    public function createLessonNote(Request $request, mixed $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'content' => 'required|string|max:1000',
+            'note_time_second' => 'nullable|integer|min:0',
+        ]);
+        $note = $this->learningService->createLessonNote((int) $id, $validated, $request->user());
+        return ApiResponse::success($note, 'Tạo ghi chú thành công', 201);
+    }
+
+    public function updateLessonNote(Request $request, mixed $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'content' => 'sometimes|required|string|max:1000',
+            'note_time_second' => 'nullable|integer|min:0',
+        ]);
+        $note = $this->learningService->updateLessonNote((int) $id, $validated, $request->user());
+        return ApiResponse::success($note, 'Cập nhật ghi chú thành công');
+    }
+
+    public function deleteLessonNote(Request $request, mixed $id): JsonResponse
+    {
+        $this->learningService->deleteLessonNote((int) $id, $request->user());
+        return ApiResponse::success(null, 'Xóa ghi chú thành công');
+    }
+
+    public function streak(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return ApiResponse::error('Vui lòng đăng nhập để xem thông tin chuỗi học tập.', 401);
+        }
+
+        $streakData = $this->learningService->getLearningStreak($user);
+
+        return ApiResponse::success(
+            $streakData,
+            'Lấy thông tin chuỗi học tập thành công.'
+        );
+    }
+}

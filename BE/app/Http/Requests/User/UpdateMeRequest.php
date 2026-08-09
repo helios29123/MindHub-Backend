@@ -21,23 +21,9 @@ final class UpdateMeRequest extends FormRequest
 
     public function rules(): array
     {
-        $unsupportedFields = array_diff(
-            array_keys($this->all()),
-            self::SUPPORTED_FIELDS
-        );
-
-        if (! empty($unsupportedFields)) {
-            throw new HttpResponseException(response()->json([
-                'success' => false,
-                'message' => 'Field không được hỗ trợ trong Sprint 1.',
-                'errors' => [
-                    'unsupported_fields' => array_values($unsupportedFields),
-                ],
-            ], 422));
-        }
-
         return [
-            'full_name' => ['sometimes', 'string', 'max:255'],
+            'full_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
             'bio' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ];

@@ -9,6 +9,11 @@ class InstructorDashboardRepository
 {
     public function getDashboard(int $instructorId, array $filters): array
     {
+        // Auto-sync any paid orders without revenue rows
+        try {
+            app(\App\Services\Payment\RevenueShareService::class)->syncMissingPaidOrderRevenues();
+        } catch (\Throwable $e) {}
+
         [$startDate, $endDate] = $this->resolveDateRange($filters);
 
         $viewsData = $this->viewsSummary($instructorId, $startDate, $endDate);
@@ -97,10 +102,12 @@ class InstructorDashboardRepository
 
     private function revenueSummary(int $instructorId, Carbon $startDate, Carbon $endDate): array
     {
+        $validStatuses = ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn'];
+
         $row = DB::table('revenues')
             ->where('instructor_id', $instructorId)
             ->whereBetween('earned_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
-            ->whereIn('status', ['available', 'withdrawn'])
+            ->whereIn('status', $validStatuses)
             ->selectRaw('
                 COALESCE(SUM(gross_amount), 0) as gross_amount_this_month,
                 COALESCE(SUM(instructor_amount), 0) as instructor_amount_this_month,
@@ -115,22 +122,46 @@ class InstructorDashboardRepository
         $prevRow = DB::table('revenues')
             ->where('instructor_id', $instructorId)
             ->whereBetween('earned_at', [$prevStartDate->startOfDay(), $prevEndDate->endOfDay()])
-            ->whereIn('status', ['available', 'withdrawn'])
+            ->whereIn('status', $validStatuses)
             ->selectRaw('COALESCE(SUM(instructor_amount), 0) as previous_period_instructor_amount')
             ->first();
 
         $totalRow = DB::table('revenues')
             ->where('instructor_id', $instructorId)
-            ->whereIn('status', ['available', 'withdrawn'])
+            ->whereIn('status', $validStatuses)
             ->selectRaw('COALESCE(SUM(instructor_amount), 0) as total_instructor_amount')
             ->first();
 
         $yearRow = DB::table('revenues')
             ->where('instructor_id', $instructorId)
             ->whereBetween('earned_at', [now()->startOfYear(), now()->endOfYear()])
-            ->whereIn('status', ['available', 'withdrawn'])
+            ->whereIn('status', $validStatuses)
             ->selectRaw('COALESCE(SUM(instructor_amount), 0) as instructor_amount_this_year')
             ->first();
+
+        // Fallback calculation from orders if revenues has no records
+        if ((float)($totalRow->total_instructor_amount ?? 0) === 0.0) {
+            $orderTotal = DB::table('orders')
+                ->join('courses', 'courses.id', '=', 'orders.course_id')
+                ->where('courses.instructor_id', $instructorId)
+                ->whereIn('orders.status', ['paid', 'completed'])
+                ->selectRaw('COALESCE(SUM(orders.amount), 0) as gross, COALESCE(SUM(orders.amount * 0.7), 0) as inst, COALESCE(SUM(orders.amount * 0.3), 0) as plat')
+                ->first();
+
+            if ($orderTotal && (float)$orderTotal->inst > 0) {
+                $totalRow = (object)['total_instructor_amount' => $orderTotal->inst];
+                if ((float)($row->instructor_amount_this_month ?? 0) === 0.0) {
+                    $row = (object)[
+                        'gross_amount_this_month' => $orderTotal->gross,
+                        'instructor_amount_this_month' => $orderTotal->inst,
+                        'platform_fee_this_month' => $orderTotal->plat,
+                    ];
+                }
+                if ((float)($yearRow->instructor_amount_this_year ?? 0) === 0.0) {
+                    $yearRow = (object)['instructor_amount_this_year' => $orderTotal->inst];
+                }
+            }
+        }
 
         $currentAmount = (float) ($row->instructor_amount_this_month ?? 0);
         $previousAmount = (float) ($prevRow->previous_period_instructor_amount ?? 0);
@@ -158,8 +189,16 @@ class InstructorDashboardRepository
     {
         $available = (float) DB::table('revenues')
             ->where('instructor_id', $instructorId)
-            ->where('status', 'available')
+            ->whereIn('status', ['pending', 'available'])
             ->sum('instructor_amount');
+
+        if ($available === 0.0) {
+            $available = (float) DB::table('orders')
+                ->join('courses', 'courses.id', '=', 'orders.course_id')
+                ->where('courses.instructor_id', $instructorId)
+                ->whereIn('orders.status', ['paid', 'completed'])
+                ->sum(DB::raw('orders.amount * 0.7'));
+        }
 
         $pending = (float) DB::table('withdraw_requests')
             ->where('user_id', $instructorId)

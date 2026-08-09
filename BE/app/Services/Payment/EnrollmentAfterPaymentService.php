@@ -35,7 +35,7 @@ class EnrollmentAfterPaymentService
             return $existingCourseEnrollment;
         }
 
-        return $this->enrollmentRepository->create([
+        $enrollment = $this->enrollmentRepository->create([
             'user_id' => $order->user_id,
             'course_id' => $order->course_id,
             'order_id' => $order->id,
@@ -43,5 +43,19 @@ class EnrollmentAfterPaymentService
             'progress_percent' => 0,
             'enrolled_at' => now(),
         ]);
+
+        try {
+            $user = \App\Models\User::find($order->user_id);
+            $course = \App\Models\Course::with('instructor')->find($order->course_id);
+
+            if ($user && $course && ! empty($user->email)) {
+                \Illuminate\Support\Facades\Mail::to($user->email)
+                    ->send(new \App\Mail\CourseWelcomeMail($user, $course, $order));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send CourseWelcomeMail in EnrollmentAfterPaymentService: ' . $e->getMessage());
+        }
+
+        return $enrollment;
     }
 }

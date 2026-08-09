@@ -22,8 +22,13 @@ Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(functi
     Route::get('/me/dynamic-alerts', [LearningController::class, 'dynamicAlerts']);
     Route::post('/learn/assets/{assetId}/signed-url', [LearningController::class, 'signedAssetUrl'])->where('assetId', '[0-9]+');
     Route::get('/learn/lessons/{lessonId}/watermark-info', [LearningController::class, 'watermarkInfo'])->where('lessonId', '[0-9]+');
+    Route::get('/learn/lessons/{id}/notes', [LearningController::class, 'getLessonNotes'])->whereNumber('id');
+    Route::post('/learn/lessons/{id}/notes', [LearningController::class, 'createLessonNote'])->whereNumber('id');
+    Route::put('/learn/notes/{id}', [LearningController::class, 'updateLessonNote'])->whereNumber('id');
+    Route::delete('/learn/notes/{id}', [LearningController::class, 'deleteLessonNote'])->whereNumber('id');
 });
-Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function () {
+Route::middleware(['auth.session', 'active.user'])->group(function () {
+    Route::get('/me/streak', [LearningController::class, 'streak']);
     Route::get('/me/learning-dashboard', [LearningController::class, 'dashboard']);
     Route::get('/me/activity-calendar', [LearningController::class, 'activityCalendar']);
 });

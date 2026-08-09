@@ -17,7 +17,7 @@ final class InstructorCouponStoreRequest extends FormRequest
             'used_count' => ['prohibited'],
             'deleted_at' => ['prohibited'],
             'course_id' => ['required', 'integer', 'exists:courses,id'],
-            'code' => ['required', 'string', 'max:100', Rule::unique('coupons', 'code')],
+            'code' => ['required', 'string', 'min:3', 'max:50', 'alpha_dash', Rule::unique('coupons', 'code')],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'discount_type' => ['required', 'in:percent,fixed'],
@@ -27,12 +27,15 @@ final class InstructorCouponStoreRequest extends FormRequest
                 'min:1',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     if ($this->input('discount_type') === Coupon::TYPE_PERCENT && (float) $value > 100) {
-                        $fail('Giá trị phần trăm giảm không được vượt quá 100.');
+                        $fail('Giá trị phần trăm giảm không được vượt quá 100%.');
+                    }
+                    if ($this->input('discount_type') === Coupon::TYPE_FIXED && (float) $value > 10000000) {
+                        $fail('Mức giảm giá cố định không được vượt quá 10,000,000đ.');
                     }
                 },
             ],
             'max_order_amount' => ['nullable', 'numeric', 'min:0'],
-            'usage_limit' => ['nullable', 'integer', 'min:1'],
+            'usage_limit' => ['nullable', 'integer', 'min:1', 'max:10000'],
             'start_at' => ['nullable', 'date'],
             'end_at' => ['nullable', 'date'],
             'status' => ['nullable', 'in:active,inactive'],

@@ -125,6 +125,13 @@ class InstructorWithdrawalRepository
 
         $query = WithdrawRequest::where('user_id', $instructorId);
 
+        if (! empty($filters['type']) && $filters['type'] !== 'all') {
+            $type = $filters['type'];
+            if ($type === 'automatic') $type = WithdrawRequest::TYPE_AUTOMATIC_PAYOUT;
+            if ($type === 'early') $type = WithdrawRequest::TYPE_EARLY_WITHDRAWAL;
+            $query->where('type', $type);
+        }
+
         if (! empty($filters['status']) && $filters['status'] !== 'all') {
             $query->where('status', $filters['status']);
         }

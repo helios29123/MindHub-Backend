@@ -10,7 +10,8 @@ final class InstructorWithdrawalIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['nullable', 'in:all,pending,approved,rejected,paid,cancelled'],
+            'type' => ['nullable', 'string', 'in:all,automatic_payout,early_withdrawal,automatic,early'],
+            'status' => ['nullable', 'string'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'page' => ['nullable', 'integer', 'min:1'],

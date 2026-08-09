@@ -489,6 +489,32 @@ class PaymentService
         }
 
         DB::table('enrollments')->insert($insertData);
+
+        try {
+            $user = \App\Models\User::find($order->user_id);
+            $course = \App\Models\Course::with('instructor')->find($order->course_id);
+
+            if ($user && $course) {
+                // Create in-app Notification record
+                \App\Models\Notification::create([
+                    'user_id' => $user->id,
+                    'type' => 'payment',
+                    'channel' => 'course',
+                    'title' => '🎉 Thanh toán thành công',
+                    'message' => "Chào mừng bạn đến với khóa học \"{$course->title}\". Chúng tôi đã mở khóa toàn bộ bài học và gửi email hướng dẫn học tập cho bạn.",
+                    'action_url' => "/courses",
+                    'read_at' => null,
+                ]);
+
+                // Send Welcome Mail
+                if (! empty($user->email)) {
+                    \Illuminate\Support\Facades\Mail::to($user->email)
+                        ->send(new \App\Mail\CourseWelcomeMail($user, $course, $order));
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to process purchase notification or email: ' . $e->getMessage());
+        }
     }
 
     private function createRevenueAfterCourseOrderPaid(object $order): void
