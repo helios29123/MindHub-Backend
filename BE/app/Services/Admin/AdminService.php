@@ -484,6 +484,7 @@ class AdminService
         $totalUsers = (clone $baseQuery)->count();
         $totalLearners = (clone $baseQuery)->where('role', 'learner')->count();
         $totalInstructors = (clone $baseQuery)->where('role', 'instructor')->count();
+        $totalAdmins = (clone $baseQuery)->where('role', 'admin')->count();
         $activeUsers = (clone $baseQuery)->where('status', 'active')->where('locked', false)->count();
         $inactiveUsers = (clone $baseQuery)->where('status', 'inactive')->where('locked', false)->count();
         $lockedUsers = (clone $baseQuery)->where(function ($q) {
@@ -511,6 +512,7 @@ class AdminService
             'total_users' => $totalUsers,
             'total_learners' => $totalLearners,
             'total_instructors' => $totalInstructors,
+            'total_admins' => $totalAdmins,
             'active_users' => $activeUsers,
             'inactive_users' => $inactiveUsers,
             'locked_users' => $lockedUsers,
