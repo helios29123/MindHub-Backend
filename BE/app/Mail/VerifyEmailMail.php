@@ -26,12 +26,22 @@ class VerifyEmailMail extends Mailable
         $otpDisplay = $this->otpCode ? e($this->otpCode) : null;
         $phoneDisplay = $this->user->phone ? e($this->user->phone) : null;
 
+        $logoFile = base_path('mindhub.jpg');
+        if (!file_exists($logoFile)) {
+            $logoFile = public_path('images/mindhub-logo.jpg');
+        }
+        $cidName = 'mindhub-logo';
+
         $otpBlock = $otpDisplay ? "
-            <div style='background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; text-align: center; margin: 20px 0;'>
-                <p style='margin: 0; font-size: 13px; color: #166534; font-weight: 600;'>MÃ OTP XÁC THỰC TÀI KHOẢN & SỐ ĐIỆN THOẠI" . ($phoneDisplay ? " ({$phoneDisplay})" : "") . ":</p>
-                <div style='font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #059669; margin-top: 6px;'>{$otpDisplay}</div>
+            <div style='background: #f0fdf4; border: 2px dashed #059669; border-radius: 14px; padding: 20px; text-align: center; margin: 20px 0;'>
+                <p style='margin: 0; font-size: 13px; color: #166534; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;'>MÃ OTP XÁC THỰC TÀI KHOẢN" . ($phoneDisplay ? " & SỐ ĐIỆN THOẠI ({$phoneDisplay})" : "") . ":</p>
+                <div style='font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #059669; margin-top: 8px;'>{$otpDisplay}</div>
             </div>
         " : "";
+
+        $instructionText = $otpDisplay
+            ? "Vui lòng nhập mã OTP <strong>{$otpDisplay}</strong> ở trên hoặc bấm nút bên dưới để xác thực tài khoản của bạn:"
+            : "Vui lòng bấm nút bên dưới để xác thực địa chỉ email của bạn:";
 
         $html = "
         <!DOCTYPE html>
@@ -42,7 +52,7 @@ class VerifyEmailMail extends Mailable
                 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #1e293b; }
                 .container { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
                 .header { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
-                .logo { font-size: 24px; font-weight: 900; color: #0066FF; letter-spacing: -0.5px; }
+                .logo-img { height: 68px; max-width: 300px; object-fit: contain; margin: 0 auto 8px auto; display: block; }
                 .content { padding: 24px 0; font-size: 15px; line-height: 1.6; }
                 .btn-wrapper { text-align: center; margin: 28px 0; }
                 .btn { display: inline-block; background-color: #0066FF; color: #ffffff !important; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 15px; box-shadow: 0 4px 10px rgba(0,102,255,0.25); }
@@ -53,13 +63,13 @@ class VerifyEmailMail extends Mailable
         <body>
             <div class='container'>
                 <div class='header'>
-                    <div class='logo'>MindHub</div>
+                    <img src='cid:{$cidName}' alt='MindHub Logo' class='logo-img' />
                 </div>
                 <div class='content'>
                     <h2>Xin chào <strong>{$name}</strong>,</h2>
                     <p>Cảm ơn bạn đã đăng ký tài khoản tại hệ thống học trực tuyến <strong>MindHub</strong>.</p>
                     {$otpBlock}
-                    <p>Vui lòng nhập mã OTP ở trên hoặc bấm nút bên dưới để xác thực địa chỉ email và số điện thoại của bạn:</p>
+                    <p>{$instructionText}</p>
                     <div class='btn-wrapper'>
                         <a href='{$url}' class='btn' target='_blank'>Xác thực tài khoản ngay</a>
                     </div>
@@ -76,7 +86,12 @@ class VerifyEmailMail extends Mailable
         ";
 
         return $this
-            ->subject('[MindHub] Mã OTP xác thực tài khoản & Số điện thoại Giảng viên')
-            ->html($html);
+            ->subject('[MindHub] Mã OTP & Link xác thực tài khoản MindHub')
+            ->html($html)
+            ->withSymfonyMessage(function (\Symfony\Component\Mime\Email $message) use ($logoFile, $cidName) {
+                if (file_exists($logoFile)) {
+                    $message->embedFromPath($logoFile, $cidName);
+                }
+            });
     }
 }
