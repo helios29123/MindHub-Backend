@@ -77,9 +77,9 @@ class PaymentService
                 throw new BusinessException('Số tiền thanh toán không hợp lệ.', 422);
             }
 
-            $bankName = env('SEPAY_BANK_NAME', 'MBBank');
-            $accountNumber = env('SEPAY_ACC_NUMBER', '0987654321');
-            $accountName = env('SEPAY_ACC_NAME', 'MINDHUB E-LEARNING');
+            $bankName = config('sepay.bank_code', 'MBBank');
+            $accountNumber = config('sepay.bank_account', '0987654321');
+            $accountName = config('sepay.account_name', 'MINDHUB E-LEARNING');
             $transferContent = $order->order_code ?? ('MH' . $order->id);
 
             DB::table('orders')

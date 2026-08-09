@@ -3,6 +3,7 @@
 use App\Http\Controllers\CoursePublicController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/courses', [CoursePublicController::class, 'index']);
 Route::get('/courses/ai-prompt', [CoursePublicController::class, 'aiPrompt']);
 Route::post('/courses/ai-search', [CoursePublicController::class, 'aiSearch']);
 Route::get('/courses/{slug}', [CoursePublicController::class, 'show']);

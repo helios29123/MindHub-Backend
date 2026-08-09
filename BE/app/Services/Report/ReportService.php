@@ -4,12 +4,50 @@ namespace App\Services\Report;
 
 use App\Models\Course;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ReportService
 {
     public function getTopCoursesReport(array $filters)
     {
-        $query = Course::query()
+        $hasDateFilter = !empty($filters['date_from']) || !empty($filters['date_to']) || !empty($filters['month']) || !empty($filters['year']);
+
+        $eMaxQuery = \Illuminate\Support\Facades\DB::table('enrollments')
+            ->join('courses', 'courses.id', '=', 'enrollments.course_id')
+            ->whereIn('enrollments.status', ['active', 'completed'])
+            ->selectRaw('COUNT(enrollments.id) as count')
+            ->groupBy('courses.id')
+            ->orderByDesc('count');
+
+        if (!empty($filters['date_from'])) {
+            $eMaxQuery->whereDate('enrollments.enrolled_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $eMaxQuery->whereDate('enrollments.enrolled_at', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['month'])) {
+            $eMaxQuery->whereMonth('enrollments.enrolled_at', $filters['month']);
+        }
+        if (!empty($filters['year'])) {
+            $eMaxQuery->whereYear('enrollments.enrolled_at', $filters['year']);
+        }
+
+        $eMax = (float) $eMaxQuery->value('count');
+
+        if ($eMax == 0) {
+            $paginator = new \Illuminate\Pagination\LengthAwarePaginator([], 0, $filters['per_page'] ?? 15, 1);
+            return [
+                'paginator' => $paginator,
+                'summary' => [
+                    'total_courses' => 0,
+                    'total_sold' => 0,
+                    'total_revenue' => 0,
+                    'total_completed' => 0,
+                ],
+            ];
+        }
+
+        $query = \App\Models\Course::query()
             ->select('courses.id', 'courses.title', 'courses.slug', 'courses.status', 'courses.price', 'courses.sale_price', 'courses.instructor_id')
             ->with(['instructor:id,full_name,email,role,status']);
 
@@ -17,8 +55,7 @@ class ReportService
             $query->where('courses.id', $filters['course_id']);
         }
 
-        // Base query for orders
-        $orderQuery = DB::table('orders')
+        $orderQuery = \Illuminate\Support\Facades\DB::table('orders')
             ->select('course_id')
             ->selectRaw('COUNT(id) as sold_count')
             ->selectRaw('SUM(amount) as total_revenue')
@@ -40,12 +77,45 @@ class ReportService
             $orderQuery->whereYear('paid_at', $filters['year']);
         }
 
-        // Base query for enrollments
-        $enrollmentQuery = DB::table('enrollments')
+        $enrollmentQuery = \Illuminate\Support\Facades\DB::table('enrollments')
             ->select('course_id')
             ->selectRaw('COUNT(id) as enrollment_count')
             ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count")
+            ->whereIn('status', ['active', 'completed'])
             ->groupBy('course_id');
+
+        if (!empty($filters['date_from'])) {
+            $enrollmentQuery->whereDate('enrolled_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $enrollmentQuery->whereDate('enrolled_at', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['month'])) {
+            $enrollmentQuery->whereMonth('enrolled_at', $filters['month']);
+        }
+        if (!empty($filters['year'])) {
+            $enrollmentQuery->whereYear('enrolled_at', $filters['year']);
+        }
+
+        $ratingQuery = \Illuminate\Support\Facades\DB::table('course_reviews')
+            ->join('orders', 'orders.id', '=', 'course_reviews.order_id')
+            ->select('orders.course_id')
+            ->selectRaw('AVG(course_reviews.rating) as average_rating')
+            ->whereNull('course_reviews.deleted_at')
+            ->groupBy('orders.course_id');
+
+        if (!empty($filters['date_from'])) {
+            $ratingQuery->whereDate('course_reviews.created_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $ratingQuery->whereDate('course_reviews.created_at', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['month'])) {
+            $ratingQuery->whereMonth('course_reviews.created_at', $filters['month']);
+        }
+        if (!empty($filters['year'])) {
+            $ratingQuery->whereYear('course_reviews.created_at', $filters['year']);
+        }
 
         $query->leftJoinSub($orderQuery, 'o', function ($join) {
             $join->on('courses.id', '=', 'o.course_id');
@@ -55,59 +125,89 @@ class ReportService
             $join->on('courses.id', '=', 'e.course_id');
         });
 
+        $query->leftJoinSub($ratingQuery, 'r', function ($join) {
+            $join->on('courses.id', '=', 'r.course_id');
+        });
+
         $query->addSelect([
-            DB::raw('COALESCE(o.sold_count, 0) as sold_count'),
-            DB::raw('COALESCE(o.total_revenue, 0) as total_revenue'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(o.sold_count, 0) as sold_count'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(o.total_revenue, 0) as total_revenue'),
             'o.last_paid_at',
-            DB::raw('COALESCE(e.enrollment_count, 0) as enrollment_count'),
-            DB::raw('COALESCE(e.completed_count, 0) as completed_count'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(e.enrollment_count, 0) as enrollment_count'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(e.completed_count, 0) as completed_count'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(r.average_rating, 0) as average_rating'),
         ]);
 
-        $sortBy = $filters['sort_by'] ?? 'sold_count';
+        $eMaxLiteral = (float) $eMax;
+        $query->selectRaw("
+            (0.4 * (COALESCE(e.enrollment_count, 0) / {$eMaxLiteral})) + 
+            (0.4 * (CASE WHEN COALESCE(e.enrollment_count, 0) > 0 THEN COALESCE(e.completed_count, 0) / e.enrollment_count ELSE 0 END)) + 
+            (0.2 * (COALESCE(r.average_rating, 0) / 5)) as trending_score
+        ");
+
+        $sortBy = $filters['sort_by'] ?? 'trending_score';
         $sortDirection = $filters['sort_direction'] ?? 'desc';
+
+        if ($hasDateFilter) {
+            $query->having('trending_score', '>', 0);
+        } else {
+            $query->whereRaw('COALESCE(e.enrollment_count, 0) >= 10');
+            $query->having('trending_score', '>', 0);
+        }
 
         if ($sortBy === 'completion_rate') {
             $query->orderByRaw('CASE WHEN COALESCE(e.enrollment_count, 0) > 0 THEN (COALESCE(e.completed_count, 0) * 100.0 / e.enrollment_count) ELSE 0 END ' . $sortDirection);
+        } else if ($sortBy === 'trending_score') {
+            $query->orderBy('trending_score', $sortDirection);
         } else {
             $query->orderBy($sortBy, $sortDirection);
         }
-        
-        // Also secondary sort by course ID to keep deterministic
+
         $query->orderBy('courses.id', 'desc');
 
         $perPage = $filters['per_page'] ?? 15;
         $paginator = $query->paginate($perPage);
 
-        // Calculate summary
-        // Summary might need to be total of the filtered results, not just the page
-        // But the query is paginated. So let's aggregate the paginator. Or we do a separate query.
         $summary = [
             'total_courses' => $paginator->total(),
-            'total_sold' => 0,
+            'total_sold'    => 0,
             'total_revenue' => 0,
             'total_completed' => 0,
         ];
-        
-        // To avoid an expensive secondary query, we could just calculate total sum in a single query without pagination
-        // Or we can just calculate the sums of the current page, or full total?
-        // Usually report summaries expect full total. Let's do a fast sum query on the base query without pagination.
-        $summaryQuery = clone $query;
-        // remove orders and selects for the summary
-        $summaryQuery->getQuery()->orders = null;
-        $summaryQuery->getQuery()->groups = null;
-        
-        // Since we already left joined, we can just SUM on the subqueries
-        $totals = DB::query()->fromSub($summaryQuery, 't')
-            ->selectRaw('SUM(sold_count) as total_sold')
-            ->selectRaw('SUM(total_revenue) as total_revenue')
-            ->selectRaw('SUM(completed_count) as total_completed')
-            ->first();
 
-        if ($totals) {
-            $summary['total_sold'] = (int) $totals->total_sold;
-            $summary['total_revenue'] = (float) $totals->total_revenue;
-            $summary['total_completed'] = (int) $totals->total_completed;
+        // Build a fresh summary query to avoid PDO binding issues when cloning
+        // a query that contains leftJoinSub subqueries with their own bindings.
+        $summaryOrderQuery = \Illuminate\Support\Facades\DB::table('orders')
+            ->where('status', 'paid')
+            ->where('payment_status', 'paid');
+
+        $summaryEnrollmentQuery = \Illuminate\Support\Facades\DB::table('enrollments')
+            ->whereIn('status', ['active', 'completed']);
+
+        if (!empty($filters['date_from'])) {
+            $summaryOrderQuery->whereDate('paid_at', '>=', $filters['date_from']);
+            $summaryEnrollmentQuery->whereDate('enrolled_at', '>=', $filters['date_from']);
         }
+        if (!empty($filters['date_to'])) {
+            $summaryOrderQuery->whereDate('paid_at', '<=', $filters['date_to']);
+            $summaryEnrollmentQuery->whereDate('enrolled_at', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['month'])) {
+            $summaryOrderQuery->whereMonth('paid_at', $filters['month']);
+            $summaryEnrollmentQuery->whereMonth('enrolled_at', $filters['month']);
+        }
+        if (!empty($filters['year'])) {
+            $summaryOrderQuery->whereYear('paid_at', $filters['year']);
+            $summaryEnrollmentQuery->whereYear('enrolled_at', $filters['year']);
+        }
+        if (!empty($filters['course_id'])) {
+            $summaryOrderQuery->where('course_id', $filters['course_id']);
+            $summaryEnrollmentQuery->where('course_id', $filters['course_id']);
+        }
+
+        $summary['total_sold']    = (int)   $summaryOrderQuery->count();
+        $summary['total_revenue'] = (float) $summaryOrderQuery->sum('amount');
+        $summary['total_completed'] = (int) $summaryEnrollmentQuery->where('status', 'completed')->count();
 
         return [
             'paginator' => $paginator,
@@ -117,17 +217,48 @@ class ReportService
 
     public function getTopInstructorsReport(array $filters)
     {
+        $hasDateFilter = !empty($filters['date_from']) || !empty($filters['date_to']) || !empty($filters['month']) || !empty($filters['year']);
+
+        $enrollmentPeriodQuery = \Illuminate\Support\Facades\DB::table('enrollments')
+            ->join('courses', 'courses.id', '=', 'enrollments.course_id')
+            ->whereIn('enrollments.status', ['active', 'completed'])
+            ->selectRaw('COUNT(enrollments.id) as count')
+            ->groupBy('courses.instructor_id')
+            ->orderByDesc('count');
+
+        if (!empty($filters['date_from'])) {
+            $enrollmentPeriodQuery->whereDate('enrollments.enrolled_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $enrollmentPeriodQuery->whereDate('enrollments.enrolled_at', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['month'])) {
+            $enrollmentPeriodQuery->whereMonth('enrollments.enrolled_at', $filters['month']);
+        }
+        if (!empty($filters['year'])) {
+            $enrollmentPeriodQuery->whereYear('enrollments.enrolled_at', $filters['year']);
+        }
+
+        $teMax = (float) $enrollmentPeriodQuery->value('count');
+
+        if ($teMax == 0) {
+            $paginator = new \Illuminate\Pagination\LengthAwarePaginator([], 0, $filters['per_page'] ?? 15, 1);
+            return [
+                'paginator' => $paginator,
+            ];
+        }
+
         $query = \App\Models\User::query()
             ->select('users.id', 'users.full_name', 'users.email', 'users.role', 'users.status')
             ->where('users.role', 'instructor');
 
         if (!empty($filters['course_id'])) {
-            $query->whereHas('courses', function($q) use ($filters) {
+            $query->whereHas('courses', function ($q) use ($filters) {
                 $q->where('id', $filters['course_id']);
             });
         }
 
-        $courseQuery = DB::table('courses')
+        $courseQuery = \Illuminate\Support\Facades\DB::table('courses')
             ->select('instructor_id')
             ->selectRaw('COUNT(id) as total_courses')
             ->selectRaw("SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) as published_courses")
@@ -138,14 +269,14 @@ class ReportService
             $courseQuery->where('id', $filters['course_id']);
         }
 
-        $revenueQuery = DB::table('orders')
+        $revenueQuery = \Illuminate\Support\Facades\DB::table('orders')
             ->join('courses', 'orders.course_id', '=', 'courses.id')
             ->leftJoin('revenues', 'orders.id', '=', 'revenues.order_id')
             ->select('courses.instructor_id')
             ->selectRaw('COUNT(orders.id) as total_sold')
             ->selectRaw('SUM(orders.amount) as total_revenue')
-            ->selectRaw('SUM(COALESCE(revenues.instructor_amount, orders.amount * 0.7)) as instructor_amount')
-            ->selectRaw('SUM(COALESCE(revenues.platform_fee_amount, orders.amount * 0.3)) as platform_fee_amount')
+            ->selectRaw('SUM(COALESCE(revenues.instructor_amount, orders.amount * 0.85)) as instructor_amount')
+            ->selectRaw('SUM(COALESCE(revenues.platform_fee_amount, orders.amount * 0.15)) as platform_fee_amount')
             ->selectRaw('MAX(orders.paid_at) as last_activity_at')
             ->where('orders.status', 'paid')
             ->where('orders.payment_status', 'paid')
@@ -167,15 +298,28 @@ class ReportService
             $revenueQuery->whereYear('orders.paid_at', $filters['year']);
         }
 
-        $enrollmentQuery = DB::table('enrollments')
+        $enrollmentQuery = \Illuminate\Support\Facades\DB::table('enrollments')
             ->join('courses', 'enrollments.course_id', '=', 'courses.id')
             ->select('courses.instructor_id')
             ->selectRaw('COUNT(enrollments.id) as total_enrollments')
             ->selectRaw("SUM(CASE WHEN enrollments.status = 'completed' THEN 1 ELSE 0 END) as total_completed")
+            ->whereIn('enrollments.status', ['active', 'completed'])
             ->groupBy('courses.instructor_id');
 
         if (!empty($filters['course_id'])) {
             $enrollmentQuery->where('enrollments.course_id', $filters['course_id']);
+        }
+        if (!empty($filters['date_from'])) {
+            $enrollmentQuery->whereDate('enrollments.enrolled_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $enrollmentQuery->whereDate('enrollments.enrolled_at', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['month'])) {
+            $enrollmentQuery->whereMonth('enrollments.enrolled_at', $filters['month']);
+        }
+        if (!empty($filters['year'])) {
+            $enrollmentQuery->whereYear('enrollments.enrolled_at', $filters['year']);
         }
 
         $query->leftJoinSub($courseQuery, 'c', function ($join) {
@@ -191,26 +335,35 @@ class ReportService
         });
 
         $query->addSelect([
-            DB::raw('COALESCE(c.total_courses, 0) as total_courses'),
-            DB::raw('COALESCE(c.published_courses, 0) as published_courses'),
-            DB::raw('COALESCE(r.total_sold, 0) as total_sold'),
-            DB::raw('COALESCE(r.total_revenue, 0) as total_revenue'),
-            DB::raw('COALESCE(r.instructor_amount, 0) as instructor_amount'),
-            DB::raw('COALESCE(r.platform_fee_amount, 0) as platform_fee_amount'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(c.total_courses, 0) as total_courses'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(c.published_courses, 0) as published_courses'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(r.total_sold, 0) as total_sold'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(r.total_revenue, 0) as total_revenue'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(r.instructor_amount, 0) as instructor_amount'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(r.platform_fee_amount, 0) as platform_fee_amount'),
             'r.last_activity_at',
-            DB::raw('COALESCE(e.total_enrollments, 0) as total_enrollments'),
-            DB::raw('COALESCE(e.total_completed, 0) as total_completed'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(e.total_enrollments, 0) as total_enrollments'),
+            \Illuminate\Support\Facades\DB::raw('COALESCE(e.total_completed, 0) as total_completed'),
         ]);
 
-        $sortBy = $filters['sort_by'] ?? 'total_revenue';
+        $query->selectRaw("
+            (0.6 * (COALESCE(e.total_enrollments, 0) / ?)) + 
+            (0.4 * (CASE WHEN COALESCE(e.total_enrollments, 0) > 0 THEN COALESCE(e.total_completed, 0) / e.total_enrollments ELSE 0 END)) as trending_score
+        ", [$teMax]);
+
+        $sortBy = $filters['sort_by'] ?? 'trending_score';
         $sortDirection = $filters['sort_direction'] ?? 'desc';
+
+        $query->having('trending_score', '>', 0);
 
         if ($sortBy === 'completion_rate') {
             $query->orderByRaw('CASE WHEN COALESCE(e.total_enrollments, 0) > 0 THEN (COALESCE(e.total_completed, 0) * 100.0 / e.total_enrollments) ELSE 0 END ' . $sortDirection);
+        } else if ($sortBy === 'trending_score') {
+            $query->orderBy('trending_score', $sortDirection);
         } else {
             $query->orderBy($sortBy, $sortDirection);
         }
-        
+
         $query->orderBy('users.id', 'desc');
 
         $perPage = $filters['per_page'] ?? 15;
@@ -220,7 +373,6 @@ class ReportService
             'paginator' => $paginator,
         ];
     }
-
     public function getInactiveLearnersReport(int $instructorId, array $filters)
     {
         $lessonProgressQuery = DB::table('lesson_progress')
@@ -234,7 +386,7 @@ class ReportService
             ->join('courses', 'enrollments.course_id', '=', 'courses.id')
             ->leftJoinSub($lessonProgressQuery, 'lp', function ($join) {
                 $join->on('enrollments.user_id', '=', 'lp.user_id')
-                     ->on('enrollments.course_id', '=', 'lp.course_id');
+                    ->on('enrollments.course_id', '=', 'lp.course_id');
             })
             ->select(
                 'users.id as learner_id',
@@ -254,9 +406,9 @@ class ReportService
             ->whereNull('courses.deleted_at');
 
         // Base condition for "bỏ dở": not completed
-        $query->where(function($q) {
+        $query->where(function ($q) {
             $q->where('enrollments.status', '!=', 'completed')
-              ->orWhereNull('enrollments.completed_at');
+                ->orWhereNull('enrollments.completed_at');
         });
 
         // Filter inactive_days
@@ -265,7 +417,7 @@ class ReportService
 
         $query->where(function ($q) use ($cutoffDate) {
             $q->where(DB::raw('COALESCE(lp.max_lesson_accessed_at, enrollments.last_accessed_at, enrollments.enrolled_at, enrollments.created_at)'), '<=', $cutoffDate)
-              ->orWhereNull(DB::raw('COALESCE(lp.max_lesson_accessed_at, enrollments.last_accessed_at, enrollments.enrolled_at, enrollments.created_at)'));
+                ->orWhereNull(DB::raw('COALESCE(lp.max_lesson_accessed_at, enrollments.last_accessed_at, enrollments.enrolled_at, enrollments.created_at)'));
         });
 
         if (!empty($filters['course_id'])) {
@@ -297,7 +449,7 @@ class ReportService
         } else {
             $query->orderBy($sortBy, $sortDirection);
         }
-        
+
         $query->orderBy('enrollments.id', 'desc');
 
         $perPage = $filters['per_page'] ?? 15;
@@ -356,25 +508,25 @@ class ReportService
         if ($courseId) $paidOrderQuery->where('course_id', $courseId);
 
         $paidOrders = (clone $paidOrderQuery)->count();
-        
+
         // Revenue
         $revenueQuery = DB::table('orders')
             ->leftJoin('revenues', 'orders.id', '=', 'revenues.order_id')
             ->where('orders.status', 'paid')
             ->where('orders.payment_status', 'paid');
-            
+
         $applyDateFilter($revenueQuery, 'orders.paid_at');
         if ($courseId) $revenueQuery->where('orders.course_id', $courseId);
-        
+
         $grossAmount = (clone $revenueQuery)->sum('orders.amount');
-        $instructorAmount = (clone $revenueQuery)->sum(DB::raw('COALESCE(revenues.instructor_amount, orders.amount * 0.7)'));
-        $platformFeeAmount = (clone $revenueQuery)->sum(DB::raw('COALESCE(revenues.platform_fee_amount, orders.amount * 0.3)'));
+        $instructorAmount = (clone $revenueQuery)->sum(DB::raw('COALESCE(revenues.instructor_amount, orders.amount * 0.85)'));
+        $platformFeeAmount = (clone $revenueQuery)->sum(DB::raw('COALESCE(revenues.platform_fee_amount, orders.amount * 0.15)'));
         $totalRevenue = $grossAmount;
 
         // Enrollments
         $enrollmentQuery = DB::table('enrollments');
         $applyDateFilter($enrollmentQuery, 'created_at'); // or enrolled_at if it exists, assume created_at works if enrolled_at is missing, actually ERD has created_at
-        if (\Schema::hasColumn('enrollments', 'enrolled_at')) {
+        if (Schema::hasColumn('enrollments', 'enrolled_at')) {
             // Apply on enrolled_at instead
             $enrollmentQuery = DB::table('enrollments');
             $applyDateFilter($enrollmentQuery, 'enrolled_at');
@@ -408,11 +560,11 @@ class ReportService
         // Withdrawals statistics
         $withdrawalQuery = DB::table('withdraw_requests');
         $applyDateFilter($withdrawalQuery, 'created_at');
-        
+
         $pendingWithdrawRequests = (clone $withdrawalQuery)->where('status', 'pending')->get();
         $approvedWithdrawRequests = (clone $withdrawalQuery)->where('status', 'approved')->get();
         $paidWithdrawRequests = (clone $withdrawalQuery)->where('status', 'paid')->get();
-        
+
         $pendingWithdrawCount = $pendingWithdrawRequests->count();
         $approvedWithdrawCount = $approvedWithdrawRequests->count();
         $pendingWithdrawAmount = $pendingWithdrawRequests->sum('amount');
@@ -421,21 +573,21 @@ class ReportService
 
         // Action required backlog
         $pendingCourseReviews = DB::table('courses')->whereNull('deleted_at')->where('status', 'pending_review')->count();
-        
+
         $pendingInstructorUpgrades = DB::table('payout_accounts')
             ->join('users', 'payout_accounts.user_id', '=', 'users.id')
             ->where('payout_accounts.status', 'pending_verification')
             ->where('users.role', 'learner')
             ->whereNull('payout_accounts.deleted_at')
             ->count();
-            
+
         $pendingPayoutAccounts = DB::table('payout_accounts')
             ->join('users', 'payout_accounts.user_id', '=', 'users.id')
             ->where('payout_accounts.status', 'pending_verification')
             ->where('users.role', 'instructor')
             ->whereNull('payout_accounts.deleted_at')
             ->count();
-            
+
         $pendingWithdrawals = DB::table('withdraw_requests')->where('status', 'pending')->count();
 
         return [
@@ -499,7 +651,7 @@ class ReportService
         $courseId = $filters['course_id'] ?? null;
         $instructorId = $filters['instructor_id'] ?? null;
         $groupBy = $filters['group_by'] ?? 'day';
-        
+
         $sortBy = $filters['sort_by'] ?? 'date';
         $sortDirection = strtolower($filters['sort_direction'] ?? 'asc');
 
@@ -508,7 +660,7 @@ class ReportService
             ->leftJoin('revenues', 'orders.id', '=', 'revenues.order_id')
             ->where('orders.status', 'paid')
             ->where('orders.payment_status', 'paid');
-            
+
         $dateColumn = 'orders.paid_at';
 
         // Apply filters
@@ -523,8 +675,8 @@ class ReportService
         $summaryQuery = clone $query;
         $summary = [
             'total_gross_amount' => (float) $summaryQuery->sum('orders.amount'),
-            'total_instructor_amount' => (float) $summaryQuery->sum(DB::raw('COALESCE(revenues.instructor_amount, orders.amount * 0.7)')),
-            'total_platform_fee_amount' => (float) $summaryQuery->sum(DB::raw('COALESCE(revenues.platform_fee_amount, orders.amount * 0.3)')),
+            'total_instructor_amount' => (float) $summaryQuery->sum(DB::raw('COALESCE(revenues.instructor_amount, orders.amount * 0.85)')),
+            'total_platform_fee_amount' => (float) $summaryQuery->sum(DB::raw('COALESCE(revenues.platform_fee_amount, orders.amount * 0.15)')),
             'order_count' => $summaryQuery->count('orders.id'),
             'course_count' => $summaryQuery->distinct()->count('orders.course_id'),
             'instructor_count' => $summaryQuery->distinct()->count('courses.instructor_id'),
@@ -543,11 +695,11 @@ class ReportService
         $query->selectRaw("$dateFormat as period");
 
         $query->selectRaw('SUM(orders.amount) as gross_amount')
-              ->selectRaw('SUM(COALESCE(revenues.instructor_amount, orders.amount * 0.7)) as instructor_amount')
-              ->selectRaw('SUM(COALESCE(revenues.platform_fee_amount, orders.amount * 0.3)) as platform_fee_amount')
-              ->selectRaw('COUNT(orders.id) as order_count')
-              ->selectRaw('COUNT(DISTINCT orders.course_id) as course_count')
-              ->selectRaw('COUNT(DISTINCT courses.instructor_id) as instructor_count');
+            ->selectRaw('SUM(COALESCE(revenues.instructor_amount, orders.amount * 0.85)) as instructor_amount')
+            ->selectRaw('SUM(COALESCE(revenues.platform_fee_amount, orders.amount * 0.15)) as platform_fee_amount')
+            ->selectRaw('COUNT(orders.id) as order_count')
+            ->selectRaw('COUNT(DISTINCT orders.course_id) as course_count')
+            ->selectRaw('COUNT(DISTINCT courses.instructor_id) as instructor_count');
 
         $query->groupBy(DB::raw($dateFormat));
 
@@ -610,7 +762,7 @@ class ReportService
         $latestOrderPaidAt = (clone $paidOrdersQuery)->max('paid_at');
 
         // Revenue
-        $hasRevenues = \Schema::hasTable('revenues');
+        $hasRevenues = Schema::hasTable('revenues');
         $totalRevenue = 0;
         $instructorRevenue = 0;
         $platformFee = 0;
@@ -628,7 +780,7 @@ class ReportService
 
         // Enrollments
         $enrollmentsQuery = DB::table('enrollments')->where('course_id', $courseId);
-        if (\Schema::hasColumn('enrollments', 'enrolled_at')) {
+        if (Schema::hasColumn('enrollments', 'enrolled_at')) {
             $applyDateFilter($enrollmentsQuery, 'enrolled_at');
         } else {
             $applyDateFilter($enrollmentsQuery, 'created_at');
@@ -642,32 +794,32 @@ class ReportService
 
         // Lessons
         $totalLessons = 0;
-        if (\Schema::hasTable('lessons')) {
+        if (Schema::hasTable('lessons')) {
             $totalLessons = DB::table('lessons')->where('course_id', $courseId)->count();
         }
 
         // Lesson Progress
         $completedLessonProgress = 0;
         $latestLessonAccessedAt = null;
-        if (\Schema::hasTable('lesson_progress') && \Schema::hasTable('lessons')) {
+        if (Schema::hasTable('lesson_progress') && Schema::hasTable('lessons')) {
             $lessonProgressQuery = DB::table('lesson_progress')
                 ->join('lessons', 'lesson_progress.lesson_id', '=', 'lessons.id')
                 ->where('lessons.course_id', $courseId);
-            
+
             // Note: date filters usually apply to activity here, we use last_accessed_at
             $applyDateFilter($lessonProgressQuery, 'lesson_progress.last_accessed_at');
-            
+
             $completedLessonProgress = (clone $lessonProgressQuery)->where('lesson_progress.status', 'completed')->count();
             $latestLessonAccessedAt = (clone $lessonProgressQuery)->max('lesson_progress.last_accessed_at');
         }
 
         // Quizzes
         $quizAttemptCount = 0;
-        if (\Schema::hasTable('quiz_attempts') && \Schema::hasTable('quizzes')) {
+        if (Schema::hasTable('quiz_attempts') && Schema::hasTable('quizzes')) {
             $quizAttemptsQuery = DB::table('quiz_attempts')
                 ->join('quizzes', 'quiz_attempts.quiz_id', '=', 'quizzes.id')
                 ->where('quizzes.course_id', $courseId);
-            
+
             $applyDateFilter($quizAttemptsQuery, 'quiz_attempts.started_at');
             $quizAttemptCount = (clone $quizAttemptsQuery)->count();
         }

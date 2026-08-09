@@ -344,14 +344,14 @@ final class RevenueShareService
     public function resolveCommissionRule(string $saleSource): array
     {
         $presetRates = [
-            'marketplace_default' => [70.0, 30.0],
+            'marketplace_default' => [85.0, 15.0],
             'platform_ads' => [37.0, 63.0],
             'admin_campaign' => [37.0, 63.0],
             'instructor_coupon' => [97.0, 3.0],
             'instructor_referral' => [97.0, 3.0],
         ];
 
-        [$defaultIns, $defaultPlat] = $presetRates[$saleSource] ?? [70.0, 30.0];
+        [$defaultIns, $defaultPlat] = $presetRates[$saleSource] ?? [85.0, 15.0];
 
         $rule = CommissionRule::query()
             ->where('sale_channel', $saleSource)

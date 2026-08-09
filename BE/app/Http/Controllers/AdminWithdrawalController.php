@@ -152,6 +152,7 @@ final class AdminWithdrawalController extends Controller
                 'rejected_at' => $this->formatDate($item->rejected_at),
                 'provider_payout_id' => $item->provider_payout_id,
                 'payout_snapshot' => [
+                    'payout_account_id' => $item->payout_account_id,
                     'account_name' => $item->account_name_snapshot,
                     'account_number' => $item->account_number_snapshot,
                     'account_number_masked' => $this->maskAccountNumber($item->account_number_snapshot),
@@ -302,6 +303,7 @@ final class AdminWithdrawalController extends Controller
             'provider_payout_id' => $withdrawal->provider_payout_id,
             'rejected_reason' => $withdrawal->rejection_reason ?: $withdrawal->rejected_reason,
             'payout_snapshot' => [
+                'payout_account_id' => $withdrawal->payout_account_id,
                 'account_name' => $withdrawal->account_name_snapshot,
                 'account_number' => $withdrawal->account_number_snapshot,
                 'account_number_masked' => $this->maskAccountNumber($withdrawal->account_number_snapshot),
