@@ -56,31 +56,41 @@ class AuthController extends Controller
             [
                 'user' => new UserResource($result['user']),
                 'verify_url' => $result['verify_url'] ?? null,
+                'otp_code' => $result['otp_code'] ?? null,
                 'note' => $result['note'] ?? null,
             ],
-            'Đăng ký giảng viên thành công. Vui lòng xác thực email và chờ admin duyệt hồ sơ.',
+            'Đăng ký giảng viên thành công. Mã OTP xác thực đã được gửi về email đăng ký.',
             201
         );
     }
 
-    public function verifyEmail(Request $request, int $id, string $hash): JsonResponse
+    public function verifyEmail(Request $request, int $id, string $hash)
     {
+        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+
         if (! $request->hasValidSignature()) {
-            return ApiResponse::error(
-                'Link xác thực email không hợp lệ hoặc đã hết hạn.',
-                [],
-                403
-            );
+            if ($request->wantsJson()) {
+                return ApiResponse::error(
+                    'Link xác thực email không hợp lệ hoặc đã hết hạn.',
+                    [],
+                    403
+                );
+            }
+            return redirect("{$frontendUrl}/login?verified=0&error=invalid_signature");
         }
 
         $user = $this->authService->verifyEmail($id, $hash);
 
-        return ApiResponse::success(
-            [
-                'user' => new UserResource($user),
-            ],
-            'Xác thực email thành công.'
-        );
+        if ($request->wantsJson()) {
+            return ApiResponse::success(
+                [
+                    'user' => new UserResource($user),
+                ],
+                'Xác thực email thành công.'
+            );
+        }
+
+        return redirect("{$frontendUrl}/login?verified=1");
     }
 
     public function resendVerifyEmail(ResendVerifyEmailRequest $request): JsonResponse
@@ -90,6 +100,23 @@ class AuthController extends Controller
         return ApiResponse::success(
             $result,
             'Nếu email tồn tại và chưa xác thực, link xác thực đã được tạo.'
+        );
+    }
+
+    public function verifyOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'nullable|string',
+        ]);
+
+        $user = $this->authService->verifyOtp($request->input('email'), (string) $request->input('otp'));
+
+        return ApiResponse::success(
+            [
+                'user' => new UserResource($user),
+            ],
+            'Xác thực OTP thành công. Tài khoản đã được kích hoạt.'
         );
     }
 

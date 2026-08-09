@@ -7,32 +7,22 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class VerifyEmailMail extends Mailable
+class ResetPasswordMail extends Mailable
 {
     use Queueable;
     use SerializesModels;
 
     public function __construct(
         public readonly User $user,
-        public readonly string $verifyUrl,
-        public readonly ?string $otpCode = null
-    ) {
-    }
+        public readonly string $token
+    ) {}
 
     public function build(): self
     {
         $name = e($this->user->full_name);
-        $url = e($this->verifyUrl);
-        $otpDisplay = $this->otpCode ? e($this->otpCode) : null;
-        $phoneDisplay = $this->user->phone ? e($this->user->phone) : null;
+        $resetUrl = e(config('app.frontend_url', 'http://localhost:5173') . '/reset-password?token=' . $this->token . '&email=' . urlencode($this->user->email));
 
-        $otpBlock = $otpDisplay ? "
-            <div style='background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; text-align: center; margin: 20px 0;'>
-                <p style='margin: 0; font-size: 13px; color: #166534; font-weight: 600;'>MÃ OTP XÁC THỰC TÀI KHOẢN & SỐ ĐIỆN THOẠI" . ($phoneDisplay ? " ({$phoneDisplay})" : "") . ":</p>
-                <div style='font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #059669; margin-top: 6px;'>{$otpDisplay}</div>
-            </div>
-        " : "";
-
+        $otpCode = e($this->token);
         $html = "
         <!DOCTYPE html>
         <html>
@@ -44,7 +34,9 @@ class VerifyEmailMail extends Mailable
                 .header { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
                 .logo { font-size: 24px; font-weight: 900; color: #0066FF; letter-spacing: -0.5px; }
                 .content { padding: 24px 0; font-size: 15px; line-height: 1.6; }
-                .btn-wrapper { text-align: center; margin: 28px 0; }
+                .otp-box { text-align: center; margin: 24px 0; background: #f8fafc; border: 2px dashed #0066FF; border-radius: 12px; padding: 16px; }
+                .otp-code { font-family: 'Courier New', Courier, monospace; font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #0066FF; }
+                .btn-wrapper { text-align: center; margin: 20px 0; }
                 .btn { display: inline-block; background-color: #0066FF; color: #ffffff !important; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 15px; box-shadow: 0 4px 10px rgba(0,102,255,0.25); }
                 .footer { font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px; }
                 .link-box { word-break: break-all; background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 12px; color: #64748b; font-family: monospace; }
@@ -57,15 +49,18 @@ class VerifyEmailMail extends Mailable
                 </div>
                 <div class='content'>
                     <h2>Xin chào <strong>{$name}</strong>,</h2>
-                    <p>Cảm ơn bạn đã đăng ký tài khoản tại hệ thống học trực tuyến <strong>MindHub</strong>.</p>
-                    {$otpBlock}
-                    <p>Vui lòng nhập mã OTP ở trên hoặc bấm nút bên dưới để xác thực địa chỉ email và số điện thoại của bạn:</p>
-                    <div class='btn-wrapper'>
-                        <a href='{$url}' class='btn' target='_blank'>Xác thực tài khoản ngay</a>
+                    <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản <strong>MindHub</strong> của mình.</p>
+                    <p>Mã OTP khôi phục mật khẩu gồm 6 chữ số của bạn là:</p>
+                    <div class='otp-box'>
+                        <span class='otp-code'>{$otpCode}</span>
                     </div>
-                    <p style='font-size: 13px; color: #64748b;'>Nếu nút bấm trên không hoạt động, bạn vui lòng copy đường dẫn sau dán vào trình duyệt:</p>
-                    <div class='link-box'>{$url}</div>
-                    <p style='font-size: 13px; color: #64748b; margin-top: 16px;'>Mã xác thực này có hiệu lực trong vòng <strong>60 phút</strong>.</p>
+                    <p>Hoặc nhấp vào nút bên dưới để tự động điền mã và đặt lại mật khẩu mới ngay:</p>
+                    <div class='btn-wrapper'>
+                        <a href='{$resetUrl}' class='btn' target='_blank'>Đặt lại mật khẩu ngay</a>
+                    </div>
+                    <p style='font-size: 13px; color: #64748b;'>Liên kết khôi phục trực tiếp:</p>
+                    <div class='link-box'>{$resetUrl}</div>
+                    <p style='font-size: 13px; color: #64748b; margin-top: 16px;'>Mã OTP này có hiệu lực trong vòng <strong>60 phút</strong>. Nếu bạn không yêu cầu đặt lại mật khẩu, xin hãy bỏ qua email này.</p>
                 </div>
                 <div class='footer'>
                     <p>&copy; " . date('Y') . " MindHub. All rights reserved.</p>
@@ -76,7 +71,7 @@ class VerifyEmailMail extends Mailable
         ";
 
         return $this
-            ->subject('[MindHub] Mã OTP xác thực tài khoản & Số điện thoại Giảng viên')
+            ->subject('[MindHub] Yêu cầu đặt lại mật khẩu tài khoản')
             ->html($html);
     }
 }

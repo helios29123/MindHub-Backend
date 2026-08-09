@@ -9,6 +9,9 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,instructor,admin
     ->group(function (): void {
         Route::get('me', [UserProfileController::class, 'me']);
         Route::patch('me', [UserProfileController::class, 'updateMe']);
+        Route::post('me/avatar', [InstructorProfileController::class, 'uploadAvatar']);
+        Route::patch('me/avatar/preset', [InstructorProfileController::class, 'selectAvatarPreset']);
+        Route::delete('me/avatar', [InstructorProfileController::class, 'deleteAvatar']);
         Route::patch('me/password', [UserProfileController::class, 'changePassword']);
     });
 

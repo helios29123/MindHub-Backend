@@ -489,6 +489,18 @@ class PaymentService
         }
 
         DB::table('enrollments')->insert($insertData);
+
+        try {
+            $user = \App\Models\User::find($order->user_id);
+            $course = \App\Models\Course::with('instructor')->find($order->course_id);
+
+            if ($user && $course && ! empty($user->email)) {
+                \Illuminate\Support\Facades\Mail::to($user->email)
+                    ->send(new \App\Mail\CourseWelcomeMail($user, $course, $order));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send CourseWelcomeMail: ' . $e->getMessage());
+        }
     }
 
     private function createRevenueAfterCourseOrderPaid(object $order): void

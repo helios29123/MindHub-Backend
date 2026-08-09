@@ -14,8 +14,8 @@ class InstructorTopCourseQueryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'preset' => ['nullable', 'in:day,week,month,year,custom'],
-            'period' => ['nullable', 'in:day,week,month,year,custom'],
+            'preset' => ['nullable', 'string'],
+            'period' => ['nullable', 'string'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'course_id' => ['nullable', 'integer'],

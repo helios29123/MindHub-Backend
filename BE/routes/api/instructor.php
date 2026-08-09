@@ -320,6 +320,9 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         Route::get('/learners/{id}', [InstructorCourseController::class, 'showLearnerDetails'])
             ->whereNumber('id');
 
+        Route::get('/enrollments', [InstructorCourseController::class, 'allLearners']);
+        Route::get('/{instructorId}/enrollments', [InstructorCourseController::class, 'allLearners'])->whereNumber('instructorId');
+
         Route::get('/reports/revenue-chart', [ReportController::class, 'instructorRevenueChart'])
             ->name('instructor.reports.revenue-chart');
 

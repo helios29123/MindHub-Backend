@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\BusinessException;
 use App\Http\Requests\Instructor\InstructorPayoutAccountIndexRequest;
 use App\Http\Requests\Instructor\InstructorWithdrawalIndexRequest;
+use App\Http\Requests\Instructor\InstructorWithdrawalStoreRequest;
 use App\Http\Resources\Instructor\InstructorPayoutAccountResource;
 use App\Http\Resources\Instructor\InstructorWithdrawalDetailResource;
 use App\Http\Resources\Instructor\InstructorWithdrawalResource;
@@ -66,13 +67,13 @@ final class InstructorWithdrawalController extends Controller
         $request->validate([
             'amount' => ['required', 'numeric', 'min:200000'],
             'payout_account_id' => ['nullable', 'integer'],
-            'otp' => ['required', 'string', 'size:6'],
+            'otp' => ['nullable', 'string'],
         ]);
 
         $instructorId = (int) $request->user()->id;
         $amount = (float) $request->input('amount');
         $payoutAccountId = $request->input('payout_account_id') ? (int) $request->input('payout_account_id') : null;
-        $otpCode = (string) $request->input('otp');
+        $otpCode = $request->input('otp') ? (string) $request->input('otp') : null;
 
         try {
             $withdrawal = $this->earlyWithdrawalService->createEarlyWithdrawal($instructorId, $amount, $payoutAccountId, $otpCode);
@@ -130,16 +131,9 @@ final class InstructorWithdrawalController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(InstructorWithdrawalStoreRequest $request): JsonResponse
     {
-        if ($request->has('otp') && ! empty($request->input('otp'))) {
-            return $this->createEarlyWithdrawal($request);
-        }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Bạn cần xác thực mã OTP trước khi gửi yêu cầu thanh toán sớm.',
-        ], 422);
+        return $this->createEarlyWithdrawal($request);
     }
 
     public function payoutAccounts(InstructorPayoutAccountIndexRequest $request): JsonResponse

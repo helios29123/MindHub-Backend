@@ -388,7 +388,7 @@ final class ReportController extends Controller
         $query = \Illuminate\Support\Facades\DB::table('courses')
             ->leftJoin('revenues', function ($join) use ($period) {
                 $join->on('revenues.course_id', '=', 'courses.id')
-                    ->whereIn('revenues.status', ['available', 'withdrawn'])
+                    ->whereIn('revenues.status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn'])
                     ->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
             })
             ->where('courses.instructor_id', $instructorId)
@@ -457,10 +457,15 @@ final class ReportController extends Controller
             ->get()
             ->keyBy('course_id');
 
-        $revenuesMap = \Illuminate\Support\Facades\DB::table('revenues')
+        $revenuesQuery = \Illuminate\Support\Facades\DB::table('revenues')
             ->whereIn('course_id', $courseIds)
-            ->whereIn('status', ['available', 'withdrawn'])
-            ->whereBetween('earned_at', [$period['current_from'], $period['current_to']])
+            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
+
+        if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
+            $revenuesQuery->whereBetween('earned_at', [$period['current_from'], $period['current_to']]);
+        }
+
+        $revenuesMap = $revenuesQuery
             ->select('course_id', \Illuminate\Support\Facades\DB::raw('COUNT(id) as total_orders'), \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(instructor_amount), 0) as total_instructor_revenue'), \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(gross_amount), 0) as total_gross_revenue'), \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(platform_fee_amount), 0) as total_platform_fee'))
             ->groupBy('course_id')
             ->get()
@@ -523,12 +528,20 @@ final class ReportController extends Controller
         $period = $this->resolvePeriod($request->all());
 
         $summaryQuery = \Illuminate\Support\Facades\DB::table('revenues')
-            ->where('instructor_id', $instructorId)
-            ->whereBetween('earned_at', [$period['current_from'], $period['current_to']])
-            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
+            ->join('courses', 'courses.id', '=', 'revenues.course_id')
+            ->where(function ($q) use ($instructorId): void {
+                $q->where('revenues.instructor_id', $instructorId)
+                  ->orWhere('courses.instructor_id', $instructorId);
+            })
+            ->whereNull('courses.deleted_at')
+            ->whereIn('revenues.status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
+
+        if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
+            $summaryQuery->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
+        }
 
         if ($request->query('course_id') && $request->query('course_id') !== 'all') {
-            $summaryQuery->where('course_id', (int) $request->query('course_id'));
+            $summaryQuery->where('revenues.course_id', (int) $request->query('course_id'));
         }
 
         $row = (clone $summaryQuery)
@@ -653,9 +666,15 @@ final class ReportController extends Controller
 
         $query = \Illuminate\Support\Facades\DB::table('revenues')
             ->join('courses', 'courses.id', '=', 'revenues.course_id')
-            ->where('revenues.instructor_id', $instructorId)
-            ->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']])
+            ->where(function ($q) use ($instructorId): void {
+                $q->where('revenues.instructor_id', $instructorId)
+                  ->orWhere('courses.instructor_id', $instructorId);
+            })
             ->whereNull('courses.deleted_at');
+
+        if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
+            $query->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
+        }
 
         if ($request->query('course_id') && $request->query('course_id') !== 'all') {
             $query->where('revenues.course_id', (int) $request->query('course_id'));
@@ -725,12 +744,19 @@ final class ReportController extends Controller
         $instructorId = (int) $request->user()->id;
         $period = $this->resolvePeriod($request->all());
 
-        $records = \Illuminate\Support\Facades\DB::table('revenues')
+        $query = \Illuminate\Support\Facades\DB::table('revenues')
             ->join('courses', 'courses.id', '=', 'revenues.course_id')
-            ->where('revenues.instructor_id', $instructorId)
-            ->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']])
-            ->whereNull('courses.deleted_at')
-            ->select([
+            ->where(function ($q) use ($instructorId): void {
+                $q->where('revenues.instructor_id', $instructorId)
+                  ->orWhere('courses.instructor_id', $instructorId);
+            })
+            ->whereNull('courses.deleted_at');
+
+        if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
+            $query->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
+        }
+
+        $records = $query->select([
                 'revenues.id',
                 'revenues.earned_at',
                 'revenues.gross_amount',
@@ -780,12 +806,37 @@ final class ReportController extends Controller
         $preset = $filters['preset'] ?? $filters['period'] ?? 'month';
         $now = now();
 
-        if ($preset === 'day') {
+        if ($preset === 'all' || $preset === 'all_time') {
+            $currentFrom = \Illuminate\Support\Carbon::create(2020, 1, 1)->startOfDay();
+            $currentTo = $now->copy()->addYears(10)->endOfDay();
+            $prevFrom = $currentFrom->copy();
+            $prevTo = $currentTo->copy();
+        } elseif ($preset === 'day' || $preset === 'today' || $preset === '1d') {
             $currentFrom = $now->copy()->startOfDay();
             $currentTo = $now->copy()->endOfDay();
             $prevFrom = $now->copy()->subDay()->startOfDay();
             $prevTo = $now->copy()->subDay()->endOfDay();
-        } elseif ($preset === 'year') {
+        } elseif ($preset === '7d' || $preset === 'week') {
+            $currentFrom = $now->copy()->subDays(6)->startOfDay();
+            $currentTo = $now->copy()->endOfDay();
+            $prevFrom = $currentFrom->copy()->subDays(7)->startOfDay();
+            $prevTo = $currentFrom->copy()->subDays(1)->endOfDay();
+        } elseif ($preset === '30d') {
+            $currentFrom = $now->copy()->subDays(29)->startOfDay();
+            $currentTo = $now->copy()->endOfDay();
+            $prevFrom = $currentFrom->copy()->subDays(30)->startOfDay();
+            $prevTo = $currentFrom->copy()->subDays(1)->endOfDay();
+        } elseif ($preset === '90d' || $preset === 'quarter') {
+            $currentFrom = $now->copy()->subDays(89)->startOfDay();
+            $currentTo = $now->copy()->endOfDay();
+            $prevFrom = $currentFrom->copy()->subDays(90)->startOfDay();
+            $prevTo = $currentFrom->copy()->subDays(1)->endOfDay();
+        } elseif ($preset === 'last_month') {
+            $currentFrom = $now->copy()->subMonthNoOverflow()->startOfMonth()->startOfDay();
+            $currentTo = $now->copy()->subMonthNoOverflow()->endOfMonth()->endOfDay();
+            $prevFrom = $now->copy()->subMonthsNoOverflow(2)->startOfMonth()->startOfDay();
+            $prevTo = $now->copy()->subMonthsNoOverflow(2)->endOfMonth()->endOfDay();
+        } elseif ($preset === 'this_year' || $preset === 'year') {
             $currentFrom = $now->copy()->startOfYear();
             $currentTo = $now->copy()->endOfYear();
             $prevFrom = $now->copy()->subYear()->startOfYear();
@@ -793,7 +844,7 @@ final class ReportController extends Controller
         } elseif ($preset === 'custom' && !empty($filters['date_from']) && !empty($filters['date_to'])) {
             $currentFrom = \Illuminate\Support\Carbon::parse($filters['date_from'])->startOfDay();
             $currentTo = \Illuminate\Support\Carbon::parse($filters['date_to'])->endOfDay();
-            $days = max(1, $currentFrom->diffInDays($currentTo) + 1);
+            $days = max(1, (int) $currentFrom->diffInDays($currentTo) + 1);
             $prevTo = $currentFrom->copy()->subDay()->endOfDay();
             $prevFrom = $prevTo->copy()->subDays($days - 1)->startOfDay();
         } else {

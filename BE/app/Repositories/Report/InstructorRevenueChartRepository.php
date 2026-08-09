@@ -16,7 +16,7 @@ class InstructorRevenueChartRepository
         $query = DB::table('revenues')
             ->where('instructor_id', $instructorId)
             ->whereBetween('earned_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
-            ->whereIn('status', ['available', 'withdrawn'])
+            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn'])
             ->selectRaw("
                 DATE_FORMAT(earned_at, '$format') as period,
                 COALESCE(SUM(gross_amount), 0) as gross_amount,

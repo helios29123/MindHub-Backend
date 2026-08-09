@@ -81,7 +81,7 @@ final class RevenueShareService
                 throw new CourseInstructorMissingException("Order not found with ID: {$orderId}");
             }
 
-            if ($orderModel->status !== Order::STATUS_PAID && $orderModel->status !== 'paid') {
+            if (! in_array($orderModel->status, [Order::STATUS_PAID, 'paid', 'completed', 'success', 'paid_out'], true)) {
                 Log::warning('Attempted revenue creation on unpaid order', [
                     'order_id' => $orderModel->id,
                     'status' => $orderModel->status,
@@ -115,10 +115,9 @@ final class RevenueShareService
                 $order->save();
             }
 
-            $holdDays = (int) config('revenue.refund_hold_days', 30);
             $earnedAt = $orderModel->paid_at ? Carbon::parse($orderModel->paid_at) : now();
-            $availableAt = (clone $earnedAt)->addDays($holdDays);
-            $initialStatus = $holdDays <= 0 ? Revenue::STATUS_AVAILABLE : Revenue::STATUS_PENDING;
+            $availableAt = $earnedAt;
+            $initialStatus = Revenue::STATUS_AVAILABLE;
 
             try {
                 return Revenue::query()->create([
@@ -172,7 +171,7 @@ final class RevenueShareService
     public function syncMissingPaidOrderRevenues(): int
     {
         $paidOrders = Order::query()
-            ->where('status', Order::STATUS_PAID)
+            ->whereIn('status', [Order::STATUS_PAID, 'paid', 'completed', 'success', 'paid_out'])
             ->whereNotNull('course_id')
             ->whereDoesntHave('revenue')
             ->get();
@@ -198,9 +197,9 @@ final class RevenueShareService
         return DB::transaction(function () {
             return Revenue::query()
                 ->where('status', Revenue::STATUS_PENDING)
-                ->where('available_at', '<=', now())
                 ->update([
                     'status' => Revenue::STATUS_AVAILABLE,
+                    'available_at' => now(),
                     'updated_at' => now(),
                 ]);
         });

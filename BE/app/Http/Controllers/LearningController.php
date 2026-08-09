@@ -543,4 +543,19 @@ final class LearningController extends Controller
         $this->learningService->deleteLessonNote((int) $id, $request->user());
         return ApiResponse::success(null, 'Xóa ghi chú thành công');
     }
+
+    public function streak(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return ApiResponse::error('Vui lòng đăng nhập để xem thông tin chuỗi học tập.', 401);
+        }
+
+        $streakData = $this->learningService->getLearningStreak($user);
+
+        return ApiResponse::success(
+            $streakData,
+            'Lấy thông tin chuỗi học tập thành công.'
+        );
+    }
 }

@@ -30,10 +30,12 @@ final class InstructorWithdrawalSummaryResource extends JsonResource
             'blocked_reason' => data_get($this->resource, 'blocked_reason'),
             'payout_account' => $payoutAccount ? (new InstructorPayoutAccountResource($payoutAccount))->resolve($request) : null,
             // Legacy / UI compatibility fields
-            'available_revenue' => (float) data_get($this->resource, 'available_balance', 0),
-            'pending_withdraw_amount' => (float) data_get($this->resource, 'scheduled_payout', 0),
+            'available_revenue' => (float) data_get($this->resource, 'available_revenue', 0),
+            'pending_withdraw_amount' => (float) data_get($this->resource, 'pending_withdraw_amount', 0),
             'paid_withdraw_amount' => (float) data_get($this->resource, 'total_paid', 0),
             'paid_amount' => (float) data_get($this->resource, 'total_paid', 0),
+            'can_create_withdrawal' => (bool) data_get($this->resource, 'can_create_withdrawal', false),
+            'notice' => data_get($this->resource, 'notice'),
         ];
     }
 }
