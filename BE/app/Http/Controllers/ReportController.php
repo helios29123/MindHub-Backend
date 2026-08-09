@@ -337,6 +337,7 @@ final class ReportController extends Controller
         $courses = \Illuminate\Support\Facades\DB::table('courses')
             ->where('instructor_id', $instructorId)
             ->whereNull('deleted_at')
+            ->whereNotIn('status', ['published', 'approved', 'active', 'pending_review', 'pending'])
             ->orderBy('updated_at', 'desc')
             ->get();
 
@@ -346,11 +347,6 @@ final class ReportController extends Controller
         foreach ($courses as $course) {
             try {
                 $completion = $checklistService->calculateCompletion($instructorId, $course);
-
-                // Exclude courses that are fully completed (100%) AND published/active
-                if ($completion['passed'] && in_array($course->status, ['published', 'active'], true)) {
-                    continue;
-                }
 
                 $incomplete[] = [
                     'id' => (int) $course->id,

@@ -35,13 +35,26 @@ class CoursePublicController extends Controller
         $courses = $paginator->map(function ($c) {
             return [
                 'id' => (string) $c->id,
+                'slug' => $c->slug ?? (string) $c->id,
                 'title' => $c->title,
                 'instructorName' => $c->instructor->full_name ?? 'Giảng viên',
+                'instructorAvatar' => $c->instructor->avatar_url ?? null,
+                'instructor' => [
+                    'full_name' => $c->instructor->full_name ?? 'Giảng viên',
+                    'avatar_url' => $c->instructor->avatar_url ?? null,
+                ],
                 'image' => $c->thumbnail_url ?? 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800',
+                'thumbnail_url' => $c->thumbnail_url ?? 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800',
                 'price' => (float) $c->price,
                 'salePrice' => $c->sale_price ? (float) $c->sale_price : null,
+                'sale_price' => $c->sale_price ? (float) $c->sale_price : null,
                 'rating' => (float) ($c->rating_avg ?? 0),
+                'average_rating' => (float) ($c->rating_avg ?? 0),
                 'enrolledCount' => $c->enrolled_count ?? 0,
+                'enrollments_count' => $c->enrolled_count ?? 0,
+                'reviews_count' => $c->rating_count ?? $c->reviews_count ?? 0,
+                'level' => $c->level ?? 'all_levels',
+                'is_featured' => (bool) ($c->is_featured ?? false),
                 'createdAt' => $c->created_at,
                 'category' => $c->categories->first()->name ?? 'Khác'
             ];
@@ -568,5 +581,71 @@ class CoursePublicController extends Controller
             'base_url' => $baseUrl,
             'model' => $model
         ], 'Lấy prompt thành công.');
+    }
+
+    public function previewLessonsList(): JsonResponse
+    {
+        $previewLessons = \App\Models\Lesson::query()
+            ->where('is_preview', true)
+            ->where('status', 'published')
+            ->whereHas('course', function ($q) {
+                $q->where('status', 'published');
+            })
+            ->with(['course.instructor'])
+            ->take(10)
+            ->get();
+
+        $defaultVideos = [
+            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+            'https://www.w3schools.com/html/mov_bbb.mp4'
+        ];
+
+        $items = [];
+        $idx = 0;
+        foreach ($previewLessons as $lesson) {
+            $course = $lesson->course;
+            $rawVideo = $lesson->video_url;
+            if (empty($rawVideo) || (!str_starts_with($rawVideo, 'http://') && !str_starts_with($rawVideo, 'https://'))) {
+                $videoUrl = $defaultVideos[$idx % count($defaultVideos)];
+            } else {
+                $videoUrl = $rawVideo;
+            }
+
+            $items[] = [
+                'id' => (string) $lesson->id,
+                'title' => $lesson->title,
+                'duration' => $lesson->video_duration_seconds ? sprintf('%02d:%02d', floor($lesson->video_duration_seconds / 60), $lesson->video_duration_seconds % 60) : '12:30',
+                'video_url' => $videoUrl,
+                'course_title' => $course->title ?? 'Khóa học xem thử',
+                'course_id' => $course->slug ?? (string) $course->id,
+                'instructor_name' => $course->instructor->full_name ?? 'Giảng viên MindHub'
+            ];
+            $idx++;
+        }
+
+        if (count($items) === 0) {
+            $courses = \App\Models\Course::where('status', 'published')->with('instructor')->take(6)->get();
+            $defaultVideos = [
+                'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+                'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+                'https://www.w3schools.com/html/mov_bbb.mp4'
+            ];
+            $idx = 0;
+            foreach ($courses as $c) {
+                $items[] = [
+                    'id' => 'trial-course-' . $c->id,
+                    'title' => 'Xem thử bài giảng: ' . $c->title,
+                    'duration' => '12:40',
+                    'video_url' => $defaultVideos[$idx % count($defaultVideos)],
+                    'course_title' => $c->title,
+                    'course_id' => $c->slug ?? (string) $c->id,
+                    'instructor_name' => $c->instructor->full_name ?? 'Giảng viên MindHub'
+                ];
+                $idx++;
+            }
+        }
+
+        return ApiResponse::success($items, 'Lấy danh sách bài học thử thành công.');
     }
 }

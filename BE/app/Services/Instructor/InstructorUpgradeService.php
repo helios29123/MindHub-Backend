@@ -65,6 +65,30 @@ class InstructorUpgradeService
             ]);
         });
 
+        // Send Email & Notification to Admin
+        try {
+            $adminEmail = env('ADMIN_EMAIL', config('mail.admin_address', 'dominhdang3010@gmail.com'));
+            \Illuminate\Support\Facades\Mail::to($adminEmail)->send(
+                new \App\Mail\InstructorUpgradeRequestedMail($user, $data)
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to send admin instructor upgrade email: ' . $e->getMessage());
+        }
+
+        try {
+            $adminUsers = User::where('role', 'admin')->get();
+            foreach ($adminUsers as $admin) {
+                \App\Models\Notification::create([
+                    'user_id' => $admin->id,
+                    'type' => 'instructor_upgrade_request',
+                    'title' => 'Yêu cầu đăng ký Giảng viên mới',
+                    'message' => "Học viên {$user->full_name} ({$user->email}) đã gửi yêu cầu đăng ký làm Giảng viên.",
+                    'action_url' => '/admin/instructors/upgrade-requests',
+                    'channel' => 'database',
+                ]);
+            }
+        } catch (\Throwable $e) {}
+
         return $this->instructorUpgradeRepository->buildApplicationData((int) $user->id);
     }
 

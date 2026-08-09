@@ -33,6 +33,12 @@ class CourseWelcomeMail extends Mailable
         $amountRaw = (float) ($this->order->amount ?? $this->course->sale_price ?? $this->course->price ?? 0);
         $amountFormatted = number_format($amountRaw, 0, ',', '.') . ' VNĐ';
 
+        $logoFile = base_path('mindhub.jpg');
+        if (!file_exists($logoFile)) {
+            $logoFile = public_path('images/mindhub-logo.jpg');
+        }
+        $cidName = 'mindhub-logo';
+
         $html = "
         <!DOCTYPE html>
         <html>
@@ -42,8 +48,8 @@ class CourseWelcomeMail extends Mailable
                 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #1e293b; }
                 .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
                 .header { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
-                .logo { font-size: 26px; font-weight: 900; color: #0066FF; letter-spacing: -0.5px; }
-                .welcome-badge { display: inline-block; background-color: #ecfdf5; color: #059669; font-weight: 700; font-size: 13px; padding: 6px 14px; border-radius: 20px; margin-top: 12px; }
+                .logo-img { height: 68px; max-width: 300px; object-fit: contain; margin: 0 auto 8px auto; display: block; }
+                .welcome-badge { display: inline-block; background-color: #ecfdf5; color: #059669; font-weight: 700; font-size: 13px; padding: 6px 14px; border-radius: 20px; margin-top: 4px; }
                 .content { padding: 24px 0; font-size: 15px; line-height: 1.6; }
                 .course-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; margin: 20px 0; }
                 .course-title { font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 0; margin-bottom: 8px; }
@@ -59,7 +65,7 @@ class CourseWelcomeMail extends Mailable
         <body>
             <div class='container'>
                 <div class='header'>
-                    <div class='logo'>MindHub</div>
+                    <img src='cid:{$cidName}' alt='MindHub Logo' class='logo-img' />
                     <div class='welcome-badge'>🎉 Đăng ký khóa học thành công</div>
                 </div>
                 <div class='content'>
@@ -104,6 +110,11 @@ class CourseWelcomeMail extends Mailable
 
         return $this
             ->subject("[MindHub] Chào mừng bạn đến với khóa học: {$this->course->title}")
-            ->html($html);
+            ->html($html)
+            ->withSymfonyMessage(function (\Symfony\Component\Mime\Email $message) use ($logoFile, $cidName) {
+                if (file_exists($logoFile)) {
+                    $message->embedFromPath($logoFile, $cidName);
+                }
+            });
     }
 }

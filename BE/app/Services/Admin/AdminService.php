@@ -436,13 +436,38 @@ class AdminService
                 }
             }
 
+            $oldStatus = $course->status;
+
             if (isset($updateData['status']) && $updateData['status'] === 'published' && $course->published_at === null) {
                 $updateData['published_at'] = now();
             }
 
             $course->update($updateData);
 
-            return $course->refresh()->load(['instructor', 'categories']);
+            $refreshedCourse = $course->refresh()->load(['instructor', 'categories']);
+
+            if (isset($updateData['status']) && in_array($updateData['status'], ['published', 'approved'], true) && $oldStatus !== $updateData['status']) {
+                try {
+                    if ($refreshedCourse->instructor && !empty($refreshedCourse->instructor->email)) {
+                        \Illuminate\Support\Facades\Mail::to($refreshedCourse->instructor->email)->send(
+                            new \App\Mail\CourseApprovedNotificationMail($refreshedCourse->instructor, $refreshedCourse)
+                        );
+
+                        \App\Models\Notification::create([
+                            'user_id' => $refreshedCourse->instructor->id,
+                            'type' => 'course_approved',
+                            'title' => '🎉 Khóa học của bạn đã được duyệt',
+                            'message' => "Khóa học \"{$refreshedCourse->title}\" đã được phê duyệt và xuất bản công khai.",
+                            'action_url' => "/courses/" . ($refreshedCourse->slug ?: $refreshedCourse->id),
+                            'channel' => 'database',
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Failed to send admin update course approval notification: ' . $e->getMessage());
+                }
+            }
+
+            return $refreshedCourse;
         });
     }
 
