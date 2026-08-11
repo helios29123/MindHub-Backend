@@ -125,6 +125,10 @@ class AuthService
     {
         $verifyUrl = $this->createEmailVerificationUrl($user);
 
+        if (! $otpCode) {
+            $otpCode = (string) rand(100000, 999999);
+        }
+
         try {
             Mail::to($user->email)->send(
                 new VerifyEmailMail($user, $verifyUrl, $otpCode)
