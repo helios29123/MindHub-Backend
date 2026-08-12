@@ -115,4 +115,5 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    'admin_address' => env('ADMIN_EMAIL', 'dominhdang3010@gmail.com'),
 ];

@@ -21,6 +21,7 @@ class CategoryResource extends JsonResource
             'slug' => $this->slug,
             'description' => $this->description,
             'sort_order' => $this->sort_order,
+            'courses_count' => (int) ($this->courses_count ?? 0),
         ];
     }
 }

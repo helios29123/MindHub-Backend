@@ -5,9 +5,61 @@ use App\Models\Banner;
 
 function getAuthHeadersForBannerTest(string $email): array
 {
+    $role = 'learner';
+    if (str_contains($email, 'admin')) {
+        $role = 'admin';
+    } elseif (str_contains($email, 'instructor')) {
+        $role = 'instructor';
+    }
+
+    $data = [];
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'name')) {
+        $data['name'] = 'Test User';
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'full_name')) {
+        $data['full_name'] = 'Test User';
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'username')) {
+        $data['username'] = str_replace(['@', '.'], '_', $email);
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'phone')) {
+        $data['phone'] = '0900000000';
+    }
+
+    $hash = \Illuminate\Support\Facades\Hash::make('password');
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'password')) {
+        $data['password'] = $hash;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'password_hash')) {
+        $data['password_hash'] = $hash;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'role')) {
+        $data['role'] = $role;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'status')) {
+        $data['status'] = 'active';
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'locked')) {
+        $data['locked'] = 0;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'is_active')) {
+        $data['is_active'] = 1;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'email_verified_at')) {
+        $data['email_verified_at'] = now();
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'created_at')) {
+        $data['created_at'] = now();
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'updated_at')) {
+        $data['updated_at'] = now();
+    }
+
+    \Illuminate\Support\Facades\DB::table('users')->updateOrInsert(['email' => $email], $data);
+
     $response = test()->postJson('/api/auth/login', [
         'email' => $email,
-        'password' => '12345678',
+        'password' => 'password',
         'device_name' => 'testing'
     ]);
     

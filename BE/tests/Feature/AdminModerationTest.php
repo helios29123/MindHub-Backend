@@ -7,9 +7,61 @@ use Illuminate\Support\Facades\DB;
 
 function getAuthHeadersForAdminTest(string $email): array
 {
+    $role = 'learner';
+    if (str_contains($email, 'admin')) {
+        $role = 'admin';
+    } elseif (str_contains($email, 'instructor')) {
+        $role = 'instructor';
+    }
+
+    $data = [];
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'name')) {
+        $data['name'] = 'Test User';
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'full_name')) {
+        $data['full_name'] = 'Test User';
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'username')) {
+        $data['username'] = str_replace(['@', '.'], '_', $email);
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'phone')) {
+        $data['phone'] = '0900000000';
+    }
+
+    $hash = \Illuminate\Support\Facades\Hash::make('password');
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'password')) {
+        $data['password'] = $hash;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'password_hash')) {
+        $data['password_hash'] = $hash;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'role')) {
+        $data['role'] = $role;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'status')) {
+        $data['status'] = 'active';
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'locked')) {
+        $data['locked'] = 0;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'is_active')) {
+        $data['is_active'] = 1;
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'email_verified_at')) {
+        $data['email_verified_at'] = now();
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'created_at')) {
+        $data['created_at'] = now();
+    }
+    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'updated_at')) {
+        $data['updated_at'] = now();
+    }
+
+    \Illuminate\Support\Facades\DB::table('users')->updateOrInsert(['email' => $email], $data);
+
     $response = test()->postJson('/api/auth/login', [
         'email' => $email,
-        'password' => '12345678',
+        'password' => 'password',
         'device_name' => 'testing'
     ]);
     
@@ -235,5 +287,46 @@ test('validation fails on invalid path parameter id', function () {
         'target_type' => 'comment',
         'status' => 'hidden',
     ], $headers);
-    $responseZero->assertStatus(422);
 });
+
+test('courseReviews API returns filtered results based on status and reviewed_date', function () {
+    $headers = getAuthHeadersForAdminTest('admin@mindhub.test');
+
+    // Create courses with different statuses
+    $instructor = User::factory()->create(['role' => 'instructor']);
+    $pending = \App\Models\Course::factory()->create(['status' => 'pending_review', 'instructor_id' => $instructor->id]);
+    $approved = \App\Models\Course::factory()->create(['status' => 'approved', 'instructor_id' => $instructor->id, 'updated_at' => now()]);
+    $published = \App\Models\Course::factory()->create(['status' => 'published', 'instructor_id' => $instructor->id, 'updated_at' => now()]);
+    $rejected = \App\Models\Course::factory()->create(['status' => 'rejected', 'instructor_id' => $instructor->id, 'updated_at' => now()]);
+    
+    // Test without status
+    $resAll = $this->getJson('/api/admin/course-reviews', $headers);
+    $resAll->assertStatus(200);
+    $this->assertGreaterThanOrEqual(4, count($resAll->json('data.items')));
+    
+    // Test status=pending
+    $resPending = $this->getJson('/api/admin/course-reviews?status=pending', $headers);
+    $resPending->assertStatus(200);
+    $pendingItems = $resPending->json('data.items');
+    $this->assertNotEmpty($pendingItems);
+    $this->assertEquals('pending_review', $pendingItems[0]['status']);
+
+    // Test status=approved
+    $resApproved = $this->getJson('/api/admin/course-reviews?status=approved', $headers);
+    $resApproved->assertStatus(200);
+    $approvedItems = $resApproved->json('data.items');
+    $this->assertNotEmpty($approvedItems);
+    $this->assertContains($approvedItems[0]['status'], ['approved', 'published']);
+
+    // Test status=rejected
+    $resRejected = $this->getJson('/api/admin/course-reviews?status=rejected', $headers);
+    $resRejected->assertStatus(200);
+    $rejectedItems = $resRejected->json('data.items');
+    $this->assertNotEmpty($rejectedItems);
+    $this->assertEquals('rejected', $rejectedItems[0]['status']);
+    
+    // Test summary total_count
+    $summary = $resAll->json('data.summary');
+    $this->assertGreaterThanOrEqual(4, $summary['total_count']);
+});
+

@@ -15,6 +15,10 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    'video_disk' => env('VIDEO_DISK', 'private_media'),
+    
+    'video_stream_ttl_seconds' => (int) env('VIDEO_STREAM_TTL_SECONDS', 600),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -41,8 +45,27 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/') . '/storage',
             'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Private Media Disk
+        |--------------------------------------------------------------------------
+        |
+        | Used for protected course media such as lesson videos.
+        | Files in this disk must not be exposed through public/storage.
+        | The database should store only relative paths, for example:
+        | videos/react-elearning/react-elearning-01-example.mp4
+        |
+        */
+
+        'private_media' => [
+            'driver' => 'local',
+            'root' => env('PRIVATE_MEDIA_ROOT', storage_path('app/private')),
             'throw' => false,
             'report' => false,
         ],
@@ -67,9 +90,8 @@ return [
     | Symbolic Links
     |--------------------------------------------------------------------------
     |
-    | Here you may configure the symbolic links that will be created when the
-    | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
+    | Only public storage should be linked to public/storage.
+    | Do not create symbolic links for private_media.
     |
     */
 

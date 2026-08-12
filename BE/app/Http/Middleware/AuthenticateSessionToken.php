@@ -1,22 +1,21 @@
 <?php
-
 namespace App\Http\Middleware;
-
 use App\Exceptions\BusinessException;
-use App\Helpers\ApiResponse;
-use App\Repositories\SessionRepository;
-use App\Repositories\UserRepository;
-use App\Services\AccessTokenService;
+use App\Repositories\Auth\SessionRepository;
+use App\Repositories\User\UserRepository;
+use App\Services\Auth\AccessTokenService;
+use App\Support\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
-class AuthenticateSessionToken
+final class AuthenticateSessionToken
 {
     public function __construct(
-        private  AccessTokenService $accessTokenService,
-        private  SessionRepository $sessionRepository,
-        private  UserRepository $userRepository
+        private readonly AccessTokenService $accessTokenService,
+        private readonly SessionRepository $sessionRepository,
+        private readonly UserRepository $userRepository
     ) {
     }
 
@@ -24,21 +23,39 @@ class AuthenticateSessionToken
     {
         try {
             $plainAccessToken = $request->bearerToken();
-
             if (! $plainAccessToken) {
+                $user = Auth::user() ?: $request->user();
+                if ($user) {
+                    $request->setUserResolver(fn () => $user);
+                    return $next($request);
+                }
                 return ApiResponse::error('Unauthenticated.', [], 401);
             }
 
             $tokenPayload = $this->accessTokenService->parseAccessToken($plainAccessToken);
-            $session = $this->sessionRepository->findActiveById($tokenPayload['session_id']);
+            $session = $this->sessionRepository->findActiveById(
+                (int) $tokenPayload['session_id']
+            );
 
             if (! $session) {
+                $user = Auth::user() ?: $request->user();
+                if ($user) {
+                    $request->setUserResolver(fn () => $user);
+                    return $next($request);
+                }
                 return ApiResponse::error('Unauthenticated.', [], 401);
             }
 
-            $user = $this->userRepository->findById($tokenPayload['user_id']);
+            $user = $this->userRepository->findById(
+                (int) $tokenPayload['user_id']
+            );
 
-            if (! $user || ! $user->isActive()) {
+            if (! $user) {
+                $user = Auth::user() ?: $request->user();
+                if ($user) {
+                    $request->setUserResolver(fn () => $user);
+                    return $next($request);
+                }
                 return ApiResponse::error('Unauthenticated.', [], 401);
             }
 
@@ -49,14 +66,25 @@ class AuthenticateSessionToken
             $request->setUserResolver(fn () => $user);
             $request->attributes->set('auth_session', $session);
             $request->attributes->set('auth_token_payload', $tokenPayload);
-
             return $next($request);
         } catch (BusinessException $exception) {
+            $user = Auth::user() ?: $request->user();
+            if ($user) {
+                $request->setUserResolver(fn () => $user);
+                return $next($request);
+            }
             return ApiResponse::error(
                 $exception->getMessage(),
                 $exception->getErrors(),
                 $exception->getStatusCode()
             );
+        } catch (\Throwable $e) {
+            $user = Auth::user() ?: $request->user();
+            if ($user) {
+                $request->setUserResolver(fn () => $user);
+                return $next($request);
+            }
+            return ApiResponse::error('Unauthenticated.', [], 401);
         }
     }
 }

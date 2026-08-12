@@ -9,6 +9,8 @@ class AuthResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'active_session_count' => data_get($this->resource, 'device_limit.active_session_count'),
+            'max_sessions' => data_get($this->resource, 'device_limit.max_sessions'),
             'token_type' => $this->resource['token_type'] ?? 'Bearer',
             'access_token' => $this->resource['access_token'] ?? null,
             'refresh_token' => $this->resource['refresh_token'] ?? null,

@@ -20,6 +20,7 @@ class Comment extends Model
         'lesson_id',
         'content',
         'status',
+        'is_official',
     ];
 
     public function user(): BelongsTo

@@ -11,12 +11,17 @@ final class UserResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'name' => $this->full_name,
             'full_name' => $this->full_name,
             'email' => $this->email,
             'phone' => $this->phone,
             'role' => $this->role,
             'status' => $this->status,
-            'email_verified_at' => $this->email_verified_at,
+            'avatar' => $this->avatar_url,
+            'avatar_url' => $this->avatar_url,
+            'email_verified_at' => $this->email_verified_at?->toDateTimeString(),
+            'phone_verified_at' => !empty($this->phone) ? ($this->updated_at?->toDateTimeString()) : null,
+            'last_login_at' => $this->last_login_at?->toDateTimeString(),
         ];
     }
 }

@@ -15,7 +15,22 @@ final class StoreLessonRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'lesson_type' => ['required', 'string', 'in:video,text'],
             'content' => ['nullable', 'required_if:lesson_type,text', 'string'],
-            'video_url' => ['nullable', 'url', 'max:2048'],
+            'video_url' => ['nullable', 'string', 'max:2048', function ($attribute, $value, $fail) {
+                if (empty($value)) return;
+                if (str_starts_with($value, 'blob:')) {
+                    $fail('Vui lòng tải lên video bài học hợp lệ.');
+                    return;
+                }
+                if (preg_match('/^[a-zA-Z]:\\\\/', $value)) {
+                    $fail('Vui lòng tải lên video bài học hợp lệ.');
+                    return;
+                }
+                $isValidUrl = filter_var($value, FILTER_VALIDATE_URL) !== false;
+                $isValidRelativePath = str_starts_with($value, '/') || str_starts_with($value, 'instructor/') || str_starts_with($value, 'videos/') || str_starts_with($value, 'storage/');
+                if (!$isValidUrl && !$isValidRelativePath) {
+                    $fail('Vui lòng tải lên video bài học hợp lệ.');
+                }
+            }],
             'video_duration_seconds' => ['nullable', 'integer', 'min:0'],
             'is_preview' => ['nullable', 'boolean'],
             'status' => ['nullable', 'string', 'in:draft,published,hidden'],
@@ -33,7 +48,7 @@ final class StoreLessonRequest extends FormRequest
             'lesson_type.required' => 'Vui lòng chọn loại bài học.',
             'lesson_type.in' => 'Tham số không hợp lệ.',
             'content.required_if' => 'Bài học dạng text bắt buộc phải có nội dung.',
-            'video_url.url' => 'Đường dẫn video không hợp lệ.',
+            'video_url.url' => 'Vui lòng tải lên video bài học hợp lệ.',
             'status.in' => 'Tham số không hợp lệ.',
         ];
     }

@@ -15,7 +15,7 @@ class CatalogCourseRepository
 
         $query = $this->publicCourseQuery();
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim((string) $filters['search']);
 
             $query->where(function (Builder $courseQuery) use ($search) {
@@ -25,21 +25,55 @@ class CatalogCourseRepository
             });
         }
 
-        if (!empty($filters['category_id'])) {
+        if (! empty($filters['category_id'])) {
             $categoryId = (int) $filters['category_id'];
+            $categoryIds = [$categoryId];
+            $childIds = \App\Models\Category::where('parent_id', $categoryId)->pluck('id')->toArray();
+            if (! empty($childIds)) {
+                $categoryIds = array_merge($categoryIds, $childIds);
+            }
 
-            $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryId) {
-                $categoryQuery->where('categories.id', $categoryId)
+            $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryIds) {
+                $categoryQuery->whereIn('categories.id', $categoryIds)
                     ->where('categories.status', 'active')
                     ->whereNull('categories.deleted_at');
             });
         }
 
-        if (!empty($filters['level'])) {
+        if (! empty($filters['category_slug'])) {
+            $categorySlug = trim((string) $filters['category_slug']);
+            $catModel = \App\Models\Category::where('slug', $categorySlug)->first();
+
+            if ($catModel) {
+                $categoryIds = [$catModel->id];
+                $childIds = \App\Models\Category::where('parent_id', $catModel->id)->pluck('id')->toArray();
+                if (! empty($childIds)) {
+                    $categoryIds = array_merge($categoryIds, $childIds);
+                }
+
+                $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryIds) {
+                    $categoryQuery->whereIn('categories.id', $categoryIds)
+                        ->where('categories.status', 'active')
+                        ->whereNull('categories.deleted_at');
+                });
+            } else {
+                $query->whereHas('categories', function (Builder $categoryQuery) use ($categorySlug) {
+                    $categoryQuery->where('categories.slug', $categorySlug)
+                        ->where('categories.status', 'active')
+                        ->whereNull('categories.deleted_at');
+                });
+            }
+        }
+
+        if (! empty($filters['level'])) {
             $query->where('courses.level', $filters['level']);
         }
 
-        if (!empty($filters['language'])) {
+        if (! empty($filters['instructor_id'])) {
+            $query->where('courses.instructor_id', (int) $filters['instructor_id']);
+        }
+
+        if (! empty($filters['language'])) {
             $query->where('courses.language', $filters['language']);
         }
 
@@ -63,12 +97,45 @@ class CatalogCourseRepository
     public function featured(array $filters)
     {
         $perPage = (int) ($filters['per_page'] ?? 10);
+        $timeframe = now()->subDays(90);
+
+        // Find global E_max in the last 90 days for normalization
+        $eMax = \Illuminate\Support\Facades\DB::table('enrollments')
+            ->where('enrolled_at', '>=', $timeframe)
+            ->whereIn('status', ['active', 'completed'])
+            ->selectRaw('COUNT(id) as e_count')
+            ->groupBy('course_id')
+            ->orderByDesc('e_count')
+            ->value('e_count');
+            
+        $eMax = max((float)$eMax, 1.0);
 
         $query = $this->publicCourseQuery()
-            ->where('courses.is_featured', true)
+            ->selectSub(function ($query) use ($timeframe) {
+                $query->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->where('enrollments.enrolled_at', '>=', $timeframe)
+                    ->whereIn('enrollments.status', ['active', 'completed'])
+                    ->selectRaw('COUNT(enrollments.id)');
+            }, 'recent_enrollments')
+            ->selectSub(function ($query) use ($timeframe) {
+                $query->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->where('enrollments.enrolled_at', '>=', $timeframe)
+                    ->whereIn('enrollments.status', ['active', 'completed'])
+                    ->selectRaw('COALESCE(AVG(enrollments.progress_percent), 0)');
+            }, 'recent_progress')
+            ->orderByDesc('courses.is_featured')
+            ->orderByRaw("
+                IF(recent_enrollments >= 10,
+                    (0.4 * (recent_enrollments / $eMax)) + 
+                    (0.4 * (recent_progress / 100)) + 
+                    (0.2 * (average_rating / 5)),
+                    0
+                ) DESC
+            ")
             ->orderByDesc('enrollments_count')
             ->orderByDesc('average_rating')
-            ->orderByDesc('courses.published_at')
             ->orderByDesc('courses.id');
 
         return $query->paginate($perPage);
@@ -79,6 +146,20 @@ class CatalogCourseRepository
         $perPage = (int) ($filters['per_page'] ?? 10);
 
         $query = $this->publicCourseQuery()
+            ->orderByDesc('courses.published_at')
+            ->orderByDesc('courses.id');
+
+        return $query->paginate($perPage);
+    }
+
+    public function discounted(array $filters)
+    {
+        $perPage = (int) ($filters['per_page'] ?? 10);
+
+        $query = $this->publicCourseQuery()
+            ->whereNotNull('courses.sale_price')
+            ->whereRaw('courses.sale_price < courses.price')
+            ->orderByRaw('(courses.price - courses.sale_price) / courses.price DESC')
             ->orderByDesc('courses.published_at')
             ->orderByDesc('courses.id');
 
@@ -97,39 +178,106 @@ class CatalogCourseRepository
         $courseLimit = (int) ceil($limit / 2);
         $categoryLimit = $limit - $courseLimit;
 
+        /*
+         * Gợi ý khóa học:
+         * Chỉ lấy khóa học published + instructor active + instructor không bị khóa.
+         */
         $courses = DB::table('courses')
             ->select([
-                'id',
-                DB::raw('title as text'),
-                'slug',
+                'courses.id',
+                DB::raw('courses.title as text'),
+                'courses.slug',
                 DB::raw("'course' as type"),
             ])
-            ->where('status', 'published')
-            ->whereNull('deleted_at')
-            ->where(function ($query) use ($keyword) {
-                $query->where('title', 'like', "%{$keyword}%")
-                    ->orWhere('short_description', 'like', "%{$keyword}%");
+            ->where('courses.status', 'published')
+            ->whereNull('courses.deleted_at')
+            ->whereExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('users')
+                    ->whereColumn('users.id', 'courses.instructor_id')
+                    ->where('users.status', 'active')
+                    ->whereNull('users.deleted_at')
+                    ->where(function ($userQuery) {
+                        $userQuery->whereNull('users.locked')
+                            ->orWhere('users.locked', 0);
+                    });
             })
-            ->orderByDesc('is_featured')
-            ->orderByDesc('published_at')
+            ->where(function ($query) use ($keyword) {
+                $query->where('courses.title', 'like', "%{$keyword}%")
+                    ->orWhere('courses.short_description', 'like', "%{$keyword}%");
+            })
+            ->orderByDesc('courses.is_featured')
+            ->orderByDesc('courses.published_at')
             ->limit($courseLimit)
             ->get();
 
+        /*
+         * Gợi ý danh mục:
+         * Chỉ lấy danh mục active và có ít nhất 1 khóa học public hợp lệ.
+         *
+         * Có 2 trường hợp:
+         * 1. Danh mục đó có khóa học trực tiếp.
+         * 2. Danh mục cha có danh mục con đang có khóa học.
+         */
         $categories = DB::table('categories')
             ->select([
-                'id',
-                DB::raw('name as text'),
-                'slug',
+                'categories.id',
+                DB::raw('categories.name as text'),
+                'categories.slug',
                 DB::raw("'category' as type"),
             ])
-            ->where('status', 'active')
-            ->whereNull('deleted_at')
-            ->where(function ($query) use ($keyword) {
-                $query->where('name', 'like', "%{$keyword}%")
-                    ->orWhere('slug', 'like', "%{$keyword}%");
+            ->where('categories.status', 'active')
+            ->whereNull('categories.deleted_at')
+            ->where(function ($categoryQuery) {
+                /*
+                 * Trường hợp 1:
+                 * Danh mục hiện tại có khóa học public trực tiếp.
+                 */
+                $categoryQuery->whereExists(function ($exists) {
+                    $exists->selectRaw('1')
+                        ->from('course_categories')
+                        ->join('courses', 'courses.id', '=', 'course_categories.course_id')
+                        ->join('users', 'users.id', '=', 'courses.instructor_id')
+                        ->whereColumn('course_categories.category_id', 'categories.id')
+                        ->where('courses.status', 'published')
+                        ->whereNull('courses.deleted_at')
+                        ->where('users.status', 'active')
+                        ->whereNull('users.deleted_at')
+                        ->where(function ($userQuery) {
+                            $userQuery->whereNull('users.locked')
+                                ->orWhere('users.locked', 0);
+                        });
+                })
+
+                /*
+                 * Trường hợp 2:
+                 * Danh mục cha không có khóa trực tiếp nhưng danh mục con có khóa học public.
+                 */
+                ->orWhereExists(function ($exists) {
+                    $exists->selectRaw('1')
+                        ->from('categories as child_categories')
+                        ->join('course_categories', 'course_categories.category_id', '=', 'child_categories.id')
+                        ->join('courses', 'courses.id', '=', 'course_categories.course_id')
+                        ->join('users', 'users.id', '=', 'courses.instructor_id')
+                        ->whereColumn('child_categories.parent_id', 'categories.id')
+                        ->where('child_categories.status', 'active')
+                        ->whereNull('child_categories.deleted_at')
+                        ->where('courses.status', 'published')
+                        ->whereNull('courses.deleted_at')
+                        ->where('users.status', 'active')
+                        ->whereNull('users.deleted_at')
+                        ->where(function ($userQuery) {
+                            $userQuery->whereNull('users.locked')
+                                ->orWhere('users.locked', 0);
+                        });
+                });
             })
-            ->orderBy('sort_order')
-            ->orderByDesc('id')
+            ->where(function ($query) use ($keyword) {
+                $query->where('categories.name', 'like', "%{$keyword}%")
+                    ->orWhere('categories.slug', 'like', "%{$keyword}%");
+            })
+            ->orderBy('categories.sort_order')
+            ->orderByDesc('categories.id')
             ->limit($categoryLimit)
             ->get();
 
@@ -148,6 +296,20 @@ class CatalogCourseRepository
             ])
             ->where('courses.status', 'published')
             ->whereNull('courses.deleted_at')
+
+            /*
+             * Rule mới:
+             * Instructor bị khóa/inactive thì course không hiển thị public.
+             */
+            ->whereHas('instructor', function (Builder $instructorQuery) {
+                $instructorQuery->where('users.status', 'active')
+                    ->whereNull('users.deleted_at')
+                    ->where(function (Builder $lockedQuery) {
+                        $lockedQuery->whereNull('users.locked')
+                            ->orWhere('users.locked', 0);
+                    });
+            })
+
             ->select('courses.*')
             ->selectSub(function ($query) {
                 $query->from('orders')
@@ -171,7 +333,7 @@ class CatalogCourseRepository
             }, 'enrollments_count');
     }
 
-    private function applySort($query, ?string $sort): void
+    private function applySort(Builder $query, ?string $sort): void
     {
         match ($sort) {
             'latest' => $query
