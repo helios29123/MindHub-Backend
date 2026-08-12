@@ -20,6 +20,47 @@ class CatalogService
 
     public function home(array $filters): array
     {
+        $now = now();
+
+        $faqs = \App\Models\Faq::query()
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->limit(6)
+            ->get();
+
+        $testimonials = \App\Models\CourseReview::query()
+            ->with(['order.user:id,full_name,avatar_url'])
+            ->where('rating', '>=', 4)
+            ->whereNotNull('comment')
+            ->where('comment', '!=', '')
+            ->whereNull('deleted_at')
+            ->orderByDesc('rating')
+            ->orderByDesc('id')
+            ->limit(6)
+            ->get();
+
+        $vouchers = \App\Models\Coupon::query()
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_at')->orWhere('start_at', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_at')->orWhere('end_at', '>=', $now);
+            })
+            ->orderByDesc('id')
+            ->limit(4)
+            ->get();
+
+        $stats = [
+            'total_courses' => \App\Models\Course::query()->where('status', 'published')->whereNull('deleted_at')->count(),
+            'total_students' => \App\Models\User::query()->where('role', 'learner')->whereNull('deleted_at')->count(),
+            'total_instructors' => \App\Models\User::query()->where('role', 'instructor')->whereNull('deleted_at')->count(),
+            'total_reviews' => \App\Models\CourseReview::query()->whereNull('deleted_at')->count(),
+        ];
+
         return [
             'banners' => $this->bannerRepository->getActiveHomeBanners(),
 
@@ -27,15 +68,28 @@ class CatalogService
 
             'featured_courses' => $this->courseRepository->featured([
                 'page' => 1,
-                'per_page' => 8,
+                'per_page' => 5,
             ]),
 
             'latest_courses' => $this->courseRepository->latest([
                 'page' => 1,
-                'per_page' => 8,
+                'per_page' => 5,
+            ]),
+
+            'discounted_courses' => $this->courseRepository->discounted([
+                'page' => 1,
+                'per_page' => 5,
             ]),
 
             'featured_instructors' => $this->featuredInstructorRepository->paginateFeatured(8),
+
+            'faqs' => $faqs,
+
+            'testimonials' => $testimonials,
+
+            'vouchers' => $vouchers,
+
+            'stats' => $stats,
         ];
     }
 

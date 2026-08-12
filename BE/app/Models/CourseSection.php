@@ -12,18 +12,18 @@ class CourseSection extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'course_sections';
+    protected $table = "course_sections";
 
     protected $fillable = [
-        'course_id',
-        'title',
-        'description',
-        'sort_order',
-        'status',
+        "course_id",
+        "title",
+        "description",
+        "sort_order",
+        "status",
     ];
 
     protected $casts = [
-        'sort_order' => 'integer',
+        "sort_order" => "integer",
     ];
 
     public function course(): BelongsTo
@@ -33,6 +33,9 @@ class CourseSection extends Model
 
     public function lessons(): HasMany
     {
-        return $this->hasMany(Lesson::class, 'course_section_id')->orderBy('sort_order');
+        return $this->hasMany(Lesson::class, "course_section_id")->orderBy(
+            "sort_order",
+        );
     }
+
 }

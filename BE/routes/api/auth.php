@@ -1,40 +1,38 @@
 <?php
 
-use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
-    Route::post('register', [AuthController::class, 'register']);
+    // Form đăng ký học viên
+    Route::post('register/learner', [AuthController::class, 'registerLearner']);
 
+    // Form đăng ký giảng viên
+    Route::post('register/instructor', [AuthController::class, 'registerInstructor']);
+
+    // Route đăng ký chung
+    Route::post('register', [AuthController::class, 'registerLearner']);
+
+    // Xác thực email
     Route::get('verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
         ->name('auth.verify-email');
 
     Route::post('verify-email/resend', [AuthController::class, 'resendVerifyEmail']);
+    Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
 
+    // Luồng Đăng nhập Email/Password & Google OAuth
     Route::post('login', [AuthController::class, 'login']);
-
+    Route::get('google/redirect', [AuthController::class, 'googleRedirect']);
+    Route::get('google/callback', [AuthController::class, 'googleCallback']);
     Route::post('google', [AuthController::class, 'googleLogin']);
 
+    // Quên & Đặt lại mật khẩu
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
-
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
 
-    Route::post('logout', [AuthController::class, 'logout'])
-        ->middleware('auth.session');
-});
-
-Route::middleware(['auth.session', 'role:admin'])->get('/admin/test', function () {
-    return response()->json([
-        'success' => true,
-        'message' => 'Admin access granted',
-        'data' => null,
-    ]);
-});
-
-Route::middleware(['auth.session', 'role:learner'])->get('/learner/test', function () {
-    return response()->json([
-        'success' => true,
-        'message' => 'Learner access granted',
-        'data' => null,
-    ]);
+    // Session & User Info
+    Route::middleware('auth.session')->group(function () {
+        Route::post('logout', [AuthController::class, 'logout']);
+        Route::get('me', [AuthController::class, 'me']);
+    });
 });

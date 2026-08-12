@@ -33,6 +33,7 @@ class User extends Authenticatable
         'email',
         'password_hash',
         'phone',
+        'avatar_url',
         'oauth_account_login',
         'role',
         'status',
@@ -46,8 +47,12 @@ class User extends Authenticatable
     protected $hidden = [
         'password_hash',
         'password_reset',
-        'remember_token',
     ];
+
+    public function getRememberTokenName()
+    {
+        return null;
+    }
 
     protected function casts(): array
     {
@@ -59,6 +64,52 @@ class User extends Authenticatable
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    public function getAvatarUrlAttribute(?string $value = null): ?string
+    {
+        $val = $value ?? ($this->attributes['avatar_url'] ?? null);
+        if (empty($val)) {
+            return null;
+        }
+
+        if (str_starts_with($val, 'http://') || str_starts_with($val, 'https://')) {
+            return $val;
+        }
+
+        $path = ltrim($val, '/');
+        if (str_starts_with($path, 'storage/')) {
+            return url($path);
+        }
+
+        return url('storage/' . $path);
+    }
+
+    public function getNameAttribute(): ?string
+    {
+        return $this->attributes['full_name'] ?? null;
+    }
+
+    public function setNameAttribute($value): void
+    {
+        $this->attributes['full_name'] = $value;
+    }
+
+    public function getPasswordAttribute(): ?string
+    {
+        return $this->attributes['password_hash'] ?? $this->attributes['password'] ?? null;
+    }
+
+    public function setPasswordAttribute($value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['password_hash'] = null;
+            return;
+        }
+
+        $this->attributes['password_hash'] = \Illuminate\Support\Facades\Hash::needsRehash((string) $value)
+            ? \Illuminate\Support\Facades\Hash::make($value)
+            : $value;
     }
 
     public function getAuthPassword(): string

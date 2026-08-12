@@ -1,0 +1,54 @@
+<?php
+namespace App\Http\Requests\Moderation;
+use App\Support\ApiResponse;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\Rule;
+class PendingCourseQueryRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+    public function rules(): array
+    {
+        return [
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:10000'],
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'category_id' => ['sometimes', 'nullable', 'integer'],
+            'date_from' => ['sometimes', 'nullable', 'date'],
+            'date_to' => ['sometimes', 'nullable', 'date'],
+            'sort' => ['sometimes', 'string', Rule::in([
+                'newest',
+                'oldest',
+                'title_asc',
+                'title_desc',
+            ])],
+            'status' => ['sometimes', 'nullable', 'string', Rule::in(['pending', 'approved', 'rejected'])],
+            'reviewed_date' => ['sometimes', 'nullable', 'string', Rule::in(['today'])],
+        ];
+    }
+    public function messages(): array
+    {
+        return [
+            'page.integer' => 'Trang phải là số nguyên.',
+            'page.min' => 'Trang phải lớn hơn hoặc bằng 1.',
+            'per_page.integer' => 'Số bản ghi mỗi trang phải là số nguyên.',
+            'per_page.min' => 'Số bản ghi mỗi trang phải lớn hơn hoặc bằng 1.',
+            'per_page.max' => 'Số bản ghi mỗi trang không được vượt quá 10000.',
+            'search.string' => 'Từ khóa tìm kiếm không hợp lệ.',
+            'search.max' => 'Từ khóa tìm kiếm không được vượt quá 255 ký tự.',
+            'sort.in' => 'Kiểu sắp xếp không hợp lệ.',
+            'status.in' => 'Trạng thái không hợp lệ.',
+            'reviewed_date.in' => 'Ngày xét duyệt không hợp lệ.',
+        ];
+    }
+    protected function failedValidation(Validator $validator): void
+    {
+        throw new HttpResponseException(
+            ApiResponse::error('Tham số không hợp lệ.', $validator->errors()->toArray(), 422)
+        );
+    }
+}

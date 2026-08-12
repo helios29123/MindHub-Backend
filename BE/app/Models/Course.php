@@ -15,42 +15,48 @@ class Course extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'instructor_id',
-        'title',
-        'slug',
-        'short_description',
-        'description',
-        'thumbnail_url',
-        'intro_video_url',
-        'price',
-        'sale_price',
-        'level',
-        'language',
-        'requirements',
-        'outcomes',
-        'status',
-        'is_featured',
-        'total_duration_seconds',
-        'published_at',
-        'admin_reject_reason',
+        "instructor_id",
+        "title",
+        "slug",
+        "short_description",
+        "description",
+        "thumbnail_url",
+        "intro_video_url",
+        "price",
+        "sale_price",
+        "discount_percent",
+        "level",
+        "language",
+        "requirements",
+        "outcomes",
+        "status",
+        "is_featured",
+        "total_duration_seconds",
+        "published_at",
+        "admin_reject_reason",
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
-        'sale_price' => 'decimal:2',
-        'is_featured' => 'boolean',
-        'published_at' => 'datetime',
+        "price" => "decimal:2",
+        "sale_price" => "decimal:2",
+        "discount_percent" => "integer",
+        "is_featured" => "boolean",
+        "published_at" => "datetime",
     ];
 
     public function instructor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'instructor_id');
+        return $this->belongsTo(User::class, "instructor_id");
     }
 
     public function categories(): BelongsToMany
     {
-        return $this->belongsToMany(Category::class, 'course_categories', 'course_id', 'category_id')
-            ->withPivot('created_at');
+        return $this->belongsToMany(
+            Category::class,
+            "course_categories",
+            "course_id",
+            "category_id",
+        )->withPivot("created_at");
     }
 
     public function enrollments(): HasMany
@@ -60,7 +66,10 @@ class Course extends Model
 
     public function activeEnrollments(): HasMany
     {
-        return $this->hasMany(Enrollment::class)->whereIn('status', ['active', 'completed']);
+        return $this->hasMany(Enrollment::class)->whereIn("status", [
+            "active",
+            "completed",
+        ]);
     }
 
     public function orders(): HasMany
@@ -70,24 +79,65 @@ class Course extends Model
 
     public function reviews(): HasManyThrough
     {
-        return $this->hasManyThrough(CourseReview::class, Order::class, 'course_id', 'order_id', 'id', 'id');
+        return $this->hasManyThrough(
+            CourseReview::class,
+            Order::class,
+            "course_id",
+            "order_id",
+            "id",
+            "id",
+        );
     }
 
     public function sections(): HasMany
     {
-        return $this->hasMany(CourseSection::class)->orderBy('sort_order');
+        return $this->hasMany(CourseSection::class)->orderBy("sort_order");
     }
 
     public function faqs(): BelongsToMany
     {
-        return $this->belongsToMany(Faq::class, 'course_faqs', 'course_id', 'faq_id')
-            ->withPivot('sort_order')
-            ->orderBy('course_faqs.sort_order')
-            ->whereNull('course_faqs.deleted_at');
+        return $this->belongsToMany(
+            Faq::class,
+            "course_faqs",
+            "course_id",
+            "faq_id",
+        )
+            ->withPivot("sort_order")
+            ->orderBy("course_faqs.sort_order")
+            ->whereNull("course_faqs.deleted_at");
     }
 
     public function wishlists(): HasMany
     {
         return $this->hasMany(Wishlist::class);
+    }
+   public function scopePubliclyAvailable($query)
+{
+    return $query
+        ->where('status', 'published')
+        ->whereHas('instructor', function ($q) {
+            $q->where('status', 'active')
+                ->whereNull('deleted_at')
+                ->where(function ($sub) {
+                    $sub->whereNull('locked')
+                        ->orWhere('locked', 0);
+                });
+        });
+}
+
+public function scopePurchasable($query)
+{
+    return $query->publiclyAvailable();
+}
+
+
+    public function lessons(): HasMany
+    {
+        return $this->hasMany(Lesson::class);
+    }
+
+    public function comments(): HasManyThrough
+    {
+        return $this->hasManyThrough(Comment::class, Lesson::class);
     }
 }

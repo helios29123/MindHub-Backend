@@ -11,15 +11,16 @@ class BannerRequest extends BaseApiRequest
 {
     public function rules(): array
     {
+        $isPatch = $this->isMethod('patch');
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'image_url' => ['required', 'string', 'max:500'],
+            'title' => [$isPatch ? 'sometimes' : 'required', 'string', 'max:255'],
+            'image_url' => [$isPatch ? 'sometimes' : 'required', 'string', 'max:500'],
             'target_url' => ['nullable', 'string', 'max:500'],
-            'position' => ['required', 'string', 'max:100'],
+            'position' => [$isPatch ? 'sometimes' : 'required', 'string', 'max:100'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'start_at' => ['nullable', 'date'],
             'end_at' => ['nullable', 'date', 'after_or_equal:start_at'],
-            'status' => ['required', 'string', 'in:active,inactive'],
+            'status' => [$isPatch ? 'sometimes' : 'required', 'string', 'in:active,inactive'],
         ];
     }
 
