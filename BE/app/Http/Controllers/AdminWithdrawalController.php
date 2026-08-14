@@ -9,8 +9,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+use App\Services\Payout\EarlyWithdrawalService;
+
 final class AdminWithdrawalController extends Controller
 {
+    private EarlyWithdrawalService $earlyWithdrawalService;
+
+    public function __construct(EarlyWithdrawalService $earlyWithdrawalService)
+    {
+        $this->earlyWithdrawalService = $earlyWithdrawalService;
+    }
+
     /**
      * GET /api/admin/withdrawals
      */
@@ -394,6 +403,8 @@ final class AdminWithdrawalController extends Controller
         $withdrawal->rejected_reason = $request->input('reason');
         $withdrawal->save();
 
+        $this->earlyWithdrawalService->releaseAllocations($withdrawal);
+
         return response()->json([
             'success' => true,
             'message' => 'Từ chối yêu cầu rút tiền thành công.',
@@ -426,16 +437,29 @@ final class AdminWithdrawalController extends Controller
         }
 
         DB::transaction(function () use ($withdrawal, $request) {
-            $withdrawal->status = WithdrawRequest::STATUS_PAID;
+        $withdrawal->status = WithdrawRequest::STATUS_PAID;
             $withdrawal->paid_at = now();
             $withdrawal->provider_payout_id = $request->input('provider_payout_id');
             $withdrawal->save();
 
-            // Mark all associated revenues as paid
-            $withdrawal->allocatedRevenues()->update([
-                'status' => Revenue::STATUS_PAID,
-                'updated_at' => now()
-            ]);
+            // Mark associated revenues as paid ONLY IF fully allocated
+            foreach ($withdrawal->allocatedRevenues as $revenue) {
+                $totalAllocated = DB::table('withdrawal_revenues')
+                    ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
+                    ->where('withdrawal_revenues.revenue_id', $revenue->id)
+                    ->whereIn('withdraw_requests.status', [
+                        WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, 
+                        WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_PAID
+                    ])
+                    ->sum('withdrawal_revenues.allocated_amount');
+
+                if ($totalAllocated >= $revenue->instructor_amount) {
+                    $revenue->update([
+                        'status' => Revenue::STATUS_PAID,
+                        'updated_at' => now()
+                    ]);
+                }
+            }
 
             $withdrawal->revenues()->update([
                 'status' => Revenue::STATUS_PAID,
