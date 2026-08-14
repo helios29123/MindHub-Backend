@@ -75,7 +75,37 @@ class InstructorLearnerRepository
             default => $query->orderByDesc('enrollments.enrolled_at'),
         };
 
-        return $query->paginate($perPage, ['*'], 'page', $page);
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        foreach ($paginator->items() as $item) {
+            $totalLessons = DB::table('lessons')
+                ->join('course_sections', 'course_sections.id', '=', 'lessons.section_id')
+                ->where('lessons.course_id', $item->course_id)
+                ->where('lessons.status', 'published')
+                ->where('course_sections.status', 'published')
+                ->count();
+
+            if ($totalLessons > 0) {
+                $completedCount = DB::table('lesson_progress')
+                    ->join('lessons', 'lessons.id', '=', 'lesson_progress.lesson_id')
+                    ->where('lesson_progress.user_id', $item->learner_id)
+                    ->where('lessons.course_id', $item->course_id)
+                    ->where('lessons.status', 'published')
+                    ->where('lesson_progress.status', 'completed')
+                    ->count();
+
+                $realProgress = round(($completedCount / $totalLessons) * 100, 2);
+                if (abs((float) $item->progress_percent - $realProgress) > 0.01) {
+                    $item->progress_percent = $realProgress;
+                    DB::table('enrollments')->where('id', $item->enrollment_id)->update([
+                        'progress_percent' => $realProgress,
+                        'status' => $realProgress >= 100 ? 'completed' : $item->status,
+                    ]);
+                }
+            }
+        }
+
+        return $paginator;
     }
 
     public function resolvePeriod(array $filters): array

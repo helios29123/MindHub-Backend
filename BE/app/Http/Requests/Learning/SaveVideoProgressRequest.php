@@ -17,9 +17,12 @@ class SaveVideoProgressRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'current_second' => ['required', 'integer', 'min:0'],
+            'current_second' => ['sometimes', 'integer', 'min:0'],
+            'current_time' => ['sometimes', 'numeric', 'min:0'],
             'duration_second' => ['nullable', 'integer', 'min:1'],
+            'duration' => ['nullable', 'numeric', 'min:1'],
             'is_completed' => ['nullable', 'boolean'],
+            'completed' => ['nullable', 'boolean'],
         ];
     }
 

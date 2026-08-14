@@ -17,7 +17,7 @@ class CompleteLessonRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'completed' => ['required', 'boolean'],
+            'completed' => ['sometimes', 'boolean'],
         ];
     }
 

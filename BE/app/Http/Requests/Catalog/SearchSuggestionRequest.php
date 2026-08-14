@@ -15,6 +15,9 @@ class SearchSuggestionRequest extends FormRequest
     {
         return [
             'q' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'query' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'search' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'keyword' => ['sometimes', 'nullable', 'string', 'max:100'],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:20'],
         ];
     }

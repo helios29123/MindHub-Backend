@@ -16,6 +16,7 @@ class CourseReviewResource extends JsonResource
             'created_at' => optional($this->created_at)->toISOString(),
             'reviewer' => $this->when($this->order && $this->order->user, fn () => [
                 'full_name' => $this->order->user->full_name,
+                'avatar_url' => $this->order->user->avatar_url,
             ]),
         ];
     }

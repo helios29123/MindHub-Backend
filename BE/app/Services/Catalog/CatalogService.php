@@ -124,7 +124,7 @@ class CatalogService
 
     public function suggestions(array $filters): Collection
     {
-        $keyword = trim((string) ($filters['q'] ?? ''));
+        $keyword = trim((string) ($filters['q'] ?? $filters['query'] ?? $filters['search'] ?? $filters['keyword'] ?? ''));
         $limit = min((int) ($filters['limit'] ?? 10), 20);
 
         return $this->courseRepository->suggestions($keyword, $limit);

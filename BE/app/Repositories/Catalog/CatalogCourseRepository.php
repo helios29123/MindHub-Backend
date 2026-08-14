@@ -183,10 +183,15 @@ class CatalogCourseRepository
          * Chỉ lấy khóa học published + instructor active + instructor không bị khóa.
          */
         $courses = DB::table('courses')
+            ->leftJoin('users as instructors', 'instructors.id', '=', 'courses.instructor_id')
             ->select([
                 'courses.id',
                 DB::raw('courses.title as text'),
                 'courses.slug',
+                'courses.thumbnail_url',
+                'courses.price',
+                'courses.sale_price',
+                DB::raw('instructors.full_name as instructor_name'),
                 DB::raw("'course' as type"),
             ])
             ->where('courses.status', 'published')

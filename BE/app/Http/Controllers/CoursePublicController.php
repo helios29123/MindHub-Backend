@@ -23,7 +23,11 @@ class CoursePublicController extends Controller
 
     public function index(\Illuminate\Http\Request $request): JsonResponse
     {
-        $filters = $request->only(['query', 'categories', 'minRating', 'priceType', 'sortBy']);
+        $searchKey = $request->query('query') ?? $request->query('search') ?? $request->query('q') ?? $request->query('keyword');
+        $filters = $request->only(['categories', 'minRating', 'priceType', 'sortBy']);
+        if ($searchKey !== null && trim((string) $searchKey) !== '') {
+            $filters['query'] = trim((string) $searchKey);
+        }
         if (isset($filters['categories']) && is_string($filters['categories'])) {
             $filters['categories'] = explode(',', $filters['categories']);
         }
@@ -131,6 +135,12 @@ class CoursePublicController extends Controller
 
     public function reviews(mixed $id): JsonResponse
     {
+        $course = \App\Models\Course::where('id', $id)->orWhere('slug', $id)->first();
+        if (!$course) {
+            return ApiResponse::error('Không tìm thấy dữ liệu.', [], 404);
+        }
+        $id = $course->id;
+
         $input = array_merge(
             ['id' => $id],
             request()->only(['page', 'per_page', 'rating', 'sort'])

@@ -30,8 +30,40 @@ class LearningService
             $query->where('status', $params['status']);
         }
 
-        return $query->orderByDesc('id')
+        $paginator = $query->orderByDesc('id')
             ->paginate($perPage);
+
+        foreach ($paginator->items() as $enrollment) {
+            $courseId = $enrollment->course_id;
+            $publishedLessonIds = \App\Models\Lesson::where('course_id', $courseId)
+                ->where('status', 'published')
+                ->whereHas('section', function ($q) {
+                    $q->where('status', 'published');
+                })
+                ->pluck('id');
+
+            if ($publishedLessonIds->isNotEmpty()) {
+                $completedCount = \App\Models\LessonProgress::where('user_id', $user->id)
+                    ->whereIn('lesson_id', $publishedLessonIds)
+                    ->where('status', 'completed')
+                    ->count();
+
+                $realProgress = round(($completedCount / $publishedLessonIds->count()) * 100, 2);
+                if (abs((float) $enrollment->progress_percent - $realProgress) > 0.01) {
+                    $enrollment->progress_percent = $realProgress;
+                    if ($realProgress >= 100) {
+                        $enrollment->status = Enrollment::STATUS_COMPLETED;
+                        $enrollment->completed_at = $enrollment->completed_at ?? now();
+                    } else if ($enrollment->status === Enrollment::STATUS_COMPLETED) {
+                        $enrollment->status = Enrollment::STATUS_ACTIVE;
+                        $enrollment->completed_at = null;
+                    }
+                    $enrollment->save();
+                }
+            }
+        }
+
+        return $paginator;
     }
 
     /**
@@ -263,6 +295,29 @@ class LearningService
 
         $progress->update($updates);
 
+        // Sync enrollment progress_percent and completion status
+        $publishedLessonIds = \App\Models\Lesson::where('course_id', $course->id)
+            ->where('status', 'published')
+            ->whereHas('section', function ($q) {
+                $q->where('status', 'published');
+            })
+            ->pluck('id');
+
+        $completedLessonsCount = \App\Models\LessonProgress::where('user_id', $user->id)
+            ->whereIn('lesson_id', $publishedLessonIds)
+            ->where('status', 'completed')
+            ->count();
+
+        $progressPercent = $publishedLessonIds->count() > 0 ? round(($completedLessonsCount / $publishedLessonIds->count()) * 100, 2) : 0.00;
+        $isAllCompleted = $publishedLessonIds->isNotEmpty() && $completedLessonsCount >= $publishedLessonIds->count();
+
+        $enrollment->update([
+            'progress_percent' => $progressPercent,
+            'status' => $isAllCompleted ? Enrollment::STATUS_COMPLETED : Enrollment::STATUS_ACTIVE,
+            'completed_at' => $isAllCompleted ? ($enrollment->completed_at ?? now()) : null,
+            'last_accessed_at' => now(),
+        ]);
+
         return [
             'course' => $course,
             'lesson' => $lesson,
@@ -467,19 +522,15 @@ class LearningService
             ->where('status', 'completed')
             ->count();
 
-        if ($publishedLessonIds->isNotEmpty() && $completedLessonsCount === $publishedLessonIds->count()) {
-            $enrollment->update([
-                'status' => Enrollment::STATUS_COMPLETED,
-                'completed_at' => now(),
-            ]);
-        } else {
-            if ($enrollment->status === Enrollment::STATUS_COMPLETED) {
-                $enrollment->update([
-                    'status' => Enrollment::STATUS_ACTIVE,
-                    'completed_at' => null,
-                ]);
-            }
-        }
+        $progressPercent = $publishedLessonIds->count() > 0 ? round(($completedLessonsCount / $publishedLessonIds->count()) * 100, 2) : 0.00;
+        $isAllCompleted = $publishedLessonIds->isNotEmpty() && $completedLessonsCount >= $publishedLessonIds->count();
+
+        $enrollment->update([
+            'progress_percent' => $progressPercent,
+            'status' => $isAllCompleted ? Enrollment::STATUS_COMPLETED : Enrollment::STATUS_ACTIVE,
+            'completed_at' => $isAllCompleted ? ($enrollment->completed_at ?? now()) : null,
+            'last_accessed_at' => now(),
+        ]);
 
         return [
             'course' => $course,
