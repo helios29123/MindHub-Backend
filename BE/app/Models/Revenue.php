@@ -12,6 +12,7 @@ class Revenue extends Model
     use HasFactory;
 
     protected $table = 'revenues';
+    const UPDATED_AT = null;
 
     public const STATUS_PENDING = 'pending';
     public const STATUS_AVAILABLE = 'available';

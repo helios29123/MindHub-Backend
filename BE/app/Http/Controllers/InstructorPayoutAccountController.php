@@ -220,7 +220,7 @@ final class InstructorPayoutAccountController extends Controller
             return ApiResponse::error('Tên chủ tài khoản là bắt buộc.', ['account_holder_name' => ['Tên chủ tài khoản là bắt buộc.']], 422);
         }
 
-        $provider = !empty($validated['bank_name']) 
+        $provider = !empty($validated['bank_name'])
             ? $validated['bank_name'] . (!empty($validated['bank_code']) ? ' (' . $validated['bank_code'] . ')' : '')
             : ($validated['provider'] ?? 'bank');
 

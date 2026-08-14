@@ -24,13 +24,13 @@ final class AdminWithdrawalController extends Controller
             $search = trim($request->input('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('id', $search)
-                  ->orWhere('provider_payout_id', 'like', "%{$search}%")
-                  ->orWhere('account_number_snapshot', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($uq) use ($search) {
-                      $uq->where('full_name', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%");
-                  });
-                
+                    ->orWhere('provider_payout_id', 'like', "%{$search}%")
+                    ->orWhere('account_number_snapshot', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($uq) use ($search) {
+                        $uq->where('full_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+
                 if (preg_match('/^W[DR]-(\d+)$/i', $search, $matches)) {
                     $q->orWhere('id', (int)$matches[1]);
                 }
@@ -118,8 +118,8 @@ final class AdminWithdrawalController extends Controller
         if ($sortOrder !== 'none') {
             if ($sortBy === 'user_name') {
                 $query->join('users', 'users.id', '=', 'withdraw_requests.user_id')
-                      ->select('withdraw_requests.*')
-                      ->orderBy('users.full_name', $sortOrder);
+                    ->select('withdraw_requests.*')
+                    ->orderBy('users.full_name', $sortOrder);
             } elseif ($sortBy === 'withdrawal_code') {
                 $query->orderBy('withdraw_requests.id', $sortOrder);
             } elseif ($sortBy === 'last_updated_at') {
@@ -231,7 +231,7 @@ final class AdminWithdrawalController extends Controller
 
         // Fetch Allocations
         $allocations = [];
-        
+
         $pivotRevenues = $withdrawal->allocatedRevenues()->with('course')->get();
         foreach ($pivotRevenues as $rev) {
             $allocations[] = [
@@ -433,13 +433,11 @@ final class AdminWithdrawalController extends Controller
 
             // Mark all associated revenues as paid
             $withdrawal->allocatedRevenues()->update([
-                'status' => Revenue::STATUS_PAID,
-                'updated_at' => now()
+                'status' => Revenue::STATUS_PAID
             ]);
 
             $withdrawal->revenues()->update([
-                'status' => Revenue::STATUS_PAID,
-                'updated_at' => now()
+                'status' => Revenue::STATUS_PAID
             ]);
         });
 
