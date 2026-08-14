@@ -239,6 +239,10 @@ class EarlyWithdrawalService
                 throw new BusinessException('Không tìm thấy tài khoản nhận tiền hợp lệ.', 422);
             }
 
+            // Calculate Historical Balance Snapshot BEFORE creating the withdrawal
+            $summary = $this->getPaymentSummary($instructorId);
+            $availableBefore = $summary['early_withdrawable_balance'];
+
             // Create Early Withdrawal Record
             $withdrawal = WithdrawRequest::create([
                 'user_id' => $instructorId,
@@ -251,6 +255,8 @@ class EarlyWithdrawalService
                 'account_number_snapshot' => $payoutAccount->account_number,
                 'account_name_snapshot' => $payoutAccount->account_name,
                 'payout_method' => 'bank_transfer',
+                'available_balance_before' => $availableBefore,
+                'available_balance_after' => max($availableBefore - $amount, 0),
             ]);
 
             // Allocate Available Revenues

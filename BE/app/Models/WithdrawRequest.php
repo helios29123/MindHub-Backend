@@ -47,6 +47,8 @@ class WithdrawRequest extends Model
         'payout_method',
         'payout_provider',
         'provider_payout_id',
+        'available_balance_before',
+        'available_balance_after',
         'blocked_reason',
         'failure_reason',
         'rejection_reason',
@@ -54,6 +56,8 @@ class WithdrawRequest extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'available_balance_before' => 'decimal:2',
+        'available_balance_after' => 'decimal:2',
         'period_start' => 'date',
         'period_end' => 'date',
         'expected_payment_at' => 'datetime',

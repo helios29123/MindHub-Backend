@@ -36,9 +36,11 @@ class PayoutService
             
             $status = strtoupper($response['status'] ?? '');
             $providerPayoutId = $response['provider_payout_id'] ?? null;
+            $payoutProvider = $response['payout_provider'] ?? 'fake';
             
             if ($providerPayoutId) {
                 $withdrawal->provider_payout_id = $providerPayoutId;
+                $withdrawal->payout_provider = $payoutProvider;
                 $withdrawal->save();
             }
 

@@ -20,6 +20,7 @@ class FakePayoutGateway implements PayoutGatewayInterface
             'status' => strtoupper($result),
             'message' => 'Fake payout result: ' . $result,
             'provider_payout_id' => 'FAKE-WD-' . $withdrawal->id,
+            'payout_provider' => 'fake',
         ];
     }
 }

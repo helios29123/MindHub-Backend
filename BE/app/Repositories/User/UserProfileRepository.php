@@ -76,25 +76,4 @@ final class UserProfileRepository
                 'password_reset' => null,
             ]);
     }
-
-    public function findPasswordCredentialById(int $id): User
-    {
-        return User::query()
-            ->select([
-                'id',
-                'password_hash',
-            ])
-            ->whereKey($id)
-            ->firstOrFail();
-    }
-
-    public function updatePasswordById(int $id, string $passwordHash): bool
-    {
-        return User::query()
-            ->whereKey($id)
-            ->update([
-                'password_hash' => $passwordHash,
-                'password_reset' => null,
-            ]);
-    }
 }

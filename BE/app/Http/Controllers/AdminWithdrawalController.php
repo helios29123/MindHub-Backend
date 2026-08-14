@@ -209,33 +209,11 @@ final class AdminWithdrawalController extends Controller
         $instructorId = $withdrawal->user_id;
         $amount = (float) $withdrawal->amount;
 
-        // Calculate available balances
-        $availableRevenueAmount = (float) Revenue::where('instructor_id', $instructorId)
-            ->where('status', Revenue::STATUS_AVAILABLE)
-            ->sum('instructor_amount');
-
-        $reservedWithdrawAmount = (float) DB::table('withdrawal_revenues')
-            ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
-            ->where('withdraw_requests.user_id', $instructorId)
-            ->whereIn('withdraw_requests.status', [
-                WithdrawRequest::STATUS_PENDING,
-                WithdrawRequest::STATUS_APPROVED,
-                WithdrawRequest::STATUS_QUEUED,
-                WithdrawRequest::STATUS_PROCESSING
-            ])
-            ->sum('withdrawal_revenues.allocated_amount');
-
-        $availableBalance = max($availableRevenueAmount - $reservedWithdrawAmount, 0);
-
-        if (in_array($withdrawal->status, ['pending', 'approved'])) {
-            $balanceBefore = $availableBalance + $amount;
-            $holdingBalance = $amount;
-            $balanceAfter = $availableBalance;
-        } else {
-            $balanceBefore = $availableBalance;
-            $holdingBalance = 0;
-            $balanceAfter = $availableBalance;
-        }
+        $balanceBefore = $withdrawal->available_balance_before !== null ? (float) $withdrawal->available_balance_before : null;
+        $balanceAfter = $withdrawal->available_balance_after !== null ? (float) $withdrawal->available_balance_after : null;
+        
+        // For backwards compatibility or displaying holding amount
+        $holdingBalance = in_array($withdrawal->status, ['pending', 'approved', 'queued', 'processing']) ? $amount : 0;
 
         // Fetch Allocations
         $allocations = [];
