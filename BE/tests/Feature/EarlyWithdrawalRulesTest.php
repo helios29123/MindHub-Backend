@@ -319,7 +319,7 @@ class EarlyWithdrawalRulesTest extends TestCase
         $this->assertEquals(800000, $summary['early_withdrawable_balance']);
 
         // Admin rejects it
-        $controller = new \App\Http\Controllers\AdminWithdrawalController($this->service);
+        $controller = app(\App\Http\Controllers\AdminWithdrawalController::class);
         $request = new \Illuminate\Http\Request(['reason' => 'Test']);
         $controller->reject($request, $withdrawal->id);
 
@@ -387,8 +387,13 @@ class EarlyWithdrawalRulesTest extends TestCase
         $this->mockOtp('123456');
         $withdrawal = $this->service->createEarlyWithdrawal($this->instructor->id, 200000, $this->payoutAccount->id, '123456');
 
+        $this->mock(\App\Services\Payout\PayoutService::class, function ($mock) {
+            $mock->makePartial();
+            $mock->shouldReceive('process')->andReturnNull();
+        });
+
         // Approve it
-        $controller = new \App\Http\Controllers\AdminWithdrawalController($this->service);
+        $controller = app(\App\Http\Controllers\AdminWithdrawalController::class);
         $controller->approve($withdrawal->id);
 
         $withdrawal->refresh();

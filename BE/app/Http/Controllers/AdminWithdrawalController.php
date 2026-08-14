@@ -4,20 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Revenue;
 use App\Models\WithdrawRequest;
+use App\Services\Payout\EarlyWithdrawalService;
+use App\Services\Payout\PayoutService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-use App\Services\Payout\EarlyWithdrawalService;
-
 final class AdminWithdrawalController extends Controller
 {
-    private EarlyWithdrawalService $earlyWithdrawalService;
-
-    public function __construct(EarlyWithdrawalService $earlyWithdrawalService)
-    {
-        $this->earlyWithdrawalService = $earlyWithdrawalService;
+    public function __construct(
+        private readonly EarlyWithdrawalService $earlyWithdrawalService,
+        private readonly PayoutService $payoutService
+    ) {
     }
 
     /**
@@ -366,9 +365,12 @@ final class AdminWithdrawalController extends Controller
         $withdrawal->approved_at = now();
         $withdrawal->save();
 
+        // Initiate Payout Process
+        $this->payoutService->process($withdrawal);
+
         return response()->json([
             'success' => true,
-            'message' => 'Duyệt yêu cầu rút tiền thành công.',
+            'message' => 'Duyệt yêu cầu rút tiền thành công. Trạng thái: ' . $withdrawal->status,
         ]);
     }
 
@@ -429,43 +431,14 @@ final class AdminWithdrawalController extends Controller
             ], 404);
         }
 
-        if ($withdrawal->status !== WithdrawRequest::STATUS_APPROVED) {
+        if ($withdrawal->status !== WithdrawRequest::STATUS_APPROVED && $withdrawal->status !== WithdrawRequest::STATUS_PROCESSING) {
             return response()->json([
                 'success' => false,
-                'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Đang xử lý (Approved).',
+                'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Đang xử lý (Approved/Processing).',
             ], 422);
         }
 
-        DB::transaction(function () use ($withdrawal, $request) {
-        $withdrawal->status = WithdrawRequest::STATUS_PAID;
-            $withdrawal->paid_at = now();
-            $withdrawal->provider_payout_id = $request->input('provider_payout_id');
-            $withdrawal->save();
-
-            // Mark associated revenues as paid ONLY IF fully allocated
-            foreach ($withdrawal->allocatedRevenues as $revenue) {
-                $totalAllocated = DB::table('withdrawal_revenues')
-                    ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
-                    ->where('withdrawal_revenues.revenue_id', $revenue->id)
-                    ->whereIn('withdraw_requests.status', [
-                        WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, 
-                        WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_PAID
-                    ])
-                    ->sum('withdrawal_revenues.allocated_amount');
-
-                if ($totalAllocated >= $revenue->instructor_amount) {
-                    $revenue->update([
-                        'status' => Revenue::STATUS_PAID,
-                        'updated_at' => now()
-                    ]);
-                }
-            }
-
-            $withdrawal->revenues()->update([
-                'status' => Revenue::STATUS_PAID,
-                'updated_at' => now()
-            ]);
-        });
+        $this->payoutService->finalizeSuccess($withdrawal, $request->input('provider_payout_id'));
 
         return response()->json([
             'success' => true,

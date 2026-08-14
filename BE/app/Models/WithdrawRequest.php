@@ -45,6 +45,8 @@ class WithdrawRequest extends Model
         'account_number_snapshot',
         'account_name_snapshot',
         'payout_method',
+        'payout_provider',
+        'provider_payout_id',
         'blocked_reason',
         'failure_reason',
         'rejection_reason',
