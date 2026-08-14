@@ -159,6 +159,8 @@ final class AdminWithdrawalController extends Controller
                 'approved_at' => $this->formatDate($item->approved_at),
                 'rejected_at' => $this->formatDate($item->rejected_at),
                 'provider_payout_id' => $item->provider_payout_id,
+                'payout_provider' => $item->payout_provider,
+                'payout_mode' => $item->payout_provider === 'manual' ? 'manual' : ($item->payout_provider ? 'auto' : null),
                 'payout_snapshot' => [
                     'payout_account_id' => $item->payout_account_id,
                     'account_name' => $item->account_name_snapshot,
@@ -287,6 +289,8 @@ final class AdminWithdrawalController extends Controller
             'approved_at' => $this->formatDate($withdrawal->approved_at),
             'rejected_at' => $this->formatDate($withdrawal->rejected_at),
             'provider_payout_id' => $withdrawal->provider_payout_id,
+            'payout_provider' => $withdrawal->payout_provider,
+            'payout_mode' => $withdrawal->payout_provider === 'manual' ? 'manual' : ($withdrawal->payout_provider ? 'auto' : null),
             'rejected_reason' => $withdrawal->rejection_reason ?: $withdrawal->rejected_reason,
             'payout_snapshot' => [
                 'payout_account_id' => $withdrawal->payout_account_id,
@@ -414,6 +418,10 @@ final class AdminWithdrawalController extends Controller
                 'success' => false,
                 'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Đang xử lý (Approved/Processing).',
             ], 422);
+        }
+        if (empty($withdrawal->payout_provider)) {
+            $withdrawal->payout_provider = 'manual';
+            $withdrawal->save();
         }
 
         $this->payoutService->finalizeSuccess($withdrawal, $request->input('provider_payout_id'));
