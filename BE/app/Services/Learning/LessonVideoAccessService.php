@@ -24,6 +24,18 @@ final class LessonVideoAccessService
             throw new BusinessException('Thời hạn link xem video không hợp lệ.', 422);
         }
         $lesson = $this->getAccessibleVideoLesson($learnerId, $lessonId);
+        
+        if ($lesson->video_provider === 'bunny' && !empty($lesson->video_id)) {
+            $hostname = config('bunny.stream.cdn_hostname');
+            $streamUrl = "https://{$hostname}/{$lesson->video_id}/playlist.m3u8";
+            $expiresAt = now()->addSeconds($ttlSeconds);
+            return [
+                'stream_url' => $streamUrl,
+                'expires_in' => $ttlSeconds,
+                'expires_at' => $expiresAt->toIso8601String(),
+            ];
+        }
+
         $this->resolveExistingPrivateVideoPath($lesson);
         $session = $request->attributes->get('auth_session');
         $sessionId = (int) ($session?->id ?? 0);
@@ -80,7 +92,7 @@ final class LessonVideoAccessService
         if (!$this->hasEnrollment($learnerId, (int) $lesson->course_id)) {
             throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
         }
-        if (trim((string) $lesson->video_url) === '') {
+        if (trim((string) $lesson->video_url) === '' && trim((string) $lesson->video_id) === '') {
             throw new BusinessException('Không tìm thấy video.', 404);
         }
         return $lesson;

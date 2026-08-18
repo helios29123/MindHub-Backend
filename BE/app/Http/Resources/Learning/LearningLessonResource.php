@@ -9,7 +9,7 @@ class LearningLessonResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $hasVideo = $this->lesson_type === 'video' && !empty($this->video_url);
+        $hasVideo = $this->lesson_type === 'video' && (!empty($this->video_url) || !empty($this->video_id));
 
         return [
             'id' => $this->id,
@@ -31,7 +31,9 @@ class LearningLessonResource extends JsonResource
              * video_url = null
              * The frontend must use the protected playback flow.
              */
-            'video_url' => null,
+            'video_url' => $hasVideo ? ($this->video_provider === 'bunny' ? 'https://' . config('bunny.stream.cdn_hostname') . '/' . $this->video_id . '/playlist.m3u8' : null) : null,
+            'video_provider' => $hasVideo ? $this->video_provider : null,
+            'video_id' => $hasVideo ? $this->video_id : null,
             'has_video' => $hasVideo,
             'video_access_type' => $hasVideo ? 'private_stream' : null,
 

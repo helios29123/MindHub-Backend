@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Repositories\Instructor\InstructorCourseRepository;
 use App\Repositories\Instructor\InstructorLessonRepository;
 use App\Support\FileUpload;
+use App\Services\Bunny\BunnyStreamService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,7 @@ final class InstructorCourseService
         private readonly InstructorCourseRepository $instructorCourseRepository,
         private readonly InstructorLessonRepository $instructorLessonRepository,
         private readonly FileUpload $fileUpload,
+        private readonly BunnyStreamService $bunnyStreamService,
     ) {}
     public function createCourse(User $instructor, array $validatedData): Course
     {
@@ -238,15 +240,17 @@ final class InstructorCourseService
             $video,
         ): Lesson {
             $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
-            $videoUrl = $this->fileUpload->uploadLessonVideo(
+            $guid = $this->bunnyStreamService->uploadVideo(
                 $video,
-                $lesson->id,
+                "Lesson {$lesson->id} - {$lesson->title}"
             );
             return $this->instructorLessonRepository
                 ->updateVideo(
                     $lesson,
-                    $videoUrl,
+                    null,
                     $validatedData["video_duration_seconds"] ?? null,
+                    'bunny',
+                    $guid
                 )
                 ->load(["course", "section", "assets"]);
         });

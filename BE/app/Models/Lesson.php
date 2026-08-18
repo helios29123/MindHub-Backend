@@ -17,6 +17,8 @@ class Lesson extends Model
         'lesson_type',
         'content',
         'video_url',
+        'video_provider',
+        'video_id',
         'video_duration_seconds',
         'is_preview',
         'status',

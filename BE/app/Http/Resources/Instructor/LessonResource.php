@@ -10,7 +10,7 @@ class LessonResource extends JsonResource
     public function toArray(Request $request): array
     {
         $hasAccess = $this->resource->is_preview || ($this->additional['has_access'] ?? false);
-        $hasVideo = $this->lesson_type === 'video' && !empty($this->video_url);
+        $hasVideo = $this->lesson_type === 'video' && (!empty($this->video_url) || !empty($this->video_id));
 
         return [
             'id' => $this->id,
@@ -28,7 +28,9 @@ class LessonResource extends JsonResource
              * For protected playback, the frontend must use the signed stream
              * endpoint that will be added in VIDEO-SEC-03/04.
              */
-            'video_url' => null,
+            'video_url' => $hasVideo && $this->video_provider === 'bunny' ? 'https://' . config('bunny.stream.cdn_hostname') . '/' . $this->video_id . '/playlist.m3u8' : null,
+            'video_provider' => $this->video_provider,
+            'video_id' => $this->video_id,
             'has_video' => $hasVideo,
             'video_access_type' => $hasVideo ? 'private_stream' : null,
         ];
