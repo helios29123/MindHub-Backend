@@ -7,6 +7,7 @@ use App\Models\InstructorProfile;
 use App\Models\User;
 use App\Repositories\Instructor\InstructorProfileRepository;
 use Illuminate\Support\Facades\DB;
+use App\Services\Storage\CloudinaryService;
 
 final class InstructorProfileService
 {
@@ -18,7 +19,8 @@ final class InstructorProfileService
     ];
 
     public function __construct(
-        private readonly InstructorProfileRepository $repository
+        private readonly InstructorProfileRepository $repository,
+        private readonly CloudinaryService $cloudinaryService,
     ) {
     }
 
@@ -80,21 +82,29 @@ final class InstructorProfileService
     {
         $user = $this->getOwnedInstructor($authUser);
 
-        // Delete old custom file if it exists in local storage
-        if (!empty($user->avatar_url) && str_contains($user->avatar_url, '/storage/avatars/')) {
-            $oldPath = 'avatars/' . basename(parse_url($user->avatar_url, PHP_URL_PATH));
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
-        }
+        // Upload new avatar first.
+        // Only delete the old Cloudinary asset after the new upload succeeds.
+        $uploaded = $this->cloudinaryService->uploadImage(
+            $file,
+            'mindhub/avatars'
+        );
 
-        $path = $file->store('avatars', 'public');
-        $avatarUrl = url('storage/' . $path);
+        $oldPublicId = $user->avatar_public_id;
 
-        $user->avatar_url = $avatarUrl;
+        $user->avatar_url = $uploaded['url'];
+        $user->avatar_public_id = $uploaded['public_id'];
         $user->save();
 
-        $this->updateMetadata($user, ['avatar_url' => $avatarUrl]);
+        $this->updateMetadata($user, [
+            'avatar_url' => $uploaded['url'],
+        ]);
 
-        return $avatarUrl;
+        // Delete previous Cloudinary avatar after the new one is persisted.
+        if (!empty($oldPublicId)) {
+            $this->cloudinaryService->deleteImage($oldPublicId);
+        }
+
+        return $uploaded['url'];
     }
 
     public function selectAvatarPreset(User $authUser, string $presetId): string
@@ -115,10 +125,14 @@ final class InstructorProfileService
 
         $avatarUrl = $presets[$presetId];
 
-        // Delete old custom file if present
-        if (!empty($user->avatar_url) && str_contains($user->avatar_url, '/storage/avatars/')) {
-            $oldPath = 'avatars/' . basename(parse_url($user->avatar_url, PHP_URL_PATH));
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
+        $oldPublicId = $user->avatar_public_id;
+
+        $user->avatar_url = $avatarUrl;
+        $user->avatar_public_id = null;
+        $user->save();
+
+        if (!empty($oldPublicId)) {
+            $this->cloudinaryService->deleteImage($oldPublicId);
         }
 
         $user->avatar_url = $avatarUrl;
@@ -133,16 +147,19 @@ final class InstructorProfileService
     {
         $user = $this->getOwnedInstructor($authUser);
 
-        // Delete old custom file if present
-        if (!empty($user->avatar_url) && str_contains($user->avatar_url, '/storage/avatars/')) {
-            $oldPath = 'avatars/' . basename(parse_url($user->avatar_url, PHP_URL_PATH));
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
+        $oldPublicId = $user->avatar_public_id;
+
+        if (!empty($oldPublicId)) {
+            $this->cloudinaryService->deleteImage($oldPublicId);
         }
 
         $user->avatar_url = null;
+        $user->avatar_public_id = null;
         $user->save();
 
-        $this->updateMetadata($user, ['avatar_url' => null]);
+        $this->updateMetadata($user, [
+            'avatar_url' => null,
+        ]);
 
         return null;
     }

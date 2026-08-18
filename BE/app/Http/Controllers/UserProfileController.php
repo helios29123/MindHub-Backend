@@ -10,6 +10,7 @@ use App\Http\Resources\User\UserResource;
 use App\Services\User\UserProfileService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 final class UserProfileController extends Controller
 {
@@ -41,6 +42,57 @@ final class UserProfileController extends Controller
             data: new UserResource($user),
             message: 'Thao tác thành công'
         );
+    }
+
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,jpg,png,webp|max:5120',
+        ], [
+            'avatar.required' => 'Vui lòng chọn file ảnh đại diện.',
+            'avatar.image' => 'File tải lên phải là hình ảnh.',
+            'avatar.mimes' => 'Ảnh đại diện phải thuộc định dạng: JPG, PNG hoặc WEBP.',
+            'avatar.max' => 'Dung lượng ảnh tối đa là 5MB.',
+        ]);
+
+        $avatarUrl = $this->userProfileService->uploadAvatar(
+            $request->user(),
+            $request->file('avatar')
+        );
+
+        return ApiResponse::success([
+            'avatar' => $avatarUrl,
+            'avatar_url' => $avatarUrl,
+        ], 'Tải ảnh đại diện thành công.');
+    }
+
+    public function selectAvatarPreset(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'preset_id' => 'required|string',
+        ], [
+            'preset_id.required' => 'Vui lòng chọn ảnh đại diện mẫu.',
+        ]);
+
+        $avatarUrl = $this->userProfileService->selectAvatarPreset(
+            $request->user(),
+            $validated['preset_id']
+        );
+
+        return ApiResponse::success([
+            'avatar' => $avatarUrl,
+            'avatar_url' => $avatarUrl,
+        ], 'Cập nhật ảnh đại diện mẫu thành công.');
+    }
+
+    public function deleteAvatar(Request $request): JsonResponse
+    {
+        $this->userProfileService->deleteAvatar($request->user());
+
+        return ApiResponse::success([
+            'avatar' => null,
+            'avatar_url' => null,
+        ], 'Đã xóa ảnh đại diện.');
     }
 
     public function changePassword(ChangePasswordRequest $request): JsonResponse
