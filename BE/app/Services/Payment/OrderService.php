@@ -52,11 +52,17 @@ class OrderService
                 return $pendingOrder;
             }
 
+            $activeCommissionRule = \App\Models\CommissionRule::where('is_active', 1)->first();
+            if (!$activeCommissionRule) {
+                throw new BusinessException('Không tìm thấy luật hoa hồng đang áp dụng. Vui lòng liên hệ Admin.', 500);
+            }
+
             $amount = $this->resolveCoursePrice($course);
 
             $insertData = [
                 'user_id' => $userId,
                 'course_id' => $courseId,
+                'commission_rule_id' => $activeCommissionRule->id,
             ];
 
             if (Schema::hasColumn('orders', 'coupon_id')) {
@@ -71,17 +77,6 @@ class OrderService
                 $insertData['order_type'] = Order::TYPE_COURSE_PURCHASE;
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Money columns
-            |--------------------------------------------------------------------------
-            | DB hiện tại của bạn không có cột price trong orders.
-            | Vì vậy tuyệt đối không insert price nếu cột không tồn tại.
-            */
-            if (Schema::hasColumn('orders', 'price')) {
-                $insertData['price'] = $amount;
-            }
-
             if (Schema::hasColumn('orders', 'price_snapshot')) {
                 $insertData['price_snapshot'] = $amount;
             }
@@ -92,10 +87,6 @@ class OrderService
 
             if (Schema::hasColumn('orders', 'discount_amount')) {
                 $insertData['discount_amount'] = 0;
-            }
-
-            if (Schema::hasColumn('orders', 'final_amount')) {
-                $insertData['final_amount'] = $amount;
             }
 
             if (Schema::hasColumn('orders', 'status')) {
@@ -118,22 +109,8 @@ class OrderService
                 $insertData['paid_at'] = null;
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Credit package columns
-            |--------------------------------------------------------------------------
-            | Với đơn mua khóa học thì các cột gói lượt phải null.
-            */
-            if (Schema::hasColumn('orders', 'credit_package_id')) {
-                $insertData['credit_package_id'] = null;
-            }
-
-            if (Schema::hasColumn('orders', 'package_snapshot_name')) {
-                $insertData['package_snapshot_name'] = null;
-            }
-
-            if (Schema::hasColumn('orders', 'package_snapshot_credits')) {
-                $insertData['package_snapshot_credits'] = null;
+            if (Schema::hasColumn('orders', 'expires_at')) {
+                $insertData['expires_at'] = null;
             }
 
             if (Schema::hasColumn('orders', 'created_at')) {

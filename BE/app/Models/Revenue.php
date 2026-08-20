@@ -13,46 +13,26 @@ class Revenue extends Model
 
     protected $table = 'revenues';
 
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_AVAILABLE = 'available';
-    public const STATUS_RESERVED = 'reserved';
-    public const STATUS_SCHEDULED = 'scheduled';
-    public const STATUS_INCLUDED_IN_PAYOUT = 'included_in_payout';
-    public const STATUS_PAID = 'paid';
-    public const STATUS_REFUNDED = 'refunded';
-    public const STATUS_REVERSED = 'reversed';
-
     protected $fillable = [
         'order_id',
         'course_id',
         'instructor_id',
-        'payout_id',
         'commission_rule_id',
-        'commission_rule_code',
         'gross_amount',
         'instructor_amount',
         'platform_fee_amount',
-        'instructor_percent',
-        'platform_percent',
-        'sale_source',
-        'status',
         'earned_at',
-        'available_at',
     ];
 
     protected $casts = [
         'order_id' => 'integer',
         'course_id' => 'integer',
         'instructor_id' => 'integer',
-        'payout_id' => 'integer',
         'commission_rule_id' => 'integer',
         'gross_amount' => 'decimal:2',
         'instructor_amount' => 'decimal:2',
         'platform_fee_amount' => 'decimal:2',
-        'instructor_percent' => 'decimal:2',
-        'platform_percent' => 'decimal:2',
         'earned_at' => 'datetime',
-        'available_at' => 'datetime',
     ];
 
     public function order(): BelongsTo
