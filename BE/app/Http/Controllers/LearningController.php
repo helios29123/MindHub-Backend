@@ -7,6 +7,7 @@ use App\Http\Resources\Learning\MyCourseResource;
 use App\Services\Learning\LearningService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 use App\Http\Resources\Learning\LearningLessonResource;
 use App\Http\Requests\Learning\CourseOutlineRequest;
