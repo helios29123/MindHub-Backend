@@ -317,6 +317,7 @@ class LearningService
             'completed_at' => $isAllCompleted ? ($enrollment->completed_at ?? now()) : null,
             'last_accessed_at' => now(),
         ]);
+
         return [
             'course' => $course,
             'lesson' => $lesson,
