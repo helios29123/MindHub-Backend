@@ -39,15 +39,22 @@ final class InstructorPayoutService
             }
 
             // Lock eligible available revenues
+            $allocatedQuery = DB::table('withdrawal_revenues')
+                ->select('revenue_id', DB::raw('SUM(allocated_amount) as total_allocated'))
+                ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
+                ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_PAID])
+                ->groupBy('revenue_id');
+
             $revenues = Revenue::query()
                 ->where('instructor_id', $instructorId)
-                ->where('status', Revenue::STATUS_AVAILABLE)
-                ->whereNull('payout_id')
-                ->where('available_at', '<=', $periodEnd)
+                ->where('earned_at', '<=', $periodEnd)
+                ->leftJoinSub($allocatedQuery, 'allocated', 'revenues.id', '=', 'allocated.revenue_id')
+                ->whereRaw('COALESCE(allocated.total_allocated, 0) < revenues.instructor_amount')
+                ->select('revenues.*', DB::raw('revenues.instructor_amount - COALESCE(allocated.total_allocated, 0) as unallocated_amount'))
                 ->lockForUpdate()
                 ->get();
 
-            $totalAmount = round((float) $revenues->sum('instructor_amount'), 2);
+            $totalAmount = round((float) $revenues->sum('unallocated_amount'), 2);
             $minimumAmount = (float) config('revenue.payout.minimum_amount', 200000);
 
             if ($totalAmount <= 0) {
@@ -64,17 +71,17 @@ final class InstructorPayoutService
                 ->latest()
                 ->first();
 
-            $status = WithdrawRequest::STATUS_READY_TO_PAY;
+            $status = WithdrawRequest::STATUS_PENDING;
             $blockedReason = null;
 
             if (! $account) {
-                $status = WithdrawRequest::STATUS_BLOCKED;
+                $status = WithdrawRequest::STATUS_MANUAL_REQUIRED;
                 $blockedReason = 'missing_payout_account';
-            } elseif ($account->status !== PayoutAccount::STATUS_ACTIVE && empty($account->approved_at)) {
-                $status = WithdrawRequest::STATUS_BLOCKED;
-                $blockedReason = 'unverified_payout_account';
+            } elseif ($account->status !== PayoutAccount::STATUS_ACTIVE) {
+                $status = WithdrawRequest::STATUS_MANUAL_REQUIRED;
+                $blockedReason = 'payout_account_inactive';
             } elseif ($totalAmount < $minimumAmount) {
-                $status = WithdrawRequest::STATUS_BLOCKED;
+                $status = WithdrawRequest::STATUS_MANUAL_REQUIRED;
                 $blockedReason = 'minimum_payout_not_reached';
             }
 
@@ -100,11 +107,11 @@ final class InstructorPayoutService
 
             // Link revenues to payout
             foreach ($revenues as $revenue) {
-                $revenue->update([
-                    'payout_id' => $payout->id,
-                    'status' => $status === WithdrawRequest::STATUS_READY_TO_PAY
-                        ? Revenue::STATUS_INCLUDED_IN_PAYOUT
-                        : Revenue::STATUS_SCHEDULED,
+                DB::table('withdrawal_revenues')->insert([
+                    'withdrawal_id' => $payout->id,
+                    'revenue_id' => $revenue->id,
+                    'allocated_amount' => $revenue->unallocated_amount,
+                    'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             }
@@ -120,10 +127,16 @@ final class InstructorPayoutService
     {
         $periodEnd = $periodEnd ? Carbon::parse($periodEnd) : now()->endOfMonth();
 
+        $allocatedQuery = DB::table('withdrawal_revenues')
+            ->select('revenue_id', DB::raw('SUM(allocated_amount) as total_allocated'))
+            ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
+            ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_PAID])
+            ->groupBy('revenue_id');
+
         $instructorIds = Revenue::query()
-            ->where('status', Revenue::STATUS_AVAILABLE)
-            ->whereNull('payout_id')
-            ->where('available_at', '<=', $periodEnd)
+            ->where('earned_at', '<=', $periodEnd)
+            ->leftJoinSub($allocatedQuery, 'allocated', 'revenues.id', '=', 'allocated.revenue_id')
+            ->whereRaw('COALESCE(allocated.total_allocated, 0) < revenues.instructor_amount')
             ->distinct()
             ->pluck('instructor_id');
 
@@ -145,7 +158,7 @@ final class InstructorPayoutService
     {
         return DB::transaction(function () {
             $readyPayouts = WithdrawRequest::query()
-                ->whereIn('status', [WithdrawRequest::STATUS_READY_TO_PAY, WithdrawRequest::STATUS_QUEUED])
+                ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED])
                 ->lockForUpdate()
                 ->get();
 
@@ -157,12 +170,7 @@ final class InstructorPayoutService
                     'processed_at' => now(),
                 ]);
 
-                Revenue::query()
-                    ->where('payout_id', $payout->id)
-                    ->update([
-                        'status' => Revenue::STATUS_PAID,
-                        'updated_at' => now(),
-                    ]);
+                // Revenue status is no longer tracked
 
                 $processedCount++;
             }

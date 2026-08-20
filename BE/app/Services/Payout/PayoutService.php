@@ -23,7 +23,7 @@ class PayoutService
     public function process(WithdrawRequest $withdrawal): void
     {
         // Guard against duplicate processing
-        if (!in_array($withdrawal->status, [WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_QUEUED])) {
+        if (!in_array($withdrawal->status, [WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PENDING])) {
             Log::info("PayoutService: Skipped processing withdrawal #{$withdrawal->id} due to invalid status ({$withdrawal->status}).");
             return;
         }
@@ -99,23 +99,14 @@ class PayoutService
                     ->where('withdrawal_revenues.revenue_id', $revenue->id)
                     ->whereIn('withdraw_requests.status', [
                         WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, 
-                        WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_PAID
+                        WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_PAID
                     ])
                     ->sum('withdrawal_revenues.allocated_amount');
 
-                if ($totalAllocated >= $revenue->instructor_amount) {
-                    $revenue->update([
-                        'status' => Revenue::STATUS_PAID,
-                        'updated_at' => now()
-                    ]);
-                }
+                // Revenue status is removed in DB final, we no longer need to update it here.
             }
 
-            // For auto payout fallback
-            $withdrawal->revenues()->update([
-                'status' => Revenue::STATUS_PAID,
-                'updated_at' => now()
-            ]);
+            // For auto payout fallback, revenues are tracked via withdrawal_revenues pivot.
         });
     }
 
@@ -124,16 +115,14 @@ class PayoutService
      */
     private function finalizeFailed(WithdrawRequest $withdrawal, string $reason): void
     {
-        if ($withdrawal->status === WithdrawRequest::STATUS_FAILED) {
+        if ($withdrawal->status === WithdrawRequest::STATUS_MANUAL_REQUIRED) {
             return;
         }
 
         DB::transaction(function () use ($withdrawal, $reason) {
-            $withdrawal->status = WithdrawRequest::STATUS_FAILED;
+            $withdrawal->status = WithdrawRequest::STATUS_MANUAL_REQUIRED;
             $withdrawal->failure_reason = $reason;
             $withdrawal->save();
-
-            $this->earlyWithdrawalService->releaseAllocations($withdrawal);
         });
     }
 }

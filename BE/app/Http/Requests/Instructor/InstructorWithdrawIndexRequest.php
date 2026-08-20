@@ -14,7 +14,7 @@ class InstructorWithdrawIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['nullable', 'in:pending,approved,rejected,paid,cancelled'],
+            'status' => ['nullable', 'in:pending,approved,processing,manual_required,paid,rejected,cancelled'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'page' => ['nullable', 'integer', 'min:1'],

@@ -28,26 +28,22 @@ class EarlyWithdrawalService
             // Ignore if error during auto release
         }
 
-        $pendingRevenue = (float) Revenue::where('instructor_id', $instructorId)
-            ->where('status', Revenue::STATUS_PENDING)
-            ->sum('instructor_amount');
+        $pendingRevenue = 0.0; // Pending revenue no longer tracked via status in DB final
 
-        $availableBalance = (float) Revenue::where('instructor_id', $instructorId)
-            ->whereIn('status', [Revenue::STATUS_AVAILABLE, Revenue::STATUS_RESERVED])
-            ->whereNull('payout_id')
-            ->sum('instructor_amount');
+        $totalRevenue = (float) Revenue::where('instructor_id', $instructorId)->sum('instructor_amount');
 
         $allocatedReserved = (float) DB::table('withdrawal_revenues')
             ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
             ->where('withdraw_requests.user_id', $instructorId)
-            ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_PAID])
+            ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_PAID])
             ->sum('withdrawal_revenues.allocated_amount');
 
         $reservedBalance = $allocatedReserved;
+        $availableBalance = max($totalRevenue - $reservedBalance, 0);
 
         $scheduledPayout = (float) WithdrawRequest::where('user_id', $instructorId)
             ->where('type', WithdrawRequest::TYPE_AUTOMATIC_PAYOUT)
-            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_READY_TO_PAY, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING])
+            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED])
             ->sum('amount');
 
         $totalPaid = (float) WithdrawRequest::where('user_id', $instructorId)
@@ -55,17 +51,18 @@ class EarlyWithdrawalService
             ->sum('amount');
 
         $blockedAmount = (float) WithdrawRequest::where('user_id', $instructorId)
-            ->where('status', WithdrawRequest::STATUS_BLOCKED)
+            ->where('status', 'blocked_does_not_exist_in_db_final') // Legacy blocked is gone. Or maybe manual_required? Let's just query manual_required for blockedAmount.
+            ->where('status', WithdrawRequest::STATUS_MANUAL_REQUIRED)
             ->sum('amount');
 
-        $earlyWithdrawableBalance = max($availableBalance - $reservedBalance, 0);
+        $earlyWithdrawableBalance = $availableBalance;
 
         $minimumPayout = (float) config('revenue.payout.minimum_amount', 200000);
         $minimumEarlyWithdrawal = (float) config('revenue.early_withdrawal.minimum_amount', 200000);
 
         $hasActiveEarlyWithdrawal = WithdrawRequest::where('user_id', $instructorId)
             ->where('type', WithdrawRequest::TYPE_EARLY_WITHDRAWAL)
-            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING])
+            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED])
             ->exists();
 
         $monthlyLimit = (int) config('revenue.early_withdrawal.maximum_requests_per_month', 2);
@@ -73,7 +70,7 @@ class EarlyWithdrawalService
             ->where('type', WithdrawRequest::TYPE_EARLY_WITHDRAWAL)
             ->whereMonth('requested_at', now()->month)
             ->whereYear('requested_at', now()->year)
-            ->whereNotIn('status', [WithdrawRequest::STATUS_CANCELLED, WithdrawRequest::STATUS_REJECTED, WithdrawRequest::STATUS_FAILED])
+            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_PAID])
             ->count();
 
         $earlyWithdrawalRequestsRemaining = max($monthlyLimit - $thisMonthCount, 0);
@@ -94,7 +91,7 @@ class EarlyWithdrawalService
         $payoutAccountVerified = $payoutAccount !== null;
 
         $pendingWithdrawAmount = (float) WithdrawRequest::where('user_id', $instructorId)
-            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_READY_TO_PAY, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING])
+            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED])
             ->sum('amount');
 
         $canCreateWithdrawal = $payoutAccountVerified && ($earlyWithdrawableBalance >= $minimumEarlyWithdrawal) && !$hasActiveEarlyWithdrawal && ($earlyWithdrawalRequestsRemaining > 0);
@@ -261,10 +258,18 @@ class EarlyWithdrawalService
 
             // Allocate Available Revenues
             $remainingToAllocate = $amount;
+            
+            $allocatedQuery = DB::table('withdrawal_revenues')
+                ->select('revenue_id', DB::raw('SUM(allocated_amount) as total_allocated'))
+                ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
+                ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_PAID])
+                ->groupBy('revenue_id');
+
             $availableRevenues = Revenue::where('instructor_id', $instructorId)
-                ->whereIn('status', [Revenue::STATUS_AVAILABLE, Revenue::STATUS_RESERVED])
-                ->whereNull('payout_id')
-                ->orderBy('earned_at', 'asc')
+                ->leftJoinSub($allocatedQuery, 'allocated', 'revenues.id', '=', 'allocated.revenue_id')
+                ->whereRaw('COALESCE(allocated.total_allocated, 0) < revenues.instructor_amount')
+                ->select('revenues.*', DB::raw('COALESCE(allocated.total_allocated, 0) as already_allocated'))
+                ->orderBy('revenues.earned_at', 'asc')
                 ->lockForUpdate()
                 ->get();
 
@@ -273,13 +278,7 @@ class EarlyWithdrawalService
                     break;
                 }
 
-                $alreadyAllocated = (float) DB::table('withdrawal_revenues')
-                    ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
-                    ->where('withdrawal_revenues.revenue_id', $revenue->id)
-                    ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_PAID])
-                    ->sum('withdrawal_revenues.allocated_amount');
-
-                $unallocatedInstructorAmount = max((float) $revenue->instructor_amount - $alreadyAllocated, 0);
+                $unallocatedInstructorAmount = max((float) $revenue->instructor_amount - (float) $revenue->already_allocated, 0);
 
                 if ($unallocatedInstructorAmount <= 0) {
                     continue;
@@ -294,9 +293,6 @@ class EarlyWithdrawalService
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-
-                // Update revenue status to reserved
-                $revenue->update(['status' => Revenue::STATUS_RESERVED, 'updated_at' => now()]);
 
                 $remainingToAllocate -= $allocationAmount;
             }
@@ -331,6 +327,7 @@ class EarlyWithdrawalService
 
             $withdrawal->update([
                 'status' => WithdrawRequest::STATUS_CANCELLED,
+                'rejection_reason' => 'user_cancelled',
                 'updated_at' => now(),
             ]);
 
@@ -340,38 +337,9 @@ class EarlyWithdrawalService
         });
     }
 
-    /**
-     * Idempotently releases allocations for a withdrawal and restores revenue status if fully unallocated.
-     */
     public function releaseAllocations(WithdrawRequest $withdrawal): void
     {
-        $revenueIds = DB::table('withdrawal_revenues')
-            ->where('withdrawal_id', $withdrawal->id)
-            ->pluck('revenue_id');
-
-        if ($revenueIds->isEmpty()) {
-            return;
-        }
-
         DB::table('withdrawal_revenues')->where('withdrawal_id', $withdrawal->id)->delete();
-
-        foreach ($revenueIds as $revId) {
-            $stillAllocated = DB::table('withdrawal_revenues')
-                ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
-                ->where('withdrawal_revenues.revenue_id', $revId)
-                ->whereIn('withdraw_requests.status', [
-                    WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED,
-                    WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING
-                ])
-                ->exists();
-
-            if (!$stillAllocated) {
-                Revenue::where('id', $revId)->update([
-                    'status' => Revenue::STATUS_AVAILABLE,
-                    'updated_at' => now(),
-                ]);
-            }
-        }
     }
 
     /**

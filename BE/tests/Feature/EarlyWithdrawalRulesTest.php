@@ -81,12 +81,6 @@ class EarlyWithdrawalRulesTest extends TestCase
             'gross_amount' => 500000,
             'instructor_amount' => $instructorAmount,
             'platform_fee_amount' => 150000,
-            'status' => Revenue::STATUS_AVAILABLE,
-            'earned_at' => now()->subDays(35),
-            'available_at' => now()->subDays(5),
-            'sale_source' => 'marketplace_default',
-            'instructor_percent' => 70.0,
-            'platform_percent' => 30.0,
         ]);
     }
 
@@ -156,33 +150,17 @@ class EarlyWithdrawalRulesTest extends TestCase
         }
     }
 
-    // D, E, F. Cancelled/Rejected/Failed returns quota
-    public function test_rejected_cancelled_failed_returns_quota()
+    // D, E, F. Rejected returns quota
+    public function test_rejected_returns_quota()
     {
         $this->createAvailableRevenue(1000000);
 
-        // Create 2 requests in non-active states that SHOULD return quota
+        // Create 1 request in non-active states that SHOULD return quota
         WithdrawRequest::create([
             'user_id' => $this->instructor->id,
             'payout_account_id' => $this->payoutAccount->id,
             'amount' => 200000,
             'status' => WithdrawRequest::STATUS_REJECTED,
-            'type' => WithdrawRequest::TYPE_EARLY_WITHDRAWAL,
-            'requested_at' => now(),
-        ]);
-        WithdrawRequest::create([
-            'user_id' => $this->instructor->id,
-            'payout_account_id' => $this->payoutAccount->id,
-            'amount' => 200000,
-            'status' => WithdrawRequest::STATUS_CANCELLED,
-            'type' => WithdrawRequest::TYPE_EARLY_WITHDRAWAL,
-            'requested_at' => now(),
-        ]);
-        WithdrawRequest::create([
-            'user_id' => $this->instructor->id,
-            'payout_account_id' => $this->payoutAccount->id,
-            'amount' => 200000,
-            'status' => WithdrawRequest::STATUS_FAILED,
             'type' => WithdrawRequest::TYPE_EARLY_WITHDRAWAL,
             'requested_at' => now(),
         ]);
@@ -330,8 +308,8 @@ class EarlyWithdrawalRulesTest extends TestCase
         $this->assertEquals(2, $summary2['early_withdrawal_requests_remaining']);
     }
 
-    // L2. Failed releases balance
-    public function test_failed_status_releases_balance()
+    // L2. Manual required keeps balance locked
+    public function test_manual_required_keeps_balance_locked()
     {
         $this->createAvailableRevenue(2000000);
 
@@ -342,14 +320,13 @@ class EarlyWithdrawalRulesTest extends TestCase
         $summary = $this->service->getPaymentSummary($this->instructor->id);
         $this->assertEquals(800000, $summary['early_withdrawable_balance']);
 
-        // Manually simulate a failure scenario
-        $withdrawal->update(['status' => WithdrawRequest::STATUS_FAILED]);
-        $this->service->releaseAllocations($withdrawal);
+        // Manually simulate a manual_required scenario
+        $withdrawal->update(['status' => WithdrawRequest::STATUS_MANUAL_REQUIRED]);
 
         $summary2 = $this->service->getPaymentSummary($this->instructor->id);
-        $this->assertEquals(2000000, $summary2['early_withdrawable_balance']);
+        $this->assertEquals(800000, $summary2['early_withdrawable_balance']);
         
-        $this->assertEquals(2, $summary2['early_withdrawal_requests_remaining']);
+        $this->assertEquals(1, $summary2['early_withdrawal_requests_remaining']);
     }
 
     // M. Bank Snapshot

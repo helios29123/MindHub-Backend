@@ -17,16 +17,12 @@ class WithdrawRequest extends Model
     public const TYPE_AUTOMATIC_PAYOUT = 'automatic_payout';
     public const TYPE_EARLY_WITHDRAWAL = 'early_withdrawal';
 
-    public const STATUS_INITIAL = 'initial';
     public const STATUS_PENDING = 'pending';
     public const STATUS_APPROVED = 'approved';
-    public const STATUS_READY_TO_PAY = 'ready_to_pay';
-    public const STATUS_QUEUED = 'queued';
     public const STATUS_PROCESSING = 'processing';
+    public const STATUS_MANUAL_REQUIRED = 'manual_required';
     public const STATUS_PAID = 'paid';
-    public const STATUS_FAILED = 'failed';
     public const STATUS_REJECTED = 'rejected';
-    public const STATUS_BLOCKED = 'blocked';
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $fillable = [

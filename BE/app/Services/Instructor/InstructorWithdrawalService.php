@@ -55,7 +55,7 @@ class InstructorWithdrawalService
             return false;
         }
 
-        if ($withdrawal->status !== WithdrawRequest::STATUS_PENDING && $withdrawal->status !== WithdrawRequest::STATUS_INITIAL) {
+        if ($withdrawal->status !== WithdrawRequest::STATUS_PENDING) {
             throw new BusinessException('Chỉ có thể hủy đợt thanh toán chưa xử lý.', 422);
         }
 

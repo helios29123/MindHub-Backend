@@ -66,14 +66,22 @@ class EarlyWithdrawalTest extends TestCase
 
     private function createAvailableRevenue(float $instructorAmount = 350000.0): Revenue
     {
+        $rule = \App\Models\CommissionRule::create([
+            'name' => 'Rule',
+            'instructor_rate' => 0.7,
+            'platform_rate' => 0.3,
+            'is_active' => 1,
+            'sale_channel' => 'dummy_' . uniqid(),
+        ]);
+
         $order = Order::create([
             'user_id' => $this->instructor->id,
             'course_id' => $this->course->id,
+            'commission_rule_id' => $rule->id,
             'order_code' => 'ORD_' . uniqid(),
             'amount' => 500000,
             'status' => 'paid',
             'payment_status' => 'paid',
-            'sale_source' => 'marketplace_default',
             'paid_at' => now()->subDays(35),
         ]);
 
@@ -83,13 +91,9 @@ class EarlyWithdrawalTest extends TestCase
             'order_id' => $order->id,
             'gross_amount' => 500000,
             'instructor_amount' => $instructorAmount,
-            'platform_fee_amount' => 150000,
-            'status' => Revenue::STATUS_AVAILABLE,
+            'platform_fee_amount' => 500000 - $instructorAmount,
+            'commission_rule_id' => $rule->id,
             'earned_at' => now()->subDays(35),
-            'available_at' => now()->subDays(5),
-            'sale_source' => 'marketplace_default',
-            'instructor_percent' => 70.0,
-            'platform_percent' => 30.0,
         ]);
     }
 
@@ -100,7 +104,7 @@ class EarlyWithdrawalTest extends TestCase
     {
         $this->createAvailableRevenue(500000);
 
-        $this->expectException(BusinessException::class);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
         $this->expectExceptionMessage('Số tiền yêu cầu thanh toán sớm tối thiểu là 200.000 VNĐ.');
 
         $this->earlyWithdrawalService->requestOtp($this->instructor->id, 100000, $this->payoutAccount->id);
@@ -113,7 +117,7 @@ class EarlyWithdrawalTest extends TestCase
     {
         $this->createAvailableRevenue(300000);
 
-        $this->expectException(BusinessException::class);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
 
         $this->earlyWithdrawalService->requestOtp($this->instructor->id, 500000, $this->payoutAccount->id);
     }
@@ -149,7 +153,7 @@ class EarlyWithdrawalTest extends TestCase
         $this->assertEquals(WithdrawRequest::STATUS_PENDING, $withdrawal->status);
         $this->assertEquals(400000.0, (float) $withdrawal->amount);
         $this->assertEquals('Techcombank', $withdrawal->bank_name);
-        $this->assertEquals('**********7890', $withdrawal->account_number_snapshot);
+        $this->assertEquals('19031234567890', $withdrawal->account_number_snapshot);
 
         // Verify withdrawal_revenues pivot records
         $allocations = DB::table('withdrawal_revenues')

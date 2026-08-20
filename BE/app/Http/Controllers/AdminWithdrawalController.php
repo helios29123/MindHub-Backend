@@ -262,7 +262,14 @@ final class AdminWithdrawalController extends Controller
                 'status' => 'success',
             ];
         }
-        if ($withdrawal->rejected_at) {
+        if ($withdrawal->status === WithdrawRequest::STATUS_CANCELLED) {
+            $timeline[] = [
+                'timestamp' => $this->formatDate($withdrawal->updated_at),
+                'title' => 'Giảng viên đã hủy yêu cầu',
+                'description' => 'Lý do: ' . ($withdrawal->rejection_reason ?? 'Người dùng tự hủy.'),
+                'status' => 'error',
+            ];
+        } elseif ($withdrawal->rejected_at) {
             $timeline[] = [
                 'timestamp' => $this->formatDate($withdrawal->rejected_at),
                 'title' => 'Từ chối yêu cầu',

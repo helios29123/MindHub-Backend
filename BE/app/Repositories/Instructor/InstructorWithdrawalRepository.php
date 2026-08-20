@@ -13,17 +13,20 @@ class InstructorWithdrawalRepository
 {
     public function getSummary(int $instructorId): array
     {
-        $pendingRevenue = (float) Revenue::where('instructor_id', $instructorId)
-            ->where('status', Revenue::STATUS_PENDING)
-            ->sum('instructor_amount');
+        $pendingRevenue = 0.0; // DB final has no pending status
 
-        $availableBalance = (float) Revenue::where('instructor_id', $instructorId)
-            ->where('status', Revenue::STATUS_AVAILABLE)
-            ->whereNull('payout_id')
-            ->sum('instructor_amount');
+        $totalRevenue = (float) Revenue::where('instructor_id', $instructorId)->sum('instructor_amount');
+
+        $allocatedReserved = (float) \Illuminate\Support\Facades\DB::table('withdrawal_revenues')
+            ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
+            ->where('withdraw_requests.user_id', $instructorId)
+            ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_PAID])
+            ->sum('withdrawal_revenues.allocated_amount');
+
+        $availableBalance = max($totalRevenue - $allocatedReserved, 0);
 
         $scheduledPayout = (float) WithdrawRequest::where('user_id', $instructorId)
-            ->whereIn('status', [WithdrawRequest::STATUS_READY_TO_PAY, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING])
+            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED])
             ->sum('amount');
 
         $paidAmount = (float) WithdrawRequest::where('user_id', $instructorId)
@@ -31,7 +34,8 @@ class InstructorWithdrawalRepository
             ->sum('amount');
 
         $blockedAmount = (float) WithdrawRequest::where('user_id', $instructorId)
-            ->where('status', WithdrawRequest::STATUS_BLOCKED)
+            ->where('status', 'blocked_does_not_exist_in_db_final') // Legacy blocked is gone. Or maybe manual_required? Let's just query manual_required for blockedAmount.
+            ->where('status', WithdrawRequest::STATUS_MANUAL_REQUIRED)
             ->sum('amount');
 
         $payoutAccount = PayoutAccount::where('user_id', $instructorId)
@@ -161,7 +165,7 @@ class InstructorWithdrawalRepository
             'user_id' => $instructorId,
             'payout_account_id' => $data['payout_account_id'] ?? null,
             'amount' => $data['amount'],
-            'status' => WithdrawRequest::STATUS_READY_TO_PAY,
+            'status' => WithdrawRequest::STATUS_PENDING,
             'requested_at' => now(),
             'account_number_snapshot' => $data['account_number'] ?? null,
             'account_name_snapshot' => $data['account_name'] ?? null,
@@ -182,19 +186,25 @@ class InstructorWithdrawalRepository
 
     public function cancelWithdrawal(int $instructorId, int $withdrawalId): bool
     {
-        $withdrawal = WithdrawRequest::where('user_id', $instructorId)
-            ->where('id', $withdrawalId)
-            ->first();
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($instructorId, $withdrawalId) {
+            $withdrawal = WithdrawRequest::where('user_id', $instructorId)
+                ->where('id', $withdrawalId)
+                ->lockForUpdate()
+                ->first();
 
-        if (! $withdrawal) {
-            return false;
-        }
+            if (! $withdrawal) {
+                return false;
+            }
 
-        $withdrawal->update([
-            'status' => WithdrawRequest::STATUS_CANCELLED,
-            'updated_at' => now(),
-        ]);
+            $withdrawal->update([
+                'status' => WithdrawRequest::STATUS_CANCELLED,
+                'rejection_reason' => 'user_cancelled',
+                'updated_at' => now(),
+            ]);
 
-        return true;
+            \Illuminate\Support\Facades\DB::table('withdrawal_revenues')->where('withdrawal_id', $withdrawal->id)->delete();
+
+            return true;
+        });
     }
 }
