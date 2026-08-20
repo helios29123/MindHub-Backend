@@ -9,10 +9,14 @@ use RuntimeException;
 
 final class CloudinaryService
 {
-    private Cloudinary $cloudinary;
+    private ?Cloudinary $cloudinary = null;
 
-    public function __construct()
+    private function getCloudinary(): Cloudinary
     {
+        if ($this->cloudinary !== null) {
+            return $this->cloudinary;
+        }
+
         $cloudName = config('cloudinary.cloud_name');
         $apiKey = config('cloudinary.api_key');
         $apiSecret = config('cloudinary.api_secret');
@@ -37,6 +41,15 @@ final class CloudinaryService
                 'secure' => (bool) config('cloudinary.secure', true),
             ],
         ]);
+
+        return $this->cloudinary;
+    }
+
+    public function isConfigured(): bool
+    {
+        return !empty(config('cloudinary.cloud_name')) &&
+            !empty(config('cloudinary.api_key')) &&
+            !empty(config('cloudinary.api_secret'));
     }
 
     /**
@@ -87,7 +100,7 @@ final class CloudinaryService
      */
     public function deleteImage(?string $publicId): void
     {
-        if (empty($publicId)) {
+        if (empty($publicId) || !$this->isConfigured()) {
             return;
         }
 
@@ -102,6 +115,6 @@ final class CloudinaryService
 
     private function uploadApi(): UploadApi
     {
-        return $this->cloudinary->uploadApi();
+        return $this->getCloudinary()->uploadApi();
     }
 }
