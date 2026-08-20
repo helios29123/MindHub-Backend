@@ -24,6 +24,7 @@ class WithdrawRequest extends Model
     public const STATUS_PAID = 'paid';
     public const STATUS_REJECTED = 'rejected';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_FAILED = 'failed';
 
     protected $fillable = [
         'user_id',

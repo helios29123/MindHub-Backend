@@ -226,4 +226,38 @@ class EarlyWithdrawalTest extends TestCase
         $summary = $this->earlyWithdrawalService->getPaymentSummary($this->instructor->id);
         $this->assertEquals(350000.0, $summary['early_withdrawable_balance']);
     }
+
+    public function test_cannot_cancel_if_not_pending()
+    {
+        $this->createAvailableRevenue(350000);
+
+        $this->earlyWithdrawalService->requestOtp($this->instructor->id, 350000, $this->payoutAccount->id);
+        $otpRecord = UserOtp::where('user_id', $this->instructor->id)->first();
+        $otpRecord->update(['code_hash' => Hash::make('999888')]);
+
+        $withdrawal = $this->earlyWithdrawalService->createEarlyWithdrawal(
+            $this->instructor->id,
+            350000,
+            $this->payoutAccount->id,
+            '999888'
+        );
+
+        $statuses = [
+            WithdrawRequest::STATUS_APPROVED,
+            WithdrawRequest::STATUS_PROCESSING,
+            WithdrawRequest::STATUS_MANUAL_REQUIRED,
+            WithdrawRequest::STATUS_PAID,
+        ];
+
+        foreach ($statuses as $status) {
+            $withdrawal->update(['status' => $status]);
+
+            try {
+                $this->earlyWithdrawalService->cancelEarlyWithdrawal($this->instructor->id, $withdrawal->id);
+                $this->fail("Should not be able to cancel when status is {$status}");
+            } catch (\App\Exceptions\BusinessException $e) {
+                $this->assertEquals('Chỉ có thể hủy yêu cầu thanh toán sớm ở trạng thái chờ duyệt.', $e->getMessage());
+            }
+        }
+    }
 }

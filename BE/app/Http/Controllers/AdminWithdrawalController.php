@@ -420,10 +420,10 @@ final class AdminWithdrawalController extends Controller
             ], 404);
         }
 
-        if ($withdrawal->status !== WithdrawRequest::STATUS_APPROVED && $withdrawal->status !== WithdrawRequest::STATUS_PROCESSING) {
+        if ($withdrawal->status !== WithdrawRequest::STATUS_MANUAL_REQUIRED) {
             return response()->json([
                 'success' => false,
-                'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Đang xử lý (Approved/Processing).',
+                'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Cần xử lý thủ công.',
             ], 422);
         }
         if (empty($withdrawal->payout_provider)) {
@@ -436,6 +436,43 @@ final class AdminWithdrawalController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Đánh dấu hoàn tất thanh toán thành công.',
+        ]);
+    }
+
+    /**
+     * PATCH /api/admin/withdrawals/{id}/mark-failed
+     */
+    public function markFailed(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $withdrawal = WithdrawRequest::find($id);
+
+        if (! $withdrawal) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy yêu cầu rút tiền.',
+            ], 404);
+        }
+
+        if ($withdrawal->status !== WithdrawRequest::STATUS_MANUAL_REQUIRED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chỉ có thể đánh dấu thất bại cho yêu cầu ở trạng thái Cần xử lý thủ công.',
+            ], 422);
+        }
+
+        $withdrawal->status = WithdrawRequest::STATUS_FAILED;
+        $withdrawal->failure_reason = $request->input('reason');
+        $withdrawal->save();
+
+        $this->earlyWithdrawalService->releaseAllocations($withdrawal);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đánh dấu thất bại và hoàn tiền thành công.',
         ]);
     }
 

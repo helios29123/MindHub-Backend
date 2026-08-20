@@ -236,6 +236,8 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
             ->whereNumber('id');
         Route::patch('/withdrawals/{id}/mark-paid', [\App\Http\Controllers\AdminWithdrawalController::class, 'markPaid'])
             ->whereNumber('id');
+        Route::patch('/withdrawals/{id}/mark-failed', [\App\Http\Controllers\AdminWithdrawalController::class, 'markFailed'])
+            ->whereNumber('id');
 
         /*
         |--------------------------------------------------------------------------

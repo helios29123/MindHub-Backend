@@ -80,7 +80,6 @@ class EarlyWithdrawalService
             ->orderByDesc('requested_at')
             ->first();
 
-        $cooldownDays = (int) config('revenue.early_withdrawal.cooldown_days', 7);
         $nextEarlyWithdrawalAvailableAt = null;
 
         $payoutAccount = PayoutAccount::where('user_id', $instructorId)
@@ -383,10 +382,6 @@ class EarlyWithdrawalService
             throw ValidationException::withMessages(['payout_account_id' => 'Vui lòng cài đặt và xác minh tài khoản nhận tiền trước khi gửi yêu cầu thanh toán sớm.']);
         }
 
-        $holdHours = (int) config('revenue.early_withdrawal.bank_account_change_hold_hours', 48);
-        if ($payoutAccount->created_at && $payoutAccount->updated_at && $payoutAccount->created_at->ne($payoutAccount->updated_at) && $payoutAccount->updated_at->addHours($holdHours)->isFuture()) {
-            throw new BusinessException("Tài khoản nhận tiền vừa được thay đổi. Vì lý do bảo mật, bạn chỉ có thể gửi yêu cầu sau {$holdHours} giờ.", 422);
-        }
     }
 
     private function maskAccount(string $accountNumber): string

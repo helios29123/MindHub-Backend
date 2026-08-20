@@ -192,8 +192,8 @@ class FakePayoutFlowTest extends TestCase
         $this->assertEquals(WithdrawRequest::STATUS_PAID, $withdrawal->status);
     }
 
-    // F. Processing -> Failed
-    public function test_processing_to_failed()
+    // F. Processing -> Failed (now manual_required)
+    public function test_processing_error_returns_manual_required()
     {
         Config::set('payout.fake.result', 'processing');
         $withdrawal = $this->createRealWithdrawalRequest(1000000);
