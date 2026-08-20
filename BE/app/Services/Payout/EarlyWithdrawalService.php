@@ -40,15 +40,10 @@ class EarlyWithdrawalService
         $allocatedReserved = (float) DB::table('withdrawal_revenues')
             ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
             ->where('withdraw_requests.user_id', $instructorId)
-            ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING])
+            ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_PAID])
             ->sum('withdrawal_revenues.allocated_amount');
 
-        $unallocatedReserved = (float) WithdrawRequest::where('user_id', $instructorId)
-            ->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING])
-            ->whereNotIn('id', DB::table('withdrawal_revenues')->pluck('withdrawal_id'))
-            ->sum('amount');
-
-        $reservedBalance = $allocatedReserved + $unallocatedReserved;
+        $reservedBalance = $allocatedReserved;
 
         $scheduledPayout = (float) WithdrawRequest::where('user_id', $instructorId)
             ->where('type', WithdrawRequest::TYPE_AUTOMATIC_PAYOUT)
@@ -78,23 +73,10 @@ class EarlyWithdrawalService
             ->where('type', WithdrawRequest::TYPE_EARLY_WITHDRAWAL)
             ->whereMonth('requested_at', now()->month)
             ->whereYear('requested_at', now()->year)
+            ->whereNotIn('status', [WithdrawRequest::STATUS_CANCELLED, WithdrawRequest::STATUS_REJECTED, WithdrawRequest::STATUS_FAILED])
             ->count();
 
         $earlyWithdrawalRequestsRemaining = max($monthlyLimit - $thisMonthCount, 0);
-
-        $lastRequest = WithdrawRequest::where('user_id', $instructorId)
-            ->where('type', WithdrawRequest::TYPE_EARLY_WITHDRAWAL)
-            ->orderByDesc('requested_at')
-            ->first();
-
-        $cooldownDays = (int) config('revenue.early_withdrawal.cooldown_days', 7);
-        $nextEarlyWithdrawalAvailableAt = null;
-        if ($lastRequest && $lastRequest->requested_at) {
-            $cooldownEnd = Carbon::parse($lastRequest->requested_at)->addDays($cooldownDays);
-            if ($cooldownEnd->isFuture()) {
-                $nextEarlyWithdrawalAvailableAt = $cooldownEnd->toIso8601String();
-            }
-        }
 
         $payoutAccount = PayoutAccount::where('user_id', $instructorId)
             ->where('status', PayoutAccount::STATUS_ACTIVE)
@@ -143,7 +125,7 @@ class EarlyWithdrawalService
             'can_create_withdrawal' => $canCreateWithdrawal,
             'notice' => $notice,
             'early_withdrawal_requests_remaining' => $earlyWithdrawalRequestsRemaining,
-            'next_early_withdrawal_available_at' => $nextEarlyWithdrawalAvailableAt,
+            'next_early_withdrawal_available_at' => null,
             'automatic_payout_window' => [
                 'from' => (clone $nextMonth)->day($startDay)->toDateString(),
                 'to' => (clone $nextMonth)->day($endDay)->toDateString(),
@@ -249,6 +231,10 @@ class EarlyWithdrawalService
                 throw new BusinessException('Không tìm thấy tài khoản nhận tiền hợp lệ.', 422);
             }
 
+            // Calculate Historical Balance Snapshot BEFORE creating the withdrawal
+            $summary = $this->getPaymentSummary($instructorId);
+            $availableBefore = $summary['early_withdrawable_balance'];
+
             // Create Early Withdrawal Record
             $withdrawal = WithdrawRequest::create([
                 'user_id' => $instructorId,
@@ -261,12 +247,14 @@ class EarlyWithdrawalService
                 'account_number_snapshot' => $payoutAccount->account_number,
                 'account_name_snapshot' => $payoutAccount->account_name,
                 'payout_method' => 'bank_transfer',
+                'available_balance_before' => $availableBefore,
+                'available_balance_after' => max($availableBefore - $amount, 0),
             ]);
 
             // Allocate Available Revenues
             $remainingToAllocate = $amount;
             $availableRevenues = Revenue::where('instructor_id', $instructorId)
-                ->where('status', Revenue::STATUS_AVAILABLE)
+                ->whereIn('status', [Revenue::STATUS_AVAILABLE, Revenue::STATUS_RESERVED])
                 ->whereNull('payout_id')
                 ->orderBy('earned_at', 'asc')
                 ->lockForUpdate()
@@ -280,7 +268,7 @@ class EarlyWithdrawalService
                 $alreadyAllocated = (float) DB::table('withdrawal_revenues')
                     ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
                     ->where('withdrawal_revenues.revenue_id', $revenue->id)
-                    ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING])
+                    ->whereIn('withdraw_requests.status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_PAID])
                     ->sum('withdrawal_revenues.allocated_amount');
 
                 $unallocatedInstructorAmount = max((float) $revenue->instructor_amount - $alreadyAllocated, 0);
@@ -338,23 +326,44 @@ class EarlyWithdrawalService
                 'updated_at' => now(),
             ]);
 
-            // Restore allocated revenues back to available
-            $revenueIds = DB::table('withdrawal_revenues')
-                ->where('withdrawal_id', $withdrawal->id)
-                ->pluck('revenue_id');
+            $this->releaseAllocations($withdrawal);
 
-            if ($revenueIds->isNotEmpty()) {
-                Revenue::whereIn('id', $revenueIds)->update([
+            return true;
+        });
+    }
+
+    /**
+     * Idempotently releases allocations for a withdrawal and restores revenue status if fully unallocated.
+     */
+    public function releaseAllocations(WithdrawRequest $withdrawal): void
+    {
+        $revenueIds = DB::table('withdrawal_revenues')
+            ->where('withdrawal_id', $withdrawal->id)
+            ->pluck('revenue_id');
+
+        if ($revenueIds->isEmpty()) {
+            return;
+        }
+
+        DB::table('withdrawal_revenues')->where('withdrawal_id', $withdrawal->id)->delete();
+
+        foreach ($revenueIds as $revId) {
+            $stillAllocated = DB::table('withdrawal_revenues')
+                ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
+                ->where('withdrawal_revenues.revenue_id', $revId)
+                ->whereIn('withdraw_requests.status', [
+                    WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED,
+                    WithdrawRequest::STATUS_QUEUED, WithdrawRequest::STATUS_PROCESSING
+                ])
+                ->exists();
+
+            if (!$stillAllocated) {
+                Revenue::where('id', $revId)->update([
                     'status' => Revenue::STATUS_AVAILABLE,
                     'updated_at' => now(),
                 ]);
             }
-
-            // Release allocations
-            DB::table('withdrawal_revenues')->where('withdrawal_id', $withdrawal->id)->delete();
-
-            return true;
-        });
+        }
     }
 
     /**
@@ -383,17 +392,6 @@ class EarlyWithdrawalService
 
         if ($summary['early_withdrawal_requests_remaining'] <= 0) {
             throw new BusinessException('Bạn đã vượt quá số lượt yêu cầu thanh toán sớm trong tháng này (tối đa 2 lần/tháng).', 422);
-        }
-
-        if ($summary['next_early_withdrawal_available_at']) {
-            throw new BusinessException('Bạn cần chờ ít nhất 7 ngày giữa các lần gửi yêu cầu thanh toán sớm.', 422);
-        }
-
-        // Automatic payout lock window check (e.g. 3 days before 1st of next month)
-        $lockDays = (int) config('revenue.early_withdrawal.automatic_payout_lock_days', 3);
-        $daysUntilMonthEnd = now()->daysInMonth - now()->day;
-        if ($daysUntilMonthEnd < $lockDays) {
-            throw new BusinessException('Hệ thống đang chuẩn bị cho kỳ thanh toán tự động đầu tháng. Vui lòng gửi yêu cầu thanh toán sớm sau kỳ thanh toán.', 422);
         }
 
         // Bank account check

@@ -140,7 +140,6 @@ class CoursePublicController extends Controller
             return ApiResponse::error('Không tìm thấy dữ liệu.', [], 404);
         }
         $id = $course->id;
-
         $input = array_merge(
             ['id' => $id],
             request()->only(['page', 'per_page', 'rating', 'sort'])

@@ -32,6 +32,8 @@ class InstructorWithdrawalResource extends JsonResource
             'requested_at' => $this->formatDate($this->requested_at),
             'approved_at' => $this->formatDate($this->approved_at),
             'paid_at' => $this->formatDate($this->paid_at),
+            'payout_provider' => $this->payout_provider,
+            'payout_mode' => $this->payout_provider === 'manual' ? 'manual' : ($this->payout_provider ? 'auto' : null),
             'rejected_reason' => $this->rejected_reason,
             'created_at' => $this->formatDate($this->created_at),
             'updated_at' => $this->formatDate($this->updated_at),

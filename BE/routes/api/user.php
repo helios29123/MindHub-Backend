@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\InstructorProfileController;
+use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -9,9 +10,9 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,instructor,admin
     ->group(function (): void {
         Route::get('me', [UserProfileController::class, 'me']);
         Route::patch('me', [UserProfileController::class, 'updateMe']);
-        Route::post('me/avatar', [InstructorProfileController::class, 'uploadAvatar']);
-        Route::patch('me/avatar/preset', [InstructorProfileController::class, 'selectAvatarPreset']);
-        Route::delete('me/avatar', [InstructorProfileController::class, 'deleteAvatar']);
+        Route::post('me/avatar', [UserProfileController::class, 'uploadAvatar']);
+        Route::patch('me/avatar/preset', [UserProfileController::class, 'selectAvatarPreset']);
+        Route::delete('me/avatar', [UserProfileController::class, 'deleteAvatar']);
         Route::patch('me/password', [UserProfileController::class, 'changePassword']);
     });
 
@@ -24,8 +25,6 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,instructor,admin
         Route::patch('avatar/preset', [InstructorProfileController::class, 'selectAvatarPreset']);
         Route::delete('avatar', [InstructorProfileController::class, 'deleteAvatar']);
     });
-
-use App\Http\Controllers\UserNotificationController;
 
 Route::get('/notifications', [UserNotificationController::class, 'index']);
 Route::patch('/notifications/read-all', [UserNotificationController::class, 'readAll']);

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Revenue;
 use App\Models\WithdrawRequest;
+use App\Services\Payout\EarlyWithdrawalService;
+use App\Services\Payout\PayoutService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +13,12 @@ use Illuminate\Support\Facades\DB;
 
 final class AdminWithdrawalController extends Controller
 {
+    public function __construct(
+        private readonly EarlyWithdrawalService $earlyWithdrawalService,
+        private readonly PayoutService $payoutService
+    ) {
+    }
+
     /**
      * GET /api/admin/withdrawals
      */
@@ -151,6 +159,8 @@ final class AdminWithdrawalController extends Controller
                 'approved_at' => $this->formatDate($item->approved_at),
                 'rejected_at' => $this->formatDate($item->rejected_at),
                 'provider_payout_id' => $item->provider_payout_id,
+                'payout_provider' => $item->payout_provider,
+                'payout_mode' => $item->payout_provider === 'manual' ? 'manual' : ($item->payout_provider ? 'auto' : null),
                 'payout_snapshot' => [
                     'payout_account_id' => $item->payout_account_id,
                     'account_name' => $item->account_name_snapshot,
@@ -201,33 +211,11 @@ final class AdminWithdrawalController extends Controller
         $instructorId = $withdrawal->user_id;
         $amount = (float) $withdrawal->amount;
 
-        // Calculate available balances
-        $availableRevenueAmount = (float) Revenue::where('instructor_id', $instructorId)
-            ->where('status', Revenue::STATUS_AVAILABLE)
-            ->sum('instructor_amount');
-
-        $reservedWithdrawAmount = (float) DB::table('withdrawal_revenues')
-            ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
-            ->where('withdraw_requests.user_id', $instructorId)
-            ->whereIn('withdraw_requests.status', [
-                WithdrawRequest::STATUS_PENDING,
-                WithdrawRequest::STATUS_APPROVED,
-                WithdrawRequest::STATUS_QUEUED,
-                WithdrawRequest::STATUS_PROCESSING
-            ])
-            ->sum('withdrawal_revenues.allocated_amount');
-
-        $availableBalance = max($availableRevenueAmount - $reservedWithdrawAmount, 0);
-
-        if (in_array($withdrawal->status, ['pending', 'approved'])) {
-            $balanceBefore = $availableBalance + $amount;
-            $holdingBalance = $amount;
-            $balanceAfter = $availableBalance;
-        } else {
-            $balanceBefore = $availableBalance;
-            $holdingBalance = 0;
-            $balanceAfter = $availableBalance;
-        }
+        $balanceBefore = $withdrawal->available_balance_before !== null ? (float) $withdrawal->available_balance_before : null;
+        $balanceAfter = $withdrawal->available_balance_after !== null ? (float) $withdrawal->available_balance_after : null;
+        
+        // For backwards compatibility or displaying holding amount
+        $holdingBalance = in_array($withdrawal->status, ['pending', 'approved', 'queued', 'processing']) ? $amount : 0;
 
         // Fetch Allocations
         $allocations = [];
@@ -301,6 +289,8 @@ final class AdminWithdrawalController extends Controller
             'approved_at' => $this->formatDate($withdrawal->approved_at),
             'rejected_at' => $this->formatDate($withdrawal->rejected_at),
             'provider_payout_id' => $withdrawal->provider_payout_id,
+            'payout_provider' => $withdrawal->payout_provider,
+            'payout_mode' => $withdrawal->payout_provider === 'manual' ? 'manual' : ($withdrawal->payout_provider ? 'auto' : null),
             'rejected_reason' => $withdrawal->rejection_reason ?: $withdrawal->rejected_reason,
             'payout_snapshot' => [
                 'payout_account_id' => $withdrawal->payout_account_id,
@@ -357,9 +347,12 @@ final class AdminWithdrawalController extends Controller
         $withdrawal->approved_at = now();
         $withdrawal->save();
 
+        // Initiate Payout Process
+        $this->payoutService->process($withdrawal);
+
         return response()->json([
             'success' => true,
-            'message' => 'Duyệt yêu cầu rút tiền thành công.',
+            'message' => 'Duyệt yêu cầu rút tiền thành công. Trạng thái: ' . $withdrawal->status,
         ]);
     }
 
@@ -394,6 +387,8 @@ final class AdminWithdrawalController extends Controller
         $withdrawal->rejected_reason = $request->input('reason');
         $withdrawal->save();
 
+        $this->earlyWithdrawalService->releaseAllocations($withdrawal);
+
         return response()->json([
             'success' => true,
             'message' => 'Từ chối yêu cầu rút tiền thành công.',
@@ -418,30 +413,18 @@ final class AdminWithdrawalController extends Controller
             ], 404);
         }
 
-        if ($withdrawal->status !== WithdrawRequest::STATUS_APPROVED) {
+        if ($withdrawal->status !== WithdrawRequest::STATUS_APPROVED && $withdrawal->status !== WithdrawRequest::STATUS_PROCESSING) {
             return response()->json([
                 'success' => false,
-                'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Đang xử lý (Approved).',
+                'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Đang xử lý (Approved/Processing).',
             ], 422);
         }
-
-        DB::transaction(function () use ($withdrawal, $request) {
-            $withdrawal->status = WithdrawRequest::STATUS_PAID;
-            $withdrawal->paid_at = now();
-            $withdrawal->provider_payout_id = $request->input('provider_payout_id');
+        if (empty($withdrawal->payout_provider)) {
+            $withdrawal->payout_provider = 'manual';
             $withdrawal->save();
+        }
 
-            // Mark all associated revenues as paid
-            $withdrawal->allocatedRevenues()->update([
-                'status' => Revenue::STATUS_PAID,
-                'updated_at' => now()
-            ]);
-
-            $withdrawal->revenues()->update([
-                'status' => Revenue::STATUS_PAID,
-                'updated_at' => now()
-            ]);
-        });
+        $this->payoutService->finalizeSuccess($withdrawal, $request->input('provider_payout_id'));
 
         return response()->json([
             'success' => true,
