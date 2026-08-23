@@ -614,7 +614,9 @@ class CoursePublicController extends Controller
         $idx = 0;
         foreach ($previewLessons as $lesson) {
             $course = $lesson->course;
-            $rawVideo = $lesson->video_url;
+            $rawVideo = $lesson->video_provider === 'bunny' 
+                ? 'https://' . config('bunny.stream.cdn_hostname') . '/' . $lesson->video_id . '/playlist.m3u8'
+                : $lesson->video_url;
             if (empty($rawVideo) || (!str_starts_with($rawVideo, 'http://') && !str_starts_with($rawVideo, 'https://'))) {
                 $videoUrl = $defaultVideos[$idx % count($defaultVideos)];
             } else {

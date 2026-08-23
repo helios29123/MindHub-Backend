@@ -159,7 +159,7 @@ class InstructorUpgradeService
                 $join->on('latest_pa.user_id', '=', 'u.id');
             })
             ->leftJoin('payout_accounts as pa', 'pa.id', '=', 'latest_pa.payout_id')
-            ->whereNull('u.deleted_at');
+            ;
 
         $total = (clone $baseQuery)->count();
         $pending = (clone $baseQuery)->where('pa.status', 'pending_verification')->count();
@@ -179,7 +179,7 @@ class InstructorUpgradeService
                 $join->on('latest_pa.user_id', '=', 'u.id');
             })
             ->leftJoin('payout_accounts as pa', 'pa.id', '=', 'latest_pa.payout_id')
-            ->whereNull('u.deleted_at');
+            ;
 
         if (!empty($queryParams['search'])) {
             $search = trim((string) $queryParams['search']);

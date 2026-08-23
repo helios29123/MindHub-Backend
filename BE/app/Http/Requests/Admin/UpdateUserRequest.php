@@ -22,7 +22,7 @@ class UpdateUserRequest extends FormRequest
                 'sometimes',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->ignore($userId)->whereNull('deleted_at'),
+                Rule::unique('users', 'email')->ignore($userId),
             ],
             'password' => ['sometimes', 'string', 'min:8', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],

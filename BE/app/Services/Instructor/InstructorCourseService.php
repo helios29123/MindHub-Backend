@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Repositories\Instructor\InstructorCourseRepository;
 use App\Repositories\Instructor\InstructorLessonRepository;
 use App\Support\FileUpload;
+use App\Services\Bunny\BunnyStreamService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,7 @@ final class InstructorCourseService
         private readonly InstructorCourseRepository $instructorCourseRepository,
         private readonly InstructorLessonRepository $instructorLessonRepository,
         private readonly FileUpload $fileUpload,
+        private readonly BunnyStreamService $bunnyStreamService,
     ) {}
     public function createCourse(User $instructor, array $validatedData): Course
     {
@@ -238,15 +240,17 @@ final class InstructorCourseService
             $video,
         ): Lesson {
             $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
-            $videoUrl = $this->fileUpload->uploadLessonVideo(
+            $guid = $this->bunnyStreamService->uploadVideo(
                 $video,
-                $lesson->id,
+                "Lesson {$lesson->id} - {$lesson->title}"
             );
             return $this->instructorLessonRepository
                 ->updateVideo(
                     $lesson,
-                    $videoUrl,
+                    null,
                     $validatedData["video_duration_seconds"] ?? null,
+                    'bunny',
+                    $guid
                 )
                 ->load(["course", "section", "assets"]);
         });
@@ -604,7 +608,7 @@ final class InstructorCourseService
         $validCategoryCount = Category::query()
             ->whereIn("id", $categoryIds)
             ->where("status", "active")
-            ->whereNull("deleted_at")
+            
             ->count();
 
         if ($validCategoryCount !== count(array_unique($categoryIds))) {
@@ -1081,7 +1085,7 @@ final class InstructorCourseService
 
     public function getCourseLearners(int $courseId, int $instructorId, array $filters)
     {
-        $course = \DB::table('courses')->where('id', $courseId)->whereNull('deleted_at')->first();
+        $course = \DB::table('courses')->where('id', $courseId)->first();
 
         if (!$course) {
             throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・');
@@ -1239,7 +1243,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
         $course = Course::query()
             ->where('id', $courseId)
             ->where('instructor_id', (int) $instructor->id)
-            ->whereNull('deleted_at')
+            
             ->first();
 
         if (!$course) {
@@ -1302,7 +1306,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
         while (
             Course::query()
                 ->where('slug', $slug)
-                ->whereNull('deleted_at')
+                
                 ->when($ignoreCourseId !== null, fn ($query) => $query->where('id', '!=', $ignoreCourseId))
                 ->exists()
         ) {

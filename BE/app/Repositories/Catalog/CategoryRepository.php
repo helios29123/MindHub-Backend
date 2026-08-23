@@ -10,10 +10,10 @@ class CategoryRepository
     {
         return Category::query()
             ->withCount(['courses' => function ($q) {
-                $q->where('courses.status', 'published')->whereNull('courses.deleted_at');
+                $q->where('courses.status', 'published');
             }])
             ->where('status', 'active')
-            ->whereNull('deleted_at')
+            
             ->orderBy('sort_order')
             ->orderByDesc('id')
             ->limit(12)
@@ -24,7 +24,7 @@ class CategoryRepository
                     $allCategoryIds = array_merge([$cat->id], $childCategoryIds);
                     $totalCourses = \App\Models\Course::whereHas('categories', function ($q) use ($allCategoryIds) {
                         $q->whereIn('categories.id', $allCategoryIds);
-                    })->where('status', 'published')->whereNull('deleted_at')->distinct('courses.id')->count('courses.id');
+                    })->where('status', 'published')->distinct('courses.id')->count('courses.id');
                     $cat->courses_count = max($cat->courses_count ?? 0, $totalCourses);
                 }
                 return $cat;
@@ -35,10 +35,10 @@ class CategoryRepository
     {
         return Category::query()
             ->withCount(['courses' => function ($q) {
-                $q->where('courses.status', 'published')->whereNull('courses.deleted_at');
+                $q->where('courses.status', 'published');
             }])
             ->where('status', 'active')
-            ->whereNull('deleted_at')
+            
             ->orderBy('sort_order')
             ->orderByDesc('id')
             ->paginate($perPage);

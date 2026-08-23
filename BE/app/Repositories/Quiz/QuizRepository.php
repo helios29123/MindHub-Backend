@@ -13,7 +13,7 @@ class QuizRepository
     {
         return Course::query()
             ->whereKey($courseId)
-            ->whereNull('deleted_at')
+            
             ->first();
     }
 
@@ -31,7 +31,7 @@ class QuizRepository
         return (int) DB::table('lessons')
             ->where('course_id', $courseId)
             ->where('status', 'published')
-            ->whereNull('deleted_at')
+            
             ->count();
     }
 
@@ -40,7 +40,7 @@ class QuizRepository
         return DB::table('quizzes')
             ->where('course_id', $courseId)
             ->where('status', 'published')
-            ->whereNull('deleted_at')
+            
             ->orderBy('id')
             ->pluck('id');
     }

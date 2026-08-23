@@ -28,7 +28,7 @@ class AdminCourseResource extends JsonResource
             'is_featured' => $this->is_featured,
             'total_duration_seconds' => (int) ($this->total_duration_seconds ?: \Illuminate\Support\Facades\DB::table('lessons')
                 ->where('course_id', $this->id)
-                ->whereNull('deleted_at')
+                
                 ->sum('video_duration_seconds')),
             'published_at' => $this->published_at?->toIsoString(),
             'admin_reject_reason' => $this->admin_reject_reason,
@@ -45,20 +45,20 @@ class AdminCourseResource extends JsonResource
                 ->join('lessons', 'lessons.id', '=', 'comments.lesson_id')
                 ->where('lessons.course_id', $this->id)
                 ->where('comments.status', 'visible')
-                ->whereNull('lessons.deleted_at')
+                
                 ->count()),
             
             'summary' => [
                 'section_count' => (int) ($this->sections_count ?? $this->sections()->count()),
                 'lesson_count' => (int) ($this->lessons_count ?? \Illuminate\Support\Facades\DB::table('lessons')
                     ->where('course_id', $this->id)
-                    ->whereNull('deleted_at')
+                    
                     ->count()),
                 'asset_count' => (int) \Illuminate\Support\Facades\DB::table('lesson_assets')
                     ->join('lessons', 'lessons.id', '=', 'lesson_assets.lesson_id')
                     ->where('lessons.course_id', $this->id)
-                    ->whereNull('lessons.deleted_at')
-                    ->whereNull('lesson_assets.deleted_at')
+                    
+                    
                     ->count(),
             ],
 
@@ -169,7 +169,7 @@ class AdminCourseResource extends JsonResource
         $sectionsCount = $course->sections()->count();
         $lessonsCount = \Illuminate\Support\Facades\DB::table('lessons')
             ->where('course_id', $course->id)
-            ->whereNull('deleted_at')
+            
             ->count();
         
         $curriculumPassed = $sectionsCount >= 1 && $lessonsCount >= 1;
@@ -187,7 +187,7 @@ class AdminCourseResource extends JsonResource
         $lessonsWithoutVideo = \Illuminate\Support\Facades\DB::table('lessons')
             ->where('course_id', $course->id)
             ->whereNull('video_url')
-            ->whereNull('deleted_at')
+            
             ->count();
         
         $videoPassed = $lessonsCount > 0 && $lessonsWithoutVideo === 0;

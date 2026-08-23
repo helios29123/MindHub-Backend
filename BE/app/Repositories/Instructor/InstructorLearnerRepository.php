@@ -17,7 +17,7 @@ class InstructorLearnerRepository
             ->join('courses', 'courses.id', '=', 'enrollments.course_id')
             ->join('users', 'users.id', '=', 'enrollments.user_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereIn('enrollments.status', ['active', 'completed'])
             ->select([
                 'enrollments.id as enrollment_id',
@@ -213,7 +213,7 @@ class InstructorLearnerRepository
         $baseQuery = DB::table('enrollments')
             ->join('courses', 'courses.id', '=', 'enrollments.course_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereIn('enrollments.status', ['active', 'completed']);
 
         if (!empty($filters['course_id']) && $filters['course_id'] !== 'all') {
@@ -311,7 +311,7 @@ class InstructorLearnerRepository
             $records = DB::table('enrollments')
                 ->join('courses', 'courses.id', '=', 'enrollments.course_id')
                 ->where('courses.instructor_id', $instructorId)
-                ->whereNull('courses.deleted_at')
+                
                 ->whereIn('enrollments.status', ['active', 'completed'])
                 ->whereBetween('enrollments.enrolled_at', [$startDate, $endDate])
                 ->selectRaw("DATE_FORMAT(enrollments.enrolled_at, '%Y-%m') as date, COUNT(*) as total_count, SUM(CASE WHEN enrollments.status = 'active' AND enrollments.progress_percent < 100 THEN 1 ELSE 0 END) as active_count, SUM(CASE WHEN enrollments.status = 'completed' OR enrollments.progress_percent >= 100 THEN 1 ELSE 0 END) as completed_count")
@@ -337,7 +337,7 @@ class InstructorLearnerRepository
             $records = DB::table('enrollments')
                 ->join('courses', 'courses.id', '=', 'enrollments.course_id')
                 ->where('courses.instructor_id', $instructorId)
-                ->whereNull('courses.deleted_at')
+                
                 ->whereIn('enrollments.status', ['active', 'completed'])
                 ->whereBetween('enrollments.enrolled_at', [$startDate, $endDate])
                 ->selectRaw("DATE(enrollments.enrolled_at) as date, COUNT(*) as total_count, SUM(CASE WHEN enrollments.status = 'active' AND enrollments.progress_percent < 100 THEN 1 ELSE 0 END) as active_count, SUM(CASE WHEN enrollments.status = 'completed' OR enrollments.progress_percent >= 100 THEN 1 ELSE 0 END) as completed_count")
@@ -381,7 +381,7 @@ class InstructorLearnerRepository
             ->join('users', 'users.id', '=', 'enrollments.user_id')
             ->where('enrollments.id', $enrollmentId)
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->select([
                 'enrollments.id as enrollment_id',
                 'users.id as user_id',
@@ -407,20 +407,20 @@ class InstructorLearnerRepository
         // Total lessons count
         $totalLessons = DB::table('lessons')
             ->where('course_id', $enrollment->course_id)
-            ->whereNull('deleted_at')
+            
             ->count();
 
         // Total course duration seconds
         $totalDurationSeconds = (int) ($enrollment->course_duration_seconds ?: DB::table('lessons')
             ->where('course_id', $enrollment->course_id)
-            ->whereNull('deleted_at')
+            
             ->sum('video_duration_seconds'));
 
         // Completed lessons count
         $completedLessons = DB::table('lesson_progress')
             ->where('user_id', $enrollment->user_id)
             ->whereIn('lesson_id', function ($query) use ($enrollment) {
-                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id)->whereNull('deleted_at');
+                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id);
             })
             ->where(function ($q) {
                 $q->where('status', 'completed')->orWhereNotNull('completed_at');
@@ -431,14 +431,14 @@ class InstructorLearnerRepository
         $learnedDurationSeconds = (int) DB::table('lesson_progress')
             ->where('user_id', $enrollment->user_id)
             ->whereIn('lesson_id', function ($query) use ($enrollment) {
-                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id)->whereNull('deleted_at');
+                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id);
             })
             ->sum('learning_duration_seconds');
 
         // Roadmap by section
         $sections = DB::table('course_sections')
             ->where('course_id', $enrollment->course_id)
-            ->whereNull('deleted_at')
+            
             ->orderBy('sort_order')
             ->get();
 
@@ -446,7 +446,7 @@ class InstructorLearnerRepository
         foreach ($sections as $sec) {
             $secLessonIds = DB::table('lessons')
                 ->where('course_section_id', $sec->id)
-                ->whereNull('deleted_at')
+                
                 ->pluck('id');
 
             $secTotal = count($secLessonIds);
@@ -496,7 +496,7 @@ class InstructorLearnerRepository
                      ->where('lesson_progress.user_id', '=', $enrollment->user_id);
             })
             ->where('lessons.course_id', $enrollment->course_id)
-            ->whereNull('lessons.deleted_at')
+            
             ->select([
                 'lessons.id as lesson_id',
                 'lessons.title as lesson_title',
@@ -644,7 +644,7 @@ class InstructorLearnerRepository
             ->join('courses', 'courses.id', '=', 'enrollments.course_id')
             ->join('users', 'users.id', '=', 'enrollments.user_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereIn('enrollments.status', ['active', 'completed'])
             ->select([
                 'enrollments.id as enrollment_id',

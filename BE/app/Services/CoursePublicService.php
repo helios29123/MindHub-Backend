@@ -235,7 +235,7 @@ class CoursePublicService
                     ->join('courses', 'courses.id', '=', 'orders.course_id')
                     ->whereColumn('courses.instructor_id', 'users.id')
                     ->where('courses.status', 'published')
-                    ->whereNull('course_reviews.deleted_at')
+                    
                     ->select(\Illuminate\Support\Facades\DB::raw('AVG(course_reviews.rating)'));
             }, 'average_rating')
             ->first();

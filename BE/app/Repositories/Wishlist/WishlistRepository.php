@@ -21,17 +21,16 @@ final class WishlistRepository
                             'level',
                             'language',
                             'status',
-                            'deleted_at',
                         ])
                         ->where('status', 'published')
-                        ->whereNull('deleted_at');
+                        ;
                 },
             ])
             ->where('user_id', $userId)
             ->whereHas('course', function ($query): void {
                 $query
                     ->where('status', 'published')
-                    ->whereNull('deleted_at');
+                    ;
             })
             ->orderByDesc('created_at')
             ->orderByDesc('id')
@@ -41,7 +40,7 @@ final class WishlistRepository
     {
         return Course::query()
             ->whereKey($courseId)
-            ->whereNull('deleted_at')
+            
             ->first();
     }
     public function findPublishedCourse(int $courseId): ?Course
@@ -49,7 +48,7 @@ final class WishlistRepository
         return Course::query()
             ->whereKey($courseId)
             ->where('status', 'published')
-            ->whereNull('deleted_at')
+            
             ->first();
     }
     public function exists(int $userId, int $courseId): bool

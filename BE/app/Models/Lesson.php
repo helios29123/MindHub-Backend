@@ -4,10 +4,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 class Lesson extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
     protected $table = 'lessons';
     protected $fillable = [
         'course_section_id',
@@ -17,6 +16,8 @@ class Lesson extends Model
         'lesson_type',
         'content',
         'video_url',
+        'video_provider',
+        'video_id',
         'video_duration_seconds',
         'is_preview',
         'status',

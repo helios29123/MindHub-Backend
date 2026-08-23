@@ -200,14 +200,10 @@ class FaqAdminService
         }
 
         return DB::transaction(function () use ($faq) {
-            // Free up sort_order and soft-delete pivot links
+            // Delete pivot links
             DB::table('course_faqs')
                 ->where('faq_id', $faq->id)
-                ->whereNull('deleted_at')
-                ->update([
-                    'sort_order' => DB::raw('faq_id + 1000000'),
-                    'deleted_at' => now()
-                ]);
+                ->delete();
 
             return (bool) $faq->delete();
         });
@@ -257,47 +253,19 @@ class FaqAdminService
     {
         $now = now();
         
-        // 1. Get existing pivot records (including soft-deleted ones)
-        $existing = DB::table('course_faqs')
+        // 1. Delete all existing pivot records
+        DB::table('course_faqs')
             ->where('faq_id', $faq->id)
-            ->get()
-            ->keyBy('course_id');
+            ->delete();
 
-        // 2. Determine which courses to detach (soft delete)
-        foreach ($existing as $courseId => $pivot) {
-            if (!in_array($courseId, $courseIds) && $pivot->deleted_at === null) {
-                DB::table('course_faqs')
-                    ->where('faq_id', $faq->id)
-                    ->where('course_id', $courseId)
-                    ->update([
-                        'sort_order' => $faq->id + 1000000 + $courseId, // ensure uniqueness
-                        'deleted_at' => $now
-                    ]);
-            }
-        }
-
-        // 3. Determine which courses to attach / restore / update
+        // 2. Insert new links
         foreach ($courseIds as $index => $courseId) {
-            if (isset($existing[$courseId])) {
-                // If it exists (active or soft-deleted), restore it and update sort_order
-                DB::table('course_faqs')
-                    ->where('faq_id', $faq->id)
-                    ->where('course_id', $courseId)
-                    ->update([
-                        'sort_order' => $index,
-                        'deleted_at' => null,
-                        'created_at' => $existing[$courseId]->created_at ?? $now
-                    ]);
-            } else {
-                // Insert new link
-                DB::table('course_faqs')->insert([
-                    'faq_id' => $faq->id,
-                    'course_id' => $courseId,
-                    'sort_order' => $index,
-                    'created_at' => $now,
-                    'deleted_at' => null
-                ]);
-            }
+            DB::table('course_faqs')->insert([
+                'faq_id' => $faq->id,
+                'course_id' => $courseId,
+                'sort_order' => $index,
+                'created_at' => $now
+            ]);
         }
     }
 
@@ -315,7 +283,7 @@ class FaqAdminService
 
         // Count unique courses that have at least one active FAQ linked
         $linkedCourses = DB::table('course_faqs')
-            ->whereNull('deleted_at')
+            
             ->distinct('course_id')
             ->count('course_id');
 

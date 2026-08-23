@@ -18,7 +18,7 @@ class InactiveLearnerReportRequest extends BaseApiRequest
             'per_page' => 'nullable|integer|min:1|max:100',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after_or_equal:date_from',
-            'course_id' => 'nullable|integer|exists:courses,id,deleted_at,NULL',
+            'course_id' => 'nullable|integer|exists:courses,id',
             'month' => 'nullable|integer|min:1|max:12',
             'year' => 'nullable|integer|min:2000|max:2100',
             'status' => 'nullable|in:active,completed,in_progress,not_started',

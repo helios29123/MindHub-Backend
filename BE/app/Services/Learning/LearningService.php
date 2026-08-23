@@ -23,7 +23,7 @@ class LearningService
             ->where('user_id', $user->id)
             ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
             ->whereHas('course', function ($q) {
-                $q->whereNull('deleted_at');
+                $q;
             });
 
         if (!empty($params['status'])) {
@@ -349,7 +349,7 @@ class LearningService
                 $query->where('status', 'published')
                     ->whereHas('course', function ($q) use ($user) {
                         $q->where('status', 'published')
-                            ->whereNull('deleted_at')
+                            
                             ->whereHas('enrollments', function ($eq) use ($user) {
                                 $eq->where('user_id', $user->id)
                                     ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED]);
@@ -385,7 +385,7 @@ class LearningService
         $latestEnrollment = Enrollment::where('user_id', $user->id)
             ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
             ->whereHas('course', function ($q) {
-                $q->where('status', 'published')->whereNull('deleted_at');
+                $q->where('status', 'published');
             })
             ->orderByDesc('enrolled_at')
             ->orderByDesc('id')
@@ -639,7 +639,7 @@ class LearningService
                   ->whereIn('course_id', $enrolledCourseIds)
                   ->whereHas('course', function ($qc) {
                       $qc->where('status', 'published')
-                         ->whereNull('deleted_at');
+                         ;
                   });
             });
 

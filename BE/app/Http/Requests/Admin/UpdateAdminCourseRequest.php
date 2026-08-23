@@ -20,7 +20,7 @@ class UpdateAdminCourseRequest extends FormRequest
             'is_featured' => ['sometimes', 'boolean'],
             'admin_reject_reason' => ['sometimes', 'nullable', 'string'],
             'title' => ['sometimes', 'string', 'max:255'],
-            'slug' => ['sometimes', 'string', 'max:255', 'unique:courses,slug,' . $id . ',id,deleted_at,NULL'],
+            'slug' => ['sometimes', 'string', 'max:255', 'unique:courses,slug,' . $id . ',id'],
             'short_description' => ['sometimes', 'nullable', 'string'],
             'description' => ['sometimes', 'nullable', 'string'],
             'thumbnail_url' => ['sometimes', 'nullable', 'url', 'max:2048'],

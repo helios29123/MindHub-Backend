@@ -20,7 +20,7 @@ class StoreSectionRequest extends FormRequest
             "course_id" => [
                 "required",
                 "integer",
-                Rule::exists("courses", "id")->whereNull("deleted_at"),
+                Rule::exists("courses", "id"),
             ],
             "title" => ["required", "string", "max:255"],
             "description" => ["nullable", "string"],

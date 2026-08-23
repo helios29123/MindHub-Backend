@@ -74,12 +74,14 @@ final class InstructorLessonRepository
     {
         $lesson->delete();
     }
-    public function updateVideo(Lesson $lesson, string $videoUrl, ?int $videoDurationSeconds): Lesson
+    public function updateVideo(Lesson $lesson, ?string $videoUrl, ?int $videoDurationSeconds, ?string $videoProvider = 'local', ?string $videoId = null): Lesson
     {
         $lesson->update([
             'lesson_type' => 'video',
             'video_url' => $videoUrl,
             'video_duration_seconds' => $videoDurationSeconds ?? 0,
+            'video_provider' => $videoProvider,
+            'video_id' => $videoId,
         ]);
         return $lesson->refresh();
     }

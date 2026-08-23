@@ -15,7 +15,7 @@ class NextLearningPathRequest extends FormRequest
     {
         return [
             'limit' => ['nullable', 'integer', 'min:1', 'max:20'],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id,deleted_at,NULL'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ];
     }
     

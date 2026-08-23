@@ -44,9 +44,6 @@ class InstructorCouponResource extends JsonResource
     }
     protected function effectiveStatus(): string
     {
-        if ($this->deleted_at !== null) {
-            return 'deleted';
-        }
         if ($this->status === Coupon::STATUS_INACTIVE) {
             return Coupon::STATUS_INACTIVE;
         }

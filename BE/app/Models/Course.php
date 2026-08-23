@@ -8,11 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Course extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $fillable = [
         "instructor_id",
@@ -56,7 +55,7 @@ class Course extends Model
             "course_categories",
             "course_id",
             "category_id",
-        )->withPivot("created_at");
+        );
     }
 
     public function enrollments(): HasMany
@@ -104,7 +103,7 @@ class Course extends Model
         )
             ->withPivot("sort_order")
             ->orderBy("course_faqs.sort_order")
-            ->whereNull("course_faqs.deleted_at");
+            ;
     }
 
     public function wishlists(): HasMany
@@ -117,7 +116,7 @@ class Course extends Model
         ->where('status', 'published')
         ->whereHas('instructor', function ($q) {
             $q->where('status', 'active')
-                ->whereNull('deleted_at')
+                
                 ->where(function ($sub) {
                     $sub->whereNull('locked')
                         ->orWhere('locked', 0);

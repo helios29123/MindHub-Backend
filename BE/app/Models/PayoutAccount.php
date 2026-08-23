@@ -5,11 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PayoutAccount extends Model
 {
-    use SoftDeletes;
 
     public const STATUS_ACTIVE = 'active';
     public const STATUS_PENDING = 'pending';
@@ -32,9 +30,7 @@ class PayoutAccount extends Model
         'connected_at' => 'datetime',
         'is_default' => 'boolean',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
-    ];
+        'updated_at' => 'datetime',    ];
 
     public function user(): BelongsTo
     {

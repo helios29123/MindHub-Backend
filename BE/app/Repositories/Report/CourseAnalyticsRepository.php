@@ -14,7 +14,7 @@ class CourseAnalyticsRepository
     public function getCourseForInstructor(int $courseId, int $instructorId): ?Course
     {
         return Course::where('id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->first();
     }
 

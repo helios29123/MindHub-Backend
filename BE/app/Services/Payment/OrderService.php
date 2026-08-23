@@ -43,7 +43,7 @@ class OrderService
             }
 
             if (Schema::hasColumn('orders', 'deleted_at')) {
-                $pendingQuery->whereNull('deleted_at');
+                $pendingQuery;
             }
 
             $pendingOrder = $pendingQuery->first();
@@ -144,6 +144,10 @@ class OrderService
                 $insertData['updated_at'] = now();
             }
 
+            if (Schema::hasColumn('orders', 'commission_rule_id')) {
+                $insertData['commission_rule_id'] = \App\Models\CommissionRule::first()->id ?? 1;
+            }
+
             $orderId = DB::table('orders')->insertGetId($insertData);
 
             return DB::table('orders')->where('id', $orderId)->first();
@@ -157,7 +161,7 @@ class OrderService
             ->where('user_id', $userId);
 
         if (Schema::hasColumn('orders', 'deleted_at')) {
-            $query->whereNull('deleted_at');
+            $query;
         }
 
         $order = $query->first();
@@ -176,7 +180,7 @@ class OrderService
             ->orderByDesc('id');
 
         if (Schema::hasColumn('orders', 'deleted_at')) {
-            $query->whereNull('deleted_at');
+            $query;
         }
 
         if (! empty($filters['status']) && Schema::hasColumn('orders', 'status')) {
@@ -206,7 +210,7 @@ class OrderService
                 ->lockForUpdate();
 
             if (Schema::hasColumn('orders', 'deleted_at')) {
-                $query->whereNull('deleted_at');
+                $query;
             }
 
             $order = $query->first();
