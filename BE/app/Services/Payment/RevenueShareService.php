@@ -372,6 +372,13 @@ final class RevenueShareService
 
         $insRate = $rule ? (float) ($rule->instructor_rate ?? $defaultIns) : $defaultIns;
         $platRate = $rule ? (float) ($rule->platform_rate ?? $defaultPlat) : $defaultPlat;
+        
+        // Handle legacy data where rates are stored as 0.x instead of x%
+        if ($insRate <= 1.0 && $platRate <= 1.0 && ($insRate + $platRate) <= 1.1) {
+            $insRate *= 100;
+            $platRate *= 100;
+        }
+
         $ruleId = $rule ? $rule->id : null;
 
         return [

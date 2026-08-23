@@ -11,7 +11,7 @@ class ApiResource extends JsonResource
     {
         $status = $this->resource instanceof \App\Models\Comment 
             ? $this->resource->status 
-            : ($this->resource->deleted_at ? 'deleted' : 'visible');
+            : 'visible';
 
         return json_encode([
             'id' => $this->resource->id,

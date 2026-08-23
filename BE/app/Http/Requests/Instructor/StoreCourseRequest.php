@@ -30,7 +30,7 @@ final class StoreCourseRequest extends FormRequest
                 'string',
                 'max:255',
                 'alpha_dash',
-                Rule::unique('courses', 'slug')->whereNull('deleted_at'),
+                Rule::unique('courses', 'slug'),
             ],
             'short_description' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string'],
@@ -49,7 +49,7 @@ final class StoreCourseRequest extends FormRequest
             'category_ids.*' => [
                 'integer',
                 'distinct',
-                Rule::exists('categories', 'id')->where('status', 'active')->whereNull('deleted_at'),
+                Rule::exists('categories', 'id')->where('status', 'active'),
             ],
         ];
     }

@@ -14,7 +14,7 @@ class CoursePurchaseGuardService
             ->where('id', $courseId);
 
         if (Schema::hasColumn('courses', 'deleted_at')) {
-            $courseQuery->whereNull('deleted_at');
+            $courseQuery;
         }
 
         $course = $courseQuery->first();
@@ -43,7 +43,7 @@ class CoursePurchaseGuardService
             ->where('course_id', $courseId);
 
         if (Schema::hasColumn('enrollments', 'deleted_at')) {
-            $enrollmentQuery->whereNull('deleted_at');
+            $enrollmentQuery;
         }
 
         if ($enrollmentQuery->exists()) {
@@ -56,7 +56,7 @@ class CoursePurchaseGuardService
             ->where('payment_status', 'paid');
 
         if (Schema::hasColumn('orders', 'deleted_at')) {
-            $paidOrderQuery->whereNull('deleted_at');
+            $paidOrderQuery;
         }
 
         if ($paidOrderQuery->exists()) {

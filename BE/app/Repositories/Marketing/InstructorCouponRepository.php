@@ -93,7 +93,7 @@ final class InstructorCouponRepository
         return Course::query()
             ->where('id', $courseId)
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->first();
     }
     public function courseOptions(int $instructorId, array $filters = []): Collection
@@ -102,7 +102,7 @@ final class InstructorCouponRepository
         $page = max((int) ($filters['page'] ?? 1), 1);
         $query = Course::query()
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at');
+            ;
         if (!empty($filters['search'])) {
             $search = trim((string) $filters['search']);
             $query->where('title', 'like', '%' . $search . '%');
@@ -120,7 +120,7 @@ final class InstructorCouponRepository
             ->whereNotNull('course_id')
             ->whereHas('course', function (Builder $query) use ($instructorId): void {
                 $query->where('instructor_id', $instructorId)
-                    ->whereNull('deleted_at');
+                    ;
             });
     }
     private function applyEffectiveStatusFilter(Builder $query, string $status): void

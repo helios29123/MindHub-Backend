@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -16,7 +15,6 @@ class User extends Authenticatable
     use HasApiTokens;
     use HasFactory;
     use Notifiable;
-    use SoftDeletes;
 
     public const ROLE_ADMIN = 'admin';
     public const ROLE_INSTRUCTOR = 'instructor';
@@ -61,9 +59,7 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'locked' => 'boolean',
             'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-            'deleted_at' => 'datetime',
-        ];
+            'updated_at' => 'datetime',        ];
     }
 
     public function getAvatarUrlAttribute(?string $value = null): ?string
@@ -161,7 +157,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(Course::class, 'instructor_id')
             ->where('status', 'published')
-            ->whereNull('deleted_at');
+            ;
     }
 
     public function courseEnrollments(): HasManyThrough
@@ -175,7 +171,7 @@ class User extends Authenticatable
             'id'
         )
             ->where('courses.status', 'published')
-            ->whereNull('courses.deleted_at')
+            
             ->whereIn('enrollments.status', ['active', 'completed']);
     }
 

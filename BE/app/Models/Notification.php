@@ -3,11 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Notification extends Model
 {
-    use SoftDeletes;
 
     protected $table = 'notifications';
 
@@ -26,7 +24,5 @@ class Notification extends Model
         'data' => 'array',
         'read_at' => 'datetime',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
-    ];
+        'updated_at' => 'datetime',    ];
 }

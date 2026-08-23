@@ -1,0 +1,561 @@
+{
+    "banners": {
+        "common": [
+            "id",
+            "title",
+            "image_url",
+            "target_url",
+            "position",
+            "sort_order",
+            "start_at",
+            "end_at",
+            "status",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "deleted_at"
+        ],
+        "newOnly": [
+            "image_public_id"
+        ]
+    },
+    "categories": {
+        "common": [
+            "id",
+            "parent_id",
+            "name",
+            "slug",
+            "description",
+            "sort_order",
+            "status",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "deleted_at"
+        ],
+        "newOnly": []
+    },
+    "comments": {
+        "common": [
+            "id",
+            "parent_id",
+            "user_id",
+            "lesson_id",
+            "content",
+            "status",
+            "is_official",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "order_id"
+        ],
+        "newOnly": [
+            "enrollment_id"
+        ]
+    },
+    "commission_rules": {
+        "common": [
+            "id",
+            "name",
+            "description",
+            "instructor_rate",
+            "platform_rate",
+            "is_active",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "sale_channel",
+            "instructor_rate_percent",
+            "platform_rate_percent"
+        ],
+        "newOnly": []
+    },
+    "coupons": {
+        "common": [
+            "id",
+            "course_id",
+            "code",
+            "discount_type",
+            "discount_value",
+            "usage_limit",
+            "used_count",
+            "start_at",
+            "end_at",
+            "status",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "user_id",
+            "name",
+            "description",
+            "max_order_amount",
+            "deleted_at"
+        ],
+        "newOnly": []
+    },
+    "course_categories": {
+        "common": [
+            "category_id",
+            "course_id"
+        ],
+        "oldOnly": [
+            "created_at"
+        ],
+        "newOnly": []
+    },
+    "course_faqs": {
+        "common": [
+            "faq_id",
+            "course_id",
+            "sort_order"
+        ],
+        "oldOnly": [
+            "created_at",
+            "deleted_at"
+        ],
+        "newOnly": []
+    },
+    "course_reviews": {
+        "common": [
+            "id",
+            "order_id",
+            "rating",
+            "comment",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "deleted_at"
+        ],
+        "newOnly": []
+    },
+    "course_sections": {
+        "common": [
+            "id",
+            "course_id",
+            "title",
+            "description",
+            "sort_order",
+            "status",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "deleted_at"
+        ],
+        "newOnly": []
+    },
+    "courses": {
+        "common": [
+            "id",
+            "instructor_id",
+            "title",
+            "slug",
+            "short_description",
+            "description",
+            "thumbnail_url",
+            "intro_video_url",
+            "price",
+            "discount_percent",
+            "sale_price",
+            "language",
+            "requirements",
+            "outcomes",
+            "status",
+            "is_featured",
+            "published_at",
+            "admin_reject_reason",
+            "created_at",
+            "updated_at",
+            "reviewed_by"
+        ],
+        "oldOnly": [
+            "level",
+            "total_duration_seconds",
+            "deleted_at",
+            "reviewed_at"
+        ],
+        "newOnly": [
+            "thumbnail_public_id",
+            "intro_video_id",
+            "course_level"
+        ]
+    },
+    "enrollments": {
+        "common": [
+            "id",
+            "user_id",
+            "course_id",
+            "order_id",
+            "status",
+            "progress_percent",
+            "enrolled_at",
+            "completed_at",
+            "last_accessed_at",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [],
+        "newOnly": [
+            "expires_at"
+        ]
+    },
+    "faqs": {
+        "common": [
+            "id",
+            "question",
+            "answer",
+            "type",
+            "status",
+            "sort_order",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "deleted_at"
+        ],
+        "newOnly": []
+    },
+    "instructor_profiles": {
+        "common": [
+            "id",
+            "user_id",
+            "bio",
+            "expertise",
+            "experience_years",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "level",
+            "social_links"
+        ],
+        "newOnly": [
+            "instructor_rank"
+        ]
+    },
+    "lesson_assets": {
+        "common": [
+            "id",
+            "lesson_id",
+            "title",
+            "file_url",
+            "file_name",
+            "file_type",
+            "file_size",
+            "note",
+            "created_at"
+        ],
+        "oldOnly": [
+            "deleted_at"
+        ],
+        "newOnly": [
+            "file_id",
+            "updated_at"
+        ]
+    },
+    "lesson_notes": {
+        "common": [
+            "id",
+            "lesson_id",
+            "content",
+            "note_time_second",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "user_id",
+            "course_id",
+            "deleted_at"
+        ],
+        "newOnly": [
+            "enrollment_id"
+        ]
+    },
+    "lesson_progress": {
+        "common": [
+            "id",
+            "lesson_id",
+            "status",
+            "started_at",
+            "completed_at",
+            "learning_duration_seconds",
+            "last_accessed_at",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "user_id"
+        ],
+        "newOnly": [
+            "enrollment_id"
+        ]
+    },
+    "lessons": {
+        "common": [
+            "id",
+            "course_section_id",
+            "course_id",
+            "title",
+            "lesson_type",
+            "content",
+            "video_url",
+            "video_provider",
+            "video_id",
+            "video_duration_seconds",
+            "is_preview",
+            "status",
+            "sort_order",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "slug",
+            "deleted_at"
+        ],
+        "newOnly": []
+    },
+    "notifications": {
+        "common": [
+            "id",
+            "user_id",
+            "type",
+            "title",
+            "message",
+            "data",
+            "action_url",
+            "channel",
+            "read_at",
+            "email_status",
+            "email_sent_at",
+            "email_error",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "email_to",
+            "deleted_at"
+        ],
+        "newOnly": []
+    },
+    "orders": {
+        "common": [
+            "id",
+            "coupon_id",
+            "course_id",
+            "user_id",
+            "order_code",
+            "status",
+            "price_snapshot",
+            "payment_method",
+            "provider_transaction_id",
+            "amount",
+            "payment_status",
+            "paid_at",
+            "created_at",
+            "updated_at",
+            "cancelled_reason",
+            "failed_reason",
+            "commission_rule_id"
+        ],
+        "oldOnly": [
+            "sale_source"
+        ],
+        "newOnly": [
+            "discount_amount",
+            "expires_at"
+        ]
+    },
+    "payout_accounts": {
+        "common": [
+            "id",
+            "user_id",
+            "provider",
+            "account_number",
+            "account_name",
+            "status",
+            "is_default",
+            "created_at",
+            "updated_at",
+            "disabled_at"
+        ],
+        "oldOnly": [
+            "connected_at",
+            "deleted_at",
+            "reject_reason",
+            "approved_at",
+            "rejected_at"
+        ],
+        "newOnly": [
+            "verified_at"
+        ]
+    },
+    "revenues": {
+        "common": [
+            "id",
+            "instructor_id",
+            "course_id",
+            "order_id",
+            "gross_amount",
+            "instructor_amount",
+            "platform_fee_amount",
+            "earned_at",
+            "created_at",
+            "updated_at",
+            "commission_rule_id"
+        ],
+        "oldOnly": [
+            "payout_id",
+            "instructor_percent",
+            "platform_percent",
+            "status",
+            "available_at",
+            "commission_rule_code",
+            "sale_source"
+        ],
+        "newOnly": []
+    },
+    "sessions": {
+        "common": [
+            "id",
+            "user_id",
+            "refresh_token_hash",
+            "device_name",
+            "ip_address",
+            "user_agent",
+            "expires_at",
+            "revoked_at",
+            "created_at"
+        ],
+        "oldOnly": [],
+        "newOnly": [
+            "updated_at"
+        ]
+    },
+    "user_otps": {
+        "common": [
+            "id",
+            "user_id",
+            "purpose",
+            "code_hash",
+            "expires_at",
+            "used_at",
+            "attempts",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [],
+        "newOnly": []
+    },
+    "users": {
+        "common": [
+            "id",
+            "full_name",
+            "email",
+            "password_hash",
+            "phone",
+            "avatar_url",
+            "avatar_public_id",
+            "role",
+            "status",
+            "email_verified_at",
+            "last_login_at",
+            "locked",
+            "locked_reason",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "name",
+            "settings",
+            "oauth_account_login",
+            "password_reset",
+            "deleted_at",
+            "locked_at",
+            "remember_token"
+        ],
+        "newOnly": []
+    },
+    "video_progress": {
+        "common": [
+            "id",
+            "lesson_id",
+            "current_second",
+            "created_at",
+            "updated_at"
+        ],
+        "oldOnly": [
+            "user_id"
+        ],
+        "newOnly": [
+            "enrollment_id"
+        ]
+    },
+    "wishlist": {
+        "common": [
+            "user_id",
+            "course_id",
+            "created_at"
+        ],
+        "oldOnly": [
+            "id"
+        ],
+        "newOnly": []
+    },
+    "withdraw_requests": {
+        "common": [
+            "id",
+            "user_id",
+            "payout_account_id",
+            "amount",
+            "available_balance_before",
+            "available_balance_after",
+            "status",
+            "requested_at",
+            "approved_at",
+            "paid_at",
+            "processed_at",
+            "rejected_reason",
+            "failure_reason",
+            "provider_payout_id",
+            "account_number_snapshot",
+            "account_name_snapshot",
+            "payout_provider",
+            "created_at",
+            "updated_at",
+            "admin_note"
+        ],
+        "oldOnly": [
+            "period_start",
+            "period_end",
+            "type",
+            "expected_payment_at",
+            "blocked_reason",
+            "rejection_reason",
+            "bank_name",
+            "payout_method",
+            "rejected_at"
+        ],
+        "newOnly": [
+            "bank_name_snapshot"
+        ]
+    },
+    "withdrawal_revenues": {
+        "common": [
+            "withdrawal_id",
+            "revenue_id",
+            "allocated_amount",
+            "created_at"
+        ],
+        "oldOnly": [
+            "id",
+            "updated_at"
+        ],
+        "newOnly": []
+    }
+}

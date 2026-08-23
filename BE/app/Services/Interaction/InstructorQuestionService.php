@@ -44,7 +44,7 @@ class InstructorQuestionService
                 ->join('courses', 'courses.id', '=', 'lessons.course_id')
                 ->where('lessons.id', $filters['lesson_id'])
                 ->where('courses.instructor_id', $instructorId)
-                ->whereNull('courses.deleted_at')
+                
                 ->exists();
             if (!$lesson) {
                 throw new UnprocessableEntityHttpException('Bài học không hợp lệ.');
@@ -68,7 +68,7 @@ class InstructorQuestionService
                 ->join('courses', 'courses.id', '=', 'lessons.course_id')
                 ->where('lessons.id', $lessonId)
                 ->where('courses.instructor_id', $instructorId)
-                ->whereNull('courses.deleted_at');
+                ;
             if ($courseId) {
                 $lessonQuery->where('lessons.course_id', $courseId);
             }
@@ -82,7 +82,7 @@ class InstructorQuestionService
             ->join('courses', 'courses.id', '=', 'lessons.course_id')
             ->join('users as learner', 'learner.id', '=', 'q.user_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereNull('q.parent_id')
             ->where('q.status', 'visible')
             ->where('learner.role', 'learner');
@@ -113,7 +113,7 @@ class InstructorQuestionService
             ->join('lessons', 'lessons.id', '=', 'c.lesson_id')
             ->join('courses', 'courses.id', '=', 'lessons.course_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->where('c.status', 'visible')
             ->whereDate('c.created_at', now()->toDateString())
             ->count();
@@ -148,9 +148,6 @@ class InstructorQuestionService
             throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
         }
 
-        if ($lesson->course->deleted_at !== null) {
-            throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
-        }
 
         return $comment;
     }
@@ -188,7 +185,7 @@ class InstructorQuestionService
             throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
         }
 
-        if ($comment->status !== 'visible' || $comment->deleted_at !== null) {
+        if ($comment->status !== 'visible') {
             throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
         }
 
@@ -202,7 +199,7 @@ class InstructorQuestionService
         }
 
         $lesson = $comment->lesson;
-        if (!$lesson || !$lesson->course || $lesson->course->deleted_at !== null) {
+        if (!$lesson || !$lesson->course) {
             throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
         }
 
@@ -389,9 +386,6 @@ class InstructorQuestionService
             throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
         }
 
-        if ($lesson->course->deleted_at !== null) {
-            throw new NotFoundHttpException('Không tìm thấy dữ liệu.');
-        }
 
         return $comment;
     }

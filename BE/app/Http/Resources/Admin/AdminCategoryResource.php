@@ -20,7 +20,6 @@ final class AdminCategoryResource extends JsonResource
             'course_count' => (int) ($this->getAttribute('courses_count') ?? 0),
             'created_at' => $this->created_at?->toIsoString(),
             'updated_at' => $this->updated_at?->toIsoString(),
-            'deleted_at' => $this->deleted_at?->toIsoString(),
             'parent' => $this->whenLoaded('parent', fn (): ?array => $this->parent ? [
                 'id' => (int) $this->parent->id,
                 'name' => $this->parent->name,

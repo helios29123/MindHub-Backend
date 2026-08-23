@@ -11,7 +11,7 @@ class CourseAvailabilityService
     {
         $course = DB::table('courses')
             ->where('id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->first();
 
         if (! $course) {
@@ -24,7 +24,7 @@ class CourseAvailabilityService
 
         $instructor = DB::table('users')
             ->where('id', $course->instructor_id)
-            ->whereNull('deleted_at')
+            
             ->first();
 
         if (! $instructor) {
@@ -46,7 +46,7 @@ class CourseAvailabilityService
     {
         $instructor = DB::table('users')
             ->where('id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->first();
 
         return $instructor

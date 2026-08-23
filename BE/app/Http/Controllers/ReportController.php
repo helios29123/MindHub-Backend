@@ -336,7 +336,7 @@ final class ReportController extends Controller
 
         $courses = \Illuminate\Support\Facades\DB::table('courses')
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->whereNotIn('status', ['published', 'approved', 'active', 'pending_review', 'pending'])
             ->orderBy('updated_at', 'desc')
             ->get();
@@ -388,7 +388,7 @@ final class ReportController extends Controller
                     ->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
             })
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at');
+            ;
 
         if ($request->query('course_id') && $request->query('course_id') !== 'all') {
             $query->where('courses.id', (int) $request->query('course_id'));
@@ -432,7 +432,7 @@ final class ReportController extends Controller
 
         $coursesQuery = \Illuminate\Support\Facades\DB::table('courses')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at');
+            ;
 
         if ($request->query('course_id') && $request->query('course_id') !== 'all') {
             $coursesQuery->where('courses.id', (int) $request->query('course_id'));
@@ -529,7 +529,7 @@ final class ReportController extends Controller
                 $q->where('revenues.instructor_id', $instructorId)
                   ->orWhere('courses.instructor_id', $instructorId);
             })
-            ->whereNull('courses.deleted_at')
+            
             ->whereIn('revenues.status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
 
         if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
@@ -666,7 +666,7 @@ final class ReportController extends Controller
                 $q->where('revenues.instructor_id', $instructorId)
                   ->orWhere('courses.instructor_id', $instructorId);
             })
-            ->whereNull('courses.deleted_at');
+            ;
 
         if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
             $query->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
@@ -746,7 +746,7 @@ final class ReportController extends Controller
                 $q->where('revenues.instructor_id', $instructorId)
                   ->orWhere('courses.instructor_id', $instructorId);
             })
-            ->whereNull('courses.deleted_at');
+            ;
 
         if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
             $query->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);

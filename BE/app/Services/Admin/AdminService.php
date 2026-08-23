@@ -474,7 +474,7 @@ class AdminService
     public function getUsers(array $queryParams): LengthAwarePaginator
     {
         $perPage = min((int) ($queryParams['per_page'] ?? 15), 100);
-        $query = \App\Models\User::query()->whereNull('deleted_at');
+        $query = \App\Models\User::query();
 
         if (!empty($queryParams['search'])) {
             $search = trim((string) $queryParams['search']);
@@ -504,7 +504,7 @@ class AdminService
 
     public function getUsersReport(array $queryParams): array
     {
-        $baseQuery = \App\Models\User::query()->whereNull('deleted_at');
+        $baseQuery = \App\Models\User::query();
 
         $totalUsers = (clone $baseQuery)->count();
         $totalLearners = (clone $baseQuery)->where('role', 'learner')->count();
@@ -544,7 +544,7 @@ class AdminService
             'new_users_in_period' => $newUsersInPeriod,
         ];
 
-        $query = \App\Models\User::query()->whereNull('deleted_at');
+        $query = \App\Models\User::query();
 
         if (!empty($queryParams['search'])) {
             $search = trim((string) $queryParams['search']);
@@ -630,7 +630,7 @@ class AdminService
 
     public function getUser(int $id): \App\Models\User
     {
-        $user = \App\Models\User::where('id', $id)->whereNull('deleted_at')->first();
+        $user = \App\Models\User::where('id', $id)->first();
 
         if (!$user) {
             throw new BusinessException('Không tìm thấy dữ liệu.', 404);

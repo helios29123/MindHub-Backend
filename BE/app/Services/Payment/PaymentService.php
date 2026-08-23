@@ -254,7 +254,7 @@ class PaymentService
             ->lockForUpdate();
 
         if (Schema::hasColumn('orders', 'deleted_at')) {
-            $query->whereNull('deleted_at');
+            $query;
         }
 
         $order = $query->first();
@@ -324,7 +324,7 @@ class PaymentService
             ->where('id', $order->course_id);
 
         if (Schema::hasColumn('courses', 'deleted_at')) {
-            $courseQuery->whereNull('deleted_at');
+            $courseQuery;
         }
 
         $course = $courseQuery->first();
@@ -456,7 +456,7 @@ class PaymentService
             ->where('course_id', $order->course_id);
 
         if (Schema::hasColumn('enrollments', 'deleted_at')) {
-            $query->whereNull('deleted_at');
+            $query;
         }
 
         if ($query->exists()) {

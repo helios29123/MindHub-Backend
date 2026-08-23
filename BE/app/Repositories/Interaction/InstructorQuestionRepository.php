@@ -26,7 +26,7 @@ class InstructorQuestionRepository
                     ->where('instructor_replies.user_id', '=', $instructorId);
             })
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereNull('q.parent_id')
             ->where('q.status', 'visible')
             ->where('learner.role', 'learner')

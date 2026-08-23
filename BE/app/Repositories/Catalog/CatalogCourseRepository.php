@@ -36,7 +36,7 @@ class CatalogCourseRepository
             $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryIds) {
                 $categoryQuery->whereIn('categories.id', $categoryIds)
                     ->where('categories.status', 'active')
-                    ->whereNull('categories.deleted_at');
+                    ;
             });
         }
 
@@ -54,13 +54,13 @@ class CatalogCourseRepository
                 $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryIds) {
                     $categoryQuery->whereIn('categories.id', $categoryIds)
                         ->where('categories.status', 'active')
-                        ->whereNull('categories.deleted_at');
+                        ;
                 });
             } else {
                 $query->whereHas('categories', function (Builder $categoryQuery) use ($categorySlug) {
                     $categoryQuery->where('categories.slug', $categorySlug)
                         ->where('categories.status', 'active')
-                        ->whereNull('categories.deleted_at');
+                        ;
                 });
             }
         }
@@ -190,13 +190,13 @@ class CatalogCourseRepository
                 DB::raw("'course' as type"),
             ])
             ->where('courses.status', 'published')
-            ->whereNull('courses.deleted_at')
+            
             ->whereExists(function ($query) {
                 $query->selectRaw('1')
                     ->from('users')
                     ->whereColumn('users.id', 'courses.instructor_id')
                     ->where('users.status', 'active')
-                    ->whereNull('users.deleted_at')
+                    
                     ->where(function ($userQuery) {
                         $userQuery->whereNull('users.locked')
                             ->orWhere('users.locked', 0);
@@ -227,7 +227,7 @@ class CatalogCourseRepository
                 DB::raw("'category' as type"),
             ])
             ->where('categories.status', 'active')
-            ->whereNull('categories.deleted_at')
+            
             ->where(function ($categoryQuery) {
                 /*
                  * Trường hợp 1:
@@ -240,9 +240,9 @@ class CatalogCourseRepository
                         ->join('users', 'users.id', '=', 'courses.instructor_id')
                         ->whereColumn('course_categories.category_id', 'categories.id')
                         ->where('courses.status', 'published')
-                        ->whereNull('courses.deleted_at')
+                        
                         ->where('users.status', 'active')
-                        ->whereNull('users.deleted_at')
+                        
                         ->where(function ($userQuery) {
                             $userQuery->whereNull('users.locked')
                                 ->orWhere('users.locked', 0);
@@ -261,11 +261,11 @@ class CatalogCourseRepository
                         ->join('users', 'users.id', '=', 'courses.instructor_id')
                         ->whereColumn('child_categories.parent_id', 'categories.id')
                         ->where('child_categories.status', 'active')
-                        ->whereNull('child_categories.deleted_at')
+                        
                         ->where('courses.status', 'published')
-                        ->whereNull('courses.deleted_at')
+                        
                         ->where('users.status', 'active')
-                        ->whereNull('users.deleted_at')
+                        
                         ->where(function ($userQuery) {
                             $userQuery->whereNull('users.locked')
                                 ->orWhere('users.locked', 0);
@@ -295,7 +295,7 @@ class CatalogCourseRepository
                 'categories:id,parent_id,name,slug,description,sort_order',
             ])
             ->where('courses.status', 'published')
-            ->whereNull('courses.deleted_at')
+            
 
             /*
              * Rule mới:
@@ -303,7 +303,7 @@ class CatalogCourseRepository
              */
             ->whereHas('instructor', function (Builder $instructorQuery) {
                 $instructorQuery->where('users.status', 'active')
-                    ->whereNull('users.deleted_at')
+                    
                     ->where(function (Builder $lockedQuery) {
                         $lockedQuery->whereNull('users.locked')
                             ->orWhere('users.locked', 0);
@@ -315,14 +315,14 @@ class CatalogCourseRepository
                 $query->from('orders')
                     ->join('course_reviews', 'course_reviews.order_id', '=', 'orders.id')
                     ->whereColumn('orders.course_id', 'courses.id')
-                    ->whereNull('course_reviews.deleted_at')
+                    
                     ->selectRaw('COALESCE(AVG(course_reviews.rating), 0)');
             }, 'average_rating')
             ->selectSub(function ($query) {
                 $query->from('orders')
                     ->join('course_reviews', 'course_reviews.order_id', '=', 'orders.id')
                     ->whereColumn('orders.course_id', 'courses.id')
-                    ->whereNull('course_reviews.deleted_at')
+                    
                     ->selectRaw('COUNT(course_reviews.id)');
             }, 'reviews_count')
             ->selectSub(function ($query) {

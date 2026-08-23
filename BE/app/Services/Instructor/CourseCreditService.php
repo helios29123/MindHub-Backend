@@ -31,7 +31,7 @@ class CourseCreditService
     $instructor = User::query()
         ->where('id', $instructorId)
         ->where('role', 'instructor')
-        ->whereNull('deleted_at')
+        
         ->first();
 
     if (! $instructor) {
@@ -116,7 +116,7 @@ class CourseCreditService
 
             $instructor = DB::table('users')
                 ->where('id', $course->instructor_id)
-                ->whereNull('deleted_at')
+                
                 ->first();
 
             if (! $instructor || ($instructor->status ?? null) !== 'active' || (int) ($instructor->locked ?? 0) === 1) {

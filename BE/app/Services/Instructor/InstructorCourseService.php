@@ -608,7 +608,7 @@ final class InstructorCourseService
         $validCategoryCount = Category::query()
             ->whereIn("id", $categoryIds)
             ->where("status", "active")
-            ->whereNull("deleted_at")
+            
             ->count();
 
         if ($validCategoryCount !== count(array_unique($categoryIds))) {
@@ -1085,7 +1085,7 @@ final class InstructorCourseService
 
     public function getCourseLearners(int $courseId, int $instructorId, array $filters)
     {
-        $course = \DB::table('courses')->where('id', $courseId)->whereNull('deleted_at')->first();
+        $course = \DB::table('courses')->where('id', $courseId)->first();
 
         if (!$course) {
             throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・');
@@ -1243,7 +1243,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
         $course = Course::query()
             ->where('id', $courseId)
             ->where('instructor_id', (int) $instructor->id)
-            ->whereNull('deleted_at')
+            
             ->first();
 
         if (!$course) {
@@ -1306,7 +1306,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
         while (
             Course::query()
                 ->where('slug', $slug)
-                ->whereNull('deleted_at')
+                
                 ->when($ignoreCourseId !== null, fn ($query) => $query->where('id', '!=', $ignoreCourseId))
                 ->exists()
         ) {

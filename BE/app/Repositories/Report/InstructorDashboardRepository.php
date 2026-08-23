@@ -41,7 +41,7 @@ class InstructorDashboardRepository
         $rows = DB::table('courses')
             ->selectRaw('status, COUNT(*) as total')
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->groupBy('status')
             ->pluck('total', 'status')
             ->all();
@@ -70,7 +70,7 @@ class InstructorDashboardRepository
         $query = DB::table('enrollments')
             ->join('courses', 'courses.id', '=', 'enrollments.course_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereIn('enrollments.status', ['active', 'completed']);
 
         $totalEnrollments = (int) (clone $query)->count();
@@ -225,7 +225,7 @@ class InstructorDashboardRepository
         $query = DB::table('course_views')
             ->join('courses', 'courses.id', '=', 'course_views.course_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at');
+            ;
 
         $viewsThisPeriod = (int) (clone $query)
             ->whereBetween('course_views.viewed_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
@@ -257,7 +257,7 @@ class InstructorDashboardRepository
             ->join('lessons', 'lessons.id', '=', 'q.lesson_id')
             ->join('courses', 'courses.id', '=', 'lessons.course_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereNull('q.parent_id')
             ->where('q.status', 'visible')
             ->where('learner.role', 'learner')

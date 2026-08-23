@@ -154,7 +154,7 @@ final class InstructorCouponController extends Controller
         $instructorId = (int) $request->user()->id;
         $query = DB::table('courses')
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at');
+            ;
 
         if ($request->query('search')) {
             $query->where('title', 'like', '%' . $request->query('search') . '%');
@@ -216,7 +216,7 @@ final class InstructorCouponController extends Controller
 
         $totalUsage = DB::table('coupons')
             ->where('user_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->sum('used_count');
 
         return [

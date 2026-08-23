@@ -103,7 +103,7 @@ final class AdminCategoryRepository
 
         $reviewQuery = DB::table('course_reviews')->whereIn('course_id', $courseIds);
         if (Schema::hasColumn('course_reviews', 'deleted_at')) {
-            $reviewQuery->whereNull('deleted_at');
+            $reviewQuery;
         }
         $reviewAggregates = empty($courseIds)
             ? collect()
@@ -112,7 +112,7 @@ final class AdminCategoryRepository
             ->whereIn('orders.course_id', $courseIds)
             ->when(
                 Schema::hasColumn('course_reviews', 'deleted_at'),
-                fn($query) => $query->whereNull('reviews.deleted_at')
+                fn($query) => $query
             )
             ->selectRaw(
                 'orders.course_id as course_id,

@@ -14,7 +14,7 @@ class InstructorWithdrawRepository
             ->whereKey($payoutAccountId)
             ->where('user_id', $userId)
             ->where('status', 'active')
-            ->whereNull('deleted_at')
+            
             ->first();
     }
 

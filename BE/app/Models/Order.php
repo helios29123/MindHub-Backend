@@ -9,7 +9,7 @@ class Order extends Model
     public const TYPE_COURSE_PURCHASE = 'course_purchase';
     public const TYPE_INSTRUCTOR_CREDIT = 'instructor_credit';
 
-    public const STATUS_PENDING = 'pending';
+    public const STATUS_PENDING = 'pending_payment';
     public const STATUS_PAID = 'paid';
     public const STATUS_FAILED = 'failed';
     public const STATUS_CANCELLED = 'cancelled';
@@ -23,8 +23,8 @@ class Order extends Model
     | Không lưu payment_status = pending nếu constraint DB không cho phép.
     | processing chỉ dùng để so sánh logic, không update DB sang processing.
     */
-    public const PAYMENT_UNPAID = 'unpaid';
-    public const PAYMENT_PENDING = 'unpaid';
+    public const PAYMENT_UNPAID = 'pending';
+    public const PAYMENT_PENDING = 'pending';
     public const PAYMENT_PROCESSING = 'processing';
     public const PAYMENT_PAID = 'paid';
     public const PAYMENT_FAILED = 'failed';

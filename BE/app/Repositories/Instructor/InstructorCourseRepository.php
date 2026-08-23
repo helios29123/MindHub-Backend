@@ -44,7 +44,7 @@ final class InstructorCourseRepository
     {
         return \Illuminate\Support\Facades\DB::table('courses')
             ->where('id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->select([
                 'id',
                 'instructor_id',
@@ -68,7 +68,7 @@ final class InstructorCourseRepository
         return \Illuminate\Support\Facades\DB::table("{$table} as cc")
             ->join('categories as c', 'c.id', '=', 'cc.category_id')
             ->where('cc.course_id', $courseId)
-            ->whereNull('c.deleted_at')
+            
             ->where(function ($query): void {
                 $query->whereNull('c.status')
                     ->orWhere('c.status', 'active')
@@ -86,7 +86,7 @@ final class InstructorCourseRepository
     {
         return \Illuminate\Support\Facades\DB::table('course_sections')
             ->where('course_id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->select([
                 'id',
                 'course_id',
@@ -105,9 +105,9 @@ final class InstructorCourseRepository
         return \Illuminate\Support\Facades\DB::table('lessons as l')
             ->leftJoin('course_sections as cs', 'cs.id', '=', 'l.course_section_id')
             ->where('l.course_id', $courseId)
-            ->whereNull('l.deleted_at')
+            
             ->where(function ($query): void {
-                $query->whereNull('cs.deleted_at')
+                $query
                     ->orWhereNull('l.course_section_id');
             })
             ->select([
@@ -134,8 +134,8 @@ final class InstructorCourseRepository
         return (int) \Illuminate\Support\Facades\DB::table('lesson_assets as la')
             ->join('lessons as l', 'l.id', '=', 'la.lesson_id')
             ->where('l.course_id', $courseId)
-            ->whereNull('l.deleted_at')
-            ->whereNull('la.deleted_at')
+            
+            
             ->count();
     }
 
@@ -143,7 +143,7 @@ final class InstructorCourseRepository
     {
         return \Illuminate\Support\Facades\DB::table('quizzes')
             ->where('course_id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->select([
                 'id',
                 'course_id',
@@ -163,7 +163,7 @@ final class InstructorCourseRepository
             ->join('quizzes as q', 'q.id', '=', 'qq.quiz_id')
             ->leftJoin('quiz_options as qo', 'qo.question_id', '=', 'qq.id')
             ->where('q.course_id', $courseId)
-            ->whereNull('q.deleted_at')
+            
             ->where('q.status', 'published')
             ->select([
                 'qq.id',
@@ -196,7 +196,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
 
         $query = DB::table('courses')
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at');
+            ;
 
         if (!empty($filters['status']) && $filters['status'] !== 'all') {
             $statusInput = strtolower(trim((string) $filters['status']));
@@ -259,7 +259,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
             $reviewsMap = DB::table('course_reviews')
                 ->join('orders', 'orders.id', '=', 'course_reviews.order_id')
                 ->whereIn('orders.course_id', $courseIds)
-                ->whereNull('course_reviews.deleted_at')
+                
                 ->groupBy('orders.course_id')
                 ->select(
                     'orders.course_id',
@@ -271,7 +271,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
         } elseif (Schema::hasTable('reviews')) {
             $reviewsMap = DB::table('reviews')
                 ->whereIn('course_id', $courseIds)
-                ->whereNull('deleted_at')
+                
                 ->groupBy('course_id')
                 ->select(
                     'course_id',
@@ -286,7 +286,7 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
         $categoriesMap = DB::table('course_categories as cc')
             ->join('categories as c', 'c.id', '=', 'cc.category_id')
             ->whereIn('cc.course_id', $courseIds)
-            ->whereNull('c.deleted_at')
+            
             ->select('cc.course_id', 'c.id', 'c.name')
             ->get()
             ->groupBy('course_id');
@@ -322,7 +322,7 @@ public function instructorOwnsCourse(int $instructorId, int $courseId): bool
         return DB::table('courses')
             ->where('id', $courseId)
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->exists();
     }
 
@@ -333,7 +333,7 @@ public function instructorOwnsCourse(int $instructorId, int $courseId): bool
             ->with(['categories'])
             ->where('id', $courseId)
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->first();
 
         if (!$course) {
@@ -342,24 +342,24 @@ public function instructorOwnsCourse(int $instructorId, int $courseId): bool
 
         $course->setAttribute('section_count', (int) DB::table('course_sections')
             ->where('course_id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->count());
 
         $course->setAttribute('lesson_count', (int) DB::table('lessons')
             ->where('course_id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->count());
 
         $course->setAttribute('asset_count', (int) DB::table('lesson_assets as la')
             ->join('lessons as l', 'l.id', '=', 'la.lesson_id')
             ->where('l.course_id', $courseId)
-            ->whereNull('l.deleted_at')
-            ->whereNull('la.deleted_at')
+            
+            
             ->count());
 
         $course->setAttribute('preview_lesson_count', (int) DB::table('lessons')
             ->where('course_id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->where('is_preview', true)
             ->count());
 
@@ -379,23 +379,23 @@ public function instructorOwnsCourse(int $instructorId, int $courseId): bool
         return Course::query()
             ->with([
                 'sections' => function ($query): void {
-                    $query->whereNull('deleted_at')
+                    $query
                         ->orderBy('sort_order')
                         ->orderBy('id');
                 },
                 'sections.lessons' => function ($query): void {
-                    $query->whereNull('deleted_at')
+                    $query
                         ->orderBy('sort_order')
                         ->orderBy('id');
                 },
                 'sections.lessons.assets' => function ($query): void {
-                    $query->whereNull('deleted_at')
+                    $query
                         ->orderBy('id');
                 },
             ])
             ->where('id', $courseId)
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->first();
     }
 

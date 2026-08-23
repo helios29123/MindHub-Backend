@@ -90,7 +90,9 @@ final class LessonVideoAccessService
             throw new BusinessException('Nội dung chưa khả dụng.', 403);
         }
         if (!$this->hasEnrollment($learnerId, (int) $lesson->course_id)) {
-            throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+            if (!$lesson->is_preview) {
+                throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+            }
         }
         if (trim((string) $lesson->video_url) === '' && trim((string) $lesson->video_id) === '') {
             throw new BusinessException('Không tìm thấy video.', 404);
@@ -116,7 +118,7 @@ final class LessonVideoAccessService
             ->where('course_id', $courseId)
             ->whereIn('status', ['active', 'completed']);
         if (Schema::hasColumn('enrollments', 'deleted_at')) {
-            $query->whereNull('deleted_at');
+            $query;
         }
         return $query->exists();
     }

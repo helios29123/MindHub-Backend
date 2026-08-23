@@ -19,7 +19,7 @@ class InstructorDashboardAlertRepository
                 ->limit($limit);
 
             if (Schema::hasColumn('notifications', 'deleted_at')) {
-                $query->whereNull('deleted_at');
+                $query;
             }
 
             $alerts = $query->get()
@@ -51,7 +51,7 @@ class InstructorDashboardAlertRepository
             ->join('lessons', 'lessons.id', '=', 'q.lesson_id')
             ->join('courses', 'courses.id', '=', 'lessons.course_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereNull('q.parent_id')
             ->where('q.status', 'visible')
             ->where('learner.role', 'learner')
@@ -74,7 +74,7 @@ class InstructorDashboardAlertRepository
         $rejectedCourse = DB::table('courses')
             ->where('instructor_id', $instructorId)
             ->where('status', 'rejected')
-            ->whereNull('deleted_at')
+            
             ->orderByDesc('updated_at')
             ->first();
 
