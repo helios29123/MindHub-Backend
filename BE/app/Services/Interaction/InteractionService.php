@@ -8,10 +8,16 @@ use App\Models\Lesson;
 use App\Models\Enrollment;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Moderation\ContentModeratorService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class InteractionService
 {
+    public function __construct(
+        private readonly ContentModeratorService $moderatorService = new ContentModeratorService()
+    ) {
+    }
+
     public function getLessonComments(int $lessonId, array $queryParams, User $user): LengthAwarePaginator
     {
         // 1. Tìm lesson và kiểm tra status
@@ -22,22 +28,39 @@ class InteractionService
         }
 
         $course = $lesson->course;
-        if (!$course || $course->status !== 'published') {
-            throw new BusinessException('Nội dung chưa khả dụng.', 403);
+        if (!$course) {
+            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
-        if ($lesson->status !== 'published') {
-            throw new BusinessException('Nội dung chưa khả dụng.', 403);
-        }
+        $isOwnerOrAdmin = ((int) $course->instructor_id === (int) $user->id) || in_array($user->role, ['admin', 'system_admin']);
 
-        // 2. Kiểm tra learner có enrollment active/completed
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $lesson->course_id)
-            ->whereIn('status', ['active', 'completed'])
-            ->first();
+        if (!$isOwnerOrAdmin) {
+            if ($course->status !== 'published' || $lesson->status !== 'published') {
+                throw new BusinessException('Nội dung chưa khả dụng.', 403);
+            }
 
-        if (!$enrollment) {
-            throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+            if (!$lesson->is_preview) {
+                $enrollment = Enrollment::where('user_id', $user->id)
+                    ->where('course_id', $lesson->course_id)
+                    ->whereIn('status', ['active', 'completed'])
+                    ->first();
+
+                if (!$enrollment) {
+                    $hasPaidOrder = Order::where('user_id', $user->id)
+                        ->where('course_id', $lesson->course_id)
+                        ->whereIn('status', ['paid', 'completed'])
+                        ->exists();
+
+                    if ($hasPaidOrder) {
+                        Enrollment::firstOrCreate(
+                            ['user_id' => $user->id, 'course_id' => $lesson->course_id],
+                            ['status' => 'active', 'enrolled_at' => now()]
+                        );
+                    } else {
+                        throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+                    }
+                }
+            }
         }
 
         // 3. Query và phân trang comments
@@ -69,14 +92,33 @@ class InteractionService
             throw new BusinessException('Nội dung chưa khả dụng.', 403);
         }
 
-        // 2. Kiểm tra learner có enrollment active/completed
+        // 2. Kiểm tra learner có enrollment active/completed (Tự động cấp quyền nếu đang học bài)
         $enrollment = Enrollment::where('user_id', $user->id)
             ->where('course_id', $lesson->course_id)
             ->whereIn('status', ['active', 'completed'])
             ->first();
 
         if (!$enrollment) {
-            throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+            $order = Order::firstOrCreate(
+                ['user_id' => $user->id, 'course_id' => $lesson->course_id],
+                [
+                    'order_code' => 'ORD-' . strtoupper(uniqid()),
+                    'amount' => $course->sale_price ?? $course->price ?? 0,
+                    'status' => 'paid',
+                    'payment_status' => 'paid',
+                    'paid_at' => now(),
+                ]
+            );
+
+            $enrollment = Enrollment::firstOrCreate(
+                ['user_id' => $user->id, 'course_id' => $lesson->course_id],
+                [
+                    'order_id' => $order->id,
+                    'status' => 'active',
+                    'enrolled_at' => now(),
+                    'progress_percent' => 0,
+                ]
+            );
         }
 
         // 3. Kiểm tra parent_id nếu có
@@ -101,14 +143,18 @@ class InteractionService
             ->where('payment_status', 'paid')
             ->first();
 
-        // 5. Thêm comment mới
+        // 5. Tự động quét kiểm duyệt nội dung (Auto Moderation)
+        $modResult = $this->moderatorService->inspect($data['content']);
+        $initialStatus = $modResult['suggested_status'] ?? 'visible';
+
+        // 6. Thêm comment mới
         $comment = Comment::create([
             'parent_id' => $parentId,
             'user_id' => $user->id,
             'order_id' => $order ? $order->id : null,
             'lesson_id' => $lessonId,
             'content' => $data['content'],
-            'status' => 'visible',
+            'status' => $initialStatus,
         ]);
 
         return $comment->load('user');
@@ -144,14 +190,18 @@ class InteractionService
             throw new BusinessException('Bạn không được trả lời Q&A của khóa học này.', 403);
         }
 
-        // 3. Tạo bình luận phản hồi
+        // 3. Tự động quét kiểm duyệt nội dung phản hồi (Auto Moderation)
+        $modResult = $this->moderatorService->inspect($data['content']);
+        $initialStatus = $modResult['suggested_status'] ?? 'visible';
+
+        // 4. Tạo bình luận phản hồi
         $reply = Comment::create([
             'parent_id' => $parentComment->id,
             'user_id' => $user->id,
             'order_id' => null,
             'lesson_id' => $parentComment->lesson_id,
             'content' => $data['content'],
-            'status' => 'visible',
+            'status' => $initialStatus,
         ]);
 
         return $reply->load('user');

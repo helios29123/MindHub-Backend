@@ -281,8 +281,10 @@ class EarlyWithdrawalService
 
                 DB::table('withdrawal_revenues')->insert([
                     'withdrawal_id' => $withdrawal->id,
+                    'withdraw_request_id' => $withdrawal->id,
                     'revenue_id' => $revenue->id,
                     'allocated_amount' => $allocationAmount,
+                    'amount' => $allocationAmount,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -300,6 +302,30 @@ class EarlyWithdrawalService
 
             return $withdrawal;
         });
+
+        // Send Email & Notification to Admin when early withdrawal is requested
+        try {
+            $user = User::find($instructorId);
+            if ($user) {
+                $adminEmail = env('ADMIN_EMAIL', config('mail.admin_address', 'dominhdang3010@gmail.com'));
+                Mail::to($adminEmail)->send(new \App\Mail\WithdrawalRequestedAdminMail($withdrawal, $user));
+
+                $adminUsers = User::where('role', 'admin')->get();
+                foreach ($adminUsers as $admin) {
+                    \App\Models\Notification::create([
+                        'user_id' => $admin->id,
+                        'type' => 'withdrawal_request',
+                        'title' => 'Yêu cầu rút tiền mới',
+                        'message' => "Giảng viên {$user->full_name} vừa gửi yêu cầu rút tiền " . number_format($withdrawal->amount, 0, ',', '.') . " đ.",
+                        'data' => json_encode(['withdrawal_id' => $withdrawal->id, 'amount' => $withdrawal->amount]),
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to send admin withdrawal request email/notification: ' . $e->getMessage());
+        }
+
+        return $withdrawal;
     }
 
     /**

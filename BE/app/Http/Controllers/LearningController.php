@@ -58,7 +58,7 @@ final class LearningController extends Controller
      */
     public function showLesson(int $id): JsonResponse
     {
-        $user = request()->user();
+        $user = request()->user() ?? auth()->user();
         
         $details = $this->learningService->getLessonDetails($user, $id);
 
@@ -91,39 +91,37 @@ final class LearningController extends Controller
     {
         $lesson = \App\Models\Lesson::find($id);
         if (!$lesson) {
-            throw new \App\Exceptions\BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
         $course = $lesson->course;
         if (!$course) {
-            throw new \App\Exceptions\BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
-        }
-
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('N盻冓 dung chﾆｰa kh蘯｣ d盻･ng.', 403);
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
         $user = request()->user();
-        
-        if ($lesson->is_preview) {
+        if ($user) {
+            $isOwnerOrAdmin = ((int) $course->instructor_id === (int) $user->id) || in_array($user->role, ['admin', 'system_admin']);
+            if ($isOwnerOrAdmin) {
+                return ApiResponse::success(['can_access' => true], 'Thao tác thành công');
+            }
+        }
+
+        if ($lesson->is_preview && $lesson->status === 'published' && $course->status === 'published') {
             return ApiResponse::success([
                 'can_access' => true,
-            ], 'Thao tﾃ｡c thﾃnh cﾃｴng');
+            ], 'Thao tác thành công');
         }
 
         if (!$user) {
             return ApiResponse::error('Unauthenticated.', [], 401);
         }
 
-        $hasAccess = $user->can('canAccessLesson', $lesson);
-
-        if (!$hasAccess) {
-            throw new \App\Exceptions\BusinessException('B蘯｡n chﾆｰa cﾃｳ quy盻］ truy c蘯ｭp n盻冓 dung nﾃy.', 403);
-        }
+        $this->learningService->checkAccessPermission($user, $course, $lesson);
 
         return ApiResponse::success([
             'can_access' => true,
-        ], 'Thao tﾃ｡c thﾃnh cﾃｴng');
+        ], 'Thao tác thành công');
     }
 
     /**

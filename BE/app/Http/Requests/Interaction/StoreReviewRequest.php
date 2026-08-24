@@ -12,9 +12,13 @@ class StoreReviewRequest extends FormRequest
     }
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'course_id' => $this->route('id'),
-        ]);
+        $rawId = $this->route('id') ?? $this->input('course_id');
+        if ($rawId !== null) {
+            $course = \App\Models\Course::where('id', $rawId)->orWhere('slug', $rawId)->first();
+            $this->merge([
+                'course_id' => $course ? $course->id : (is_numeric($rawId) ? (int) $rawId : null),
+            ]);
+        }
     }
     public function rules(): array
     {
@@ -22,6 +26,7 @@ class StoreReviewRequest extends FormRequest
             'course_id' => ['required', 'integer', 'min:1'],
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
             'content' => ['nullable', 'string', 'max:2000'],
+            'comment' => ['nullable', 'string', 'max:2000'],
         ];
     }
     public function messages(): array

@@ -24,27 +24,31 @@ class CoursePublicController extends Controller
     public function index(\Illuminate\Http\Request $request): JsonResponse
     {
         $searchKey = $request->query('query') ?? $request->query('search') ?? $request->query('q') ?? $request->query('keyword');
-        $filters = $request->only(['categories', 'minRating', 'priceType', 'sortBy']);
+        $filters = $request->only([
+            'categories', 'category_slug', 'category_id', 'category',
+            'minRating', 'priceType', 'sortBy', 'sort'
+        ]);
         if ($searchKey !== null && trim((string) $searchKey) !== '') {
             $filters['query'] = trim((string) $searchKey);
         }
         if (isset($filters['categories']) && is_string($filters['categories'])) {
             $filters['categories'] = explode(',', $filters['categories']);
         }
-        $perPage = (int) $request->query('limit', 12);
+        $perPage = (int) ($request->query('limit') ?? $request->query('per_page') ?? 12);
         
         $repo = app(\App\Repositories\Course\CoursePublicRepository::class);
         $paginator = $repo->searchPublicCourses($filters, $perPage);
 
         $courses = $paginator->map(function ($c) {
+            $firstCat = $c->categories->first();
             return [
                 'id' => (string) $c->id,
                 'slug' => $c->slug ?? (string) $c->id,
                 'title' => $c->title,
-                'instructorName' => $c->instructor->full_name ?? 'Giảng viên',
+                'instructorName' => $c->instructor->full_name ?? 'Giảng viên MindHub',
                 'instructorAvatar' => $c->instructor->avatar_url ?? null,
                 'instructor' => [
-                    'full_name' => $c->instructor->full_name ?? 'Giảng viên',
+                    'full_name' => $c->instructor->full_name ?? 'Giảng viên MindHub',
                     'avatar_url' => $c->instructor->avatar_url ?? null,
                 ],
                 'image' => $c->thumbnail_url ?? 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800',
@@ -60,7 +64,22 @@ class CoursePublicController extends Controller
                 'level' => $c->level ?? 'all_levels',
                 'is_featured' => (bool) ($c->is_featured ?? false),
                 'createdAt' => $c->created_at,
-                'category' => $c->categories->first()->name ?? 'Khác'
+                'category_id' => $firstCat?->id,
+                'category_name' => $firstCat?->name ?? 'Khác',
+                'category_slug' => $firstCat?->slug,
+                'category' => $firstCat ? [
+                    'id' => $firstCat->id,
+                    'name' => $firstCat->name,
+                    'slug' => $firstCat->slug,
+                ] : [
+                    'name' => 'Khác',
+                    'slug' => 'khac',
+                ],
+                'categories' => $c->categories->map(fn($cat) => [
+                    'id' => $cat->id,
+                    'name' => $cat->name,
+                    'slug' => $cat->slug,
+                ])->toArray(),
             ];
         });
 
@@ -139,19 +158,16 @@ class CoursePublicController extends Controller
         if (!$course) {
             return ApiResponse::error('Không tìm thấy dữ liệu.', [], 404);
         }
-        $id = $course->id;
-        $input = array_merge(
-            ['id' => $id],
-            request()->only(['page', 'per_page', 'rating', 'sort'])
-        );
+        $courseId = $course->id;
 
-        // Validate whitelist query parameters
-        $allowedKeys = ['page', 'per_page', 'rating', 'sort'];
-        $extraParams = array_diff(array_keys(request()->query()), $allowedKeys);
-
-        if (!empty($extraParams)) {
-            return ApiResponse::error('Tham số không hợp lệ.', ['query' => 'Chứa tham số không hợp lệ ngoài whitelist.'], 422);
-        }
+        $perPage = request()->input('per_page') ?? request()->input('limit') ?? 10;
+        $input = [
+            'id' => $courseId,
+            'page' => request()->input('page'),
+            'per_page' => $perPage,
+            'rating' => request()->input('rating'),
+            'sort' => request()->input('sort'),
+        ];
 
         $validator = Validator::make($input, [
             'id' => 'required|integer|min:1',
@@ -165,7 +181,7 @@ class CoursePublicController extends Controller
             return ApiResponse::error('Tham số không hợp lệ.', $validator->errors()->toArray(), 422);
         }
 
-        $result = $this->coursePublicService->reviews((int) $id, $validator->validated());
+        $result = $this->coursePublicService->reviews((int) $courseId, $validator->validated());
 
         return ApiResponse::paginated(
             CourseReviewResource::collection($result['paginator']),
@@ -176,16 +192,14 @@ class CoursePublicController extends Controller
 
     public function showInstructor(mixed $id): JsonResponse
     {
-        // Validate path parameter
-        $validator = Validator::make(['id' => $id], [
-            'id' => 'required|integer|min:1',
-        ]);
+        $course = \App\Models\Course::where('id', $id)->orWhere('slug', $id)->first();
+        $courseId = $course ? $course->id : (is_numeric($id) ? (int) $id : 0);
 
-        if ($validator->fails()) {
-            return ApiResponse::error('Tham số không hợp lệ.', $validator->errors()->toArray(), 422);
+        if ($courseId <= 0) {
+            return ApiResponse::error('Không tìm thấy dữ liệu.', [], 404);
         }
 
-        $result = $this->coursePublicService->showInstructor((int) $id);
+        $result = $this->coursePublicService->showInstructor((int) $courseId);
 
         $resource = new InstructorResource($result['instructor']);
 
@@ -194,18 +208,19 @@ class CoursePublicController extends Controller
 
     public function faqs(mixed $id): JsonResponse
     {
-        $input = array_merge(
-            ['id' => $id],
-            request()->only(['page', 'per_page'])
-        );
+        $course = \App\Models\Course::where('id', $id)->orWhere('slug', $id)->first();
+        $courseId = $course ? $course->id : (is_numeric($id) ? (int) $id : 0);
 
-        // Validate whitelist query parameters
-        $allowedKeys = ['page', 'per_page'];
-        $extraParams = array_diff(array_keys(request()->query()), $allowedKeys);
-
-        if (!empty($extraParams)) {
-            return ApiResponse::error('Tham số không hợp lệ.', ['query' => 'Chứa tham số không hợp lệ ngoài whitelist.'], 422);
+        if ($courseId <= 0) {
+            return ApiResponse::error('Không tìm thấy dữ liệu.', [], 404);
         }
+
+        $perPage = request()->input('per_page') ?? request()->input('limit') ?? 10;
+        $input = [
+            'id' => $courseId,
+            'page' => request()->input('page'),
+            'per_page' => $perPage,
+        ];
 
         $validator = Validator::make($input, [
             'id' => 'required|integer|min:1',
@@ -217,7 +232,7 @@ class CoursePublicController extends Controller
             return ApiResponse::error('Tham số không hợp lệ.', $validator->errors()->toArray(), 422);
         }
 
-        $result = $this->coursePublicService->faqs((int) $id, $validator->validated());
+        $result = $this->coursePublicService->faqs((int) $courseId, $validator->validated());
 
         return ApiResponse::paginated(
             FaqResource::collection($result['paginator']),

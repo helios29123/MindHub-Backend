@@ -164,6 +164,24 @@ final class InstructorPayoutService
                         'updated_at' => now(),
                     ]);
 
+                // Send Email & Notification to Instructor for monthly batch payout
+                try {
+                    $user = $payout->user;
+                    if ($user && $user->email) {
+                        \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\WithdrawalSuccessInstructorMail($payout, $user));
+
+                        \App\Models\Notification::create([
+                            'user_id' => $user->id,
+                            'type' => 'payout_success',
+                            'title' => 'Chuyển tiền định kỳ thành công',
+                            'message' => "Yêu cầu thanh toán #" . $payout->id . " số tiền " . number_format($payout->amount, 0, ',', '.') . " đ đã được chuyển thành công vào tài khoản ngân hàng của bạn.",
+                            'data' => json_encode(['withdrawal_id' => $payout->id, 'amount' => $payout->amount]),
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Failed to send monthly payout success email: ' . $e->getMessage());
+                }
+
                 $processedCount++;
             }
 

@@ -16,8 +16,10 @@ class CourseOutlineRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $rawId = $this->route('id');
+        $course = \App\Models\Course::where('id', $rawId)->orWhere('slug', $rawId)->first();
         $this->merge([
-            'id' => $this->route('id'),
+            'id' => $course ? $course->id : (is_numeric($rawId) ? (int) $rawId : null),
         ]);
     }
 

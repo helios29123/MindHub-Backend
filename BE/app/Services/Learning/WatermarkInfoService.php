@@ -16,11 +16,15 @@ final class WatermarkInfoService
         if (!$lesson || !$lesson->course) {
             throw new BusinessException('Không tìm thấy bài học.', 404);
         }
-        if ((string) $lesson->status !== 'published' || (string) $lesson->course->status !== 'published') {
-            throw new BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-        if (!$this->hasEnrollment($learnerId, (int) $lesson->course_id)) {
-            throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        $isOwnerOrAdmin = ((int) $lesson->course->instructor_id === $learnerId) || (User::query()->find($learnerId)?->role === 'admin');
+
+        if (!$isOwnerOrAdmin) {
+            if ((string) $lesson->status !== 'published' || (string) $lesson->course->status !== 'published') {
+                throw new BusinessException('Nội dung chưa khả dụng.', 403);
+            }
+            if (!$lesson->is_preview && !$this->hasEnrollment($learnerId, (int) $lesson->course_id)) {
+                throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+            }
         }
         $user = User::query()->find($learnerId);
         if (!$user) {
@@ -45,7 +49,26 @@ final class WatermarkInfoService
         if (Schema::hasColumn('enrollments', 'deleted_at')) {
             $query;
         }
-        return $query->exists();
+        $has = $query->exists();
+        if (!$has) {
+            $hasPaidOrder = DB::table('orders')
+                ->where('user_id', $learnerId)
+                ->where('course_id', $courseId)
+                ->whereIn('status', ['paid', 'completed'])
+                ->exists();
+            if ($hasPaidOrder) {
+                DB::table('enrollments')->insertOrIgnore([
+                    'user_id' => $learnerId,
+                    'course_id' => $courseId,
+                    'status' => 'active',
+                    'enrolled_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                return true;
+            }
+        }
+        return $has;
     }
     private function maskEmail(string $email): string
     {

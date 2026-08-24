@@ -19,12 +19,15 @@ class CouponApplyService
 
     public function applyCoupon(array $couponData, int $userId): Order
     {
-        if (empty($couponData['order_id']) || empty($couponData['coupon_code'])) {
+        $code = $couponData['coupon_code'] ?? $couponData['code'] ?? null;
+        $orderId = $couponData['order_id'] ?? null;
+
+        if (empty($orderId) || empty($code)) {
             throw new BusinessException('Thông tin order_id và coupon_code là bắt buộc.', 422);
         }
-        return DB::transaction(function () use ($couponData, $userId) {
+        return DB::transaction(function () use ($orderId, $code, $userId) {
             $order = $this->orderRepository->findUserOrderForUpdate(
-                $couponData['order_id'],
+                $orderId,
                 $userId
             );
 
@@ -39,7 +42,7 @@ class CouponApplyService
                 throw new BusinessException('Chỉ có thể áp coupon cho đơn hàng đang chờ thanh toán.', 400);
             }
 
-            $coupon = $this->couponRepository->findByCode($couponData['coupon_code']);
+            $coupon = $this->couponRepository->findByCode($code);
 
             if (!$coupon || !$coupon->isActiveNow()) {
                 throw new BusinessException('Mã giảm giá không hợp lệ.', 400);

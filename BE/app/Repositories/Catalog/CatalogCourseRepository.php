@@ -335,7 +335,22 @@ class CatalogCourseRepository
                     ->whereColumn('enrollments.course_id', 'courses.id')
                     ->whereIn('enrollments.status', ['active', 'completed'])
                     ->selectRaw('COUNT(enrollments.id)');
-            }, 'enrollments_count');
+            }, 'enrollments_count')
+            ->selectSub(function ($query) {
+                $query->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->where(function ($q) {
+                        $q->where('enrollments.status', 'completed')
+                          ->orWhere('enrollments.progress_percent', '>=', 100);
+                    })
+                    ->selectRaw('COUNT(enrollments.id)');
+            }, 'completed_enrollments_count')
+            ->selectSub(function ($query) {
+                $query->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->whereIn('enrollments.status', ['active', 'completed'])
+                    ->selectRaw('COALESCE(AVG(enrollments.progress_percent), 0)');
+            }, 'average_progress_percent');
     }
 
     private function applySort(Builder $query, ?string $sort): void

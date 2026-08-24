@@ -49,10 +49,48 @@ class CoursePublicRepository
             });
         }
 
+        $categoryFilters = [];
         if (!empty($filters['categories'])) {
-            $query->whereHas('categories', function ($q) use ($filters) {
-                $q->whereIn('name', $filters['categories']);
-            });
+            $cats = is_array($filters['categories']) ? $filters['categories'] : explode(',', $filters['categories']);
+            $categoryFilters = array_merge($categoryFilters, $cats);
+        }
+        if (!empty($filters['category_slug'])) {
+            $categoryFilters[] = $filters['category_slug'];
+        }
+        if (!empty($filters['category'])) {
+            $categoryFilters[] = $filters['category'];
+        }
+        if (!empty($filters['category_id'])) {
+            $categoryFilters[] = $filters['category_id'];
+        }
+
+        $categoryFilters = array_unique(array_filter(array_map('trim', $categoryFilters)));
+
+        if (!empty($categoryFilters)) {
+            $matchingCatIds = \App\Models\Category::where(function ($q) use ($categoryFilters) {
+                $numericIds = array_filter($categoryFilters, 'is_numeric');
+                if (!empty($numericIds)) {
+                    $q->whereIn('id', $numericIds);
+                }
+                $q->orWhereIn('slug', $categoryFilters)
+                  ->orWhereIn('name', $categoryFilters);
+            })->pluck('id')->toArray();
+
+            if (!empty($matchingCatIds)) {
+                $childIds = \App\Models\Category::whereIn('parent_id', $matchingCatIds)->pluck('id')->toArray();
+                $allCatIds = array_unique(array_merge($matchingCatIds, $childIds));
+
+                $query->whereHas('categories', function ($q) use ($allCatIds) {
+                    $q->whereIn('categories.id', $allCatIds);
+                });
+            } else {
+                $query->whereHas('categories', function ($q) use ($categoryFilters) {
+                    $q->where(function ($sub) use ($categoryFilters) {
+                        $sub->whereIn('categories.name', $categoryFilters)
+                            ->orWhereIn('categories.slug', $categoryFilters);
+                    });
+                });
+            }
         }
 
         if (isset($filters['minRating']) && $filters['minRating'] > 0) {

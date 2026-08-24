@@ -39,9 +39,19 @@ class SignedAssetUrlService
                 $hasAccess = true;
             }
             
-            // Check if user is instructor of the course
-            if ((int) $course->instructor_id === $learnerId) {
+            // Check if user is instructor of the course or admin
+            if ((int) $course->instructor_id === $learnerId || \App\Models\User::find($learnerId)?->role === 'admin') {
                 $hasAccess = true;
+            }
+
+            if (!$hasAccess) {
+                $hasPaidOrder = \App\Models\Order::where('user_id', $learnerId)
+                    ->where('course_id', $course->id)
+                    ->whereIn('status', ['paid', 'completed'])
+                    ->exists();
+                if ($hasPaidOrder) {
+                    $hasAccess = true;
+                }
             }
         }
 

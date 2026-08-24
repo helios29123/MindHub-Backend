@@ -29,6 +29,11 @@ class CatalogCourseResource extends JsonResource
             'average_rating' => round((float) ($averageRating ?? 0), 1),
             'reviews_count' => (int) ($this->getAttribute('reviews_count') ?? 0),
             'enrollments_count' => (int) ($this->getAttribute('enrollments_count') ?? 0),
+            'completed_enrollments_count' => (int) ($this->getAttribute('completed_enrollments_count') ?? 0),
+            'average_progress_percent' => round((float) ($this->getAttribute('average_progress_percent') ?? 0), 1),
+            'completion_rate' => ((int) ($this->getAttribute('enrollments_count') ?? 0)) > 0
+                ? round(((int) ($this->getAttribute('completed_enrollments_count') ?? 0) / (int) $this->getAttribute('enrollments_count')) * 100, 1)
+                : 0,
 
             'is_enrolled' => (bool) ($this->getAttribute('is_enrolled') ?? false),
 

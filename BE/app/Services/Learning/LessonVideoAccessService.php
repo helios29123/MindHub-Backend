@@ -86,11 +86,13 @@ final class LessonVideoAccessService
         if ((string) $lesson->lesson_type !== 'video') {
             throw new BusinessException('Bài học này không phải video.', 422);
         }
-        if ((string) $lesson->status !== 'published' || (string) $lesson->course->status !== 'published') {
-            throw new BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-        if (!$this->hasEnrollment($learnerId, (int) $lesson->course_id)) {
-            if (!$lesson->is_preview) {
+        $isOwnerOrAdmin = ((int) $lesson->course->instructor_id === $learnerId) || (\App\Models\User::find($learnerId)?->role === 'admin');
+
+        if (!$isOwnerOrAdmin) {
+            if ((string) $lesson->status !== 'published' || (string) $lesson->course->status !== 'published') {
+                throw new BusinessException('Nội dung chưa khả dụng.', 403);
+            }
+            if (!$lesson->is_preview && !$this->hasEnrollment($learnerId, (int) $lesson->course_id)) {
                 throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
             }
         }
@@ -101,37 +103,43 @@ final class LessonVideoAccessService
     }
     private function resolveExistingPrivateVideoPath(Lesson $lesson): string
     {
+        $rawPath = (string) $lesson->video_url;
+        if (trim($rawPath) === '') {
+            throw new BusinessException('Không tìm thấy video.', 404);
+        }
+
+        if (filter_var($rawPath, FILTER_VALIDATE_URL)) {
+            $parsed = parse_url($rawPath);
+            $pathInUrl = ltrim($parsed['path'] ?? '', '/');
+            if (str_starts_with($pathInUrl, 'storage/')) {
+                $relativePath = substr($pathInUrl, strlen('storage/'));
+                if (Storage::disk('public')->exists($relativePath)) {
+                    return Storage::disk('public')->path($relativePath);
+                }
+            }
+            return $rawPath;
+        }
+
+        $cleanPath = ltrim($rawPath, '/');
+        $cleanPath = preg_replace('#^storage/#', '', $cleanPath);
+
+        if (Storage::disk('public')->exists($cleanPath)) {
+            return Storage::disk('public')->path($cleanPath);
+        }
+
         $disk = (string) config('filesystems.video_disk', 'private_media');
-        $path = ltrim((string) $lesson->video_url, '/');
-        if (!$this->isPrivateRelativePath($path)) {
-            throw new BusinessException('Không tìm thấy video.', 404);
+        if (Storage::disk($disk)->exists($cleanPath)) {
+            return Storage::disk($disk)->path($cleanPath);
         }
-        if (!Storage::disk($disk)->exists($path)) {
-            throw new BusinessException('Không tìm thấy video.', 404);
+
+        if (file_exists(public_path('storage/' . $cleanPath))) {
+            return public_path('storage/' . $cleanPath);
         }
-        return Storage::disk($disk)->path($path);
-    }
-    private function hasEnrollment(int $learnerId, int $courseId): bool
-    {
-        $query = DB::table('enrollments')
-            ->where('user_id', $learnerId)
-            ->where('course_id', $courseId)
-            ->whereIn('status', ['active', 'completed']);
-        if (Schema::hasColumn('enrollments', 'deleted_at')) {
-            $query;
+
+        if (file_exists($cleanPath)) {
+            return $cleanPath;
         }
-        return $query->exists();
-    }
-    private function isPrivateRelativePath(string $path): bool
-    {
-        if ($path === '') {
-            return false;
-        }
-        if (filter_var($path, FILTER_VALIDATE_URL)) {
-            return false;
-        }
-        return !str_starts_with($path, 'storage/')
-            && !str_starts_with($path, '/storage/')
-            && !str_starts_with($path, '/videos/');
+
+        throw new BusinessException('Không tìm thấy video.', 404);
     }
 }

@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             CatalogCatDatabaseSeeder::class,
             CommissionRuleSeeder::class,
+            RichCourseDataSeeder::class,
         ]);
     }
 }

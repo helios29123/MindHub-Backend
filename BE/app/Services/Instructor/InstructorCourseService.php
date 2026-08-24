@@ -305,10 +305,13 @@ final class InstructorCourseService
                     403,
                 );
             }
-            if (!$this->courseCanBeSubmitted($course)) {
+            $missingRequirements = $this->validateCourseForSubmission($course);
+            if (!empty($missingRequirements)) {
+                $detailMsg = implode(' ', $missingRequirements);
                 throw new BusinessException(
-                    "Khóa học chưa đủ điều kiện để gửi duyệt. Vui lòng hoàn thiện thông tin cơ bản, danh mục, chương học và bài học.",
+                    "Khóa học chưa đủ điều kiện gửi duyệt: " . $detailMsg,
                     422,
+                    ['requirements' => $missingRequirements]
                 );
             }
             $updatedCourse = $this->instructorCourseRepository->markAsPendingReview(
@@ -342,6 +345,50 @@ final class InstructorCourseService
             return $updatedCourse;
         });
     }
+
+    public function validateCourseForSubmission(Course $course): array
+    {
+        $errors = [];
+        if (!in_array($course->status, ["draft", "rejected"], true)) {
+            $errors[] = "Khóa học hiện đang ở trạng thái '{$course->status}', không thể gửi duyệt.";
+        }
+        if (trim((string) $course->title) === '') {
+            $errors[] = "Vui lòng nhập tiêu đề khóa học.";
+        }
+        if (trim((string) $course->short_description) === '') {
+            $errors[] = "Vui lòng nhập mô tả ngắn cho khóa học.";
+        }
+        if (trim((string) $course->description) === '') {
+            $errors[] = "Vui lòng nhập mô tả chi tiết cho khóa học.";
+        }
+        if ($course->categories->isEmpty()) {
+            $errors[] = "Vui lòng chọn ít nhất một danh mục cho khóa học.";
+        }
+        if ($course->sections->isEmpty()) {
+            $errors[] = "Khóa học cần có ít nhất một chương học.";
+        } else {
+            $lessonCount = $course->sections->sum(
+                fn(CourseSection $section): int => $section->lessons->count(),
+            );
+            if ($lessonCount === 0) {
+                $errors[] = "Khóa học cần có ít nhất một bài học trong các chương.";
+            }
+        }
+
+        foreach ($course->sections as $section) {
+            foreach ($section->lessons as $lesson) {
+                if (strtolower((string) $lesson->lesson_type) === 'video') {
+                    $videoUrl = trim((string) ($lesson->video_url ?? ''));
+                    if ($videoUrl === '' || str_starts_with($videoUrl, 'blob:')) {
+                        $errors[] = "Bài học '{$lesson->title}' chưa có video hợp lệ.";
+                    }
+                }
+            }
+        }
+
+        return $errors;
+    }
+
     public function getRejectedReviewNotes(
         User $instructor,
         int $courseId,
@@ -350,65 +397,18 @@ final class InstructorCourseService
             $courseId,
         );
         if (!$course) {
-            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
+            throw new NotFoundHttpException("Không tìm thấy khóa học.");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new BusinessException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Bạn không có quyền truy cập khóa học này.",
                 403,
             );
         }
         if ($course->status !== "rejected") {
-            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
+            throw new NotFoundHttpException("Khóa học không ở trạng thái bị từ chối.");
         }
         return $course;
-    }
-
-    private function courseCanBeSubmitted(Course $course): bool
-    {
-        if (!in_array($course->status, ["draft", "rejected"], true)) {
-            return false;
-        }
-        foreach (
-            [
-                "title",
-                "slug",
-                "short_description",
-                "description",
-                "level",
-                "language",
-            ]
-            as $requiredField
-        ) {
-            if (trim((string) $course->{$requiredField}) === "") {
-                return false;
-            }
-        }
-        if ($course->categories->isEmpty()) {
-            return false;
-        }
-        if ($course->sections->isEmpty()) {
-            return false;
-        }
-        $lessonCount = $course->sections->sum(
-            fn(CourseSection $section): int => $section->lessons->count(),
-        );
-        if ($lessonCount === 0) {
-            return false;
-        }
-
-        foreach ($course->sections as $section) {
-            foreach ($section->lessons as $lesson) {
-                if (strtolower((string) $lesson->lesson_type) === 'video') {
-                    $videoUrl = trim((string) ($lesson->video_url ?? ''));
-                    if ($videoUrl === '' || str_starts_with($videoUrl, 'blob:')) {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        return true;
     }
 
     private function findOwnedLessonOrFail(

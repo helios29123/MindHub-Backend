@@ -69,17 +69,15 @@ class ModerationService
         $comments = Comment::with(['user', 'lesson.course', 'order.course', 'parent'])->get();
         $reviews = CourseReview::withTrashed()->with(['order.user', 'order.course'])->get();
 
-        // 2. Helper warning evaluator
-        $evaluateWarningType = function ($content) {
+        // 2. Helper warning evaluator leveraging ContentModeratorService
+        $moderator = app(\App\Services\Moderation\ContentModeratorService::class);
+        $evaluateWarningType = function ($content) use ($moderator) {
             if (!$content) return null;
-            $text = mb_strtolower($content, 'UTF-8');
-            $spamKeywords = ['spam', 'abc-test-spam', '0999888777', 'telegram', 'zalo', 'casino'];
-            foreach ($spamKeywords as $kw) {
-                if (str_contains($text, $kw)) return 'spam';
-            }
-            $offensiveKeywords = ['xúc phạm', 'thô tục', '<script>', 'vi phạm', 'không phù hợp'];
-            foreach ($offensiveKeywords as $kw) {
-                if (str_contains($text, $kw)) return 'offensive';
+            $modRes = $moderator->inspect($content);
+            if ($modRes['is_violating']) {
+                if (in_array('toxicity_and_profanity', $modRes['categories'])) return 'offensive';
+                if (in_array('scam_and_spam', $modRes['categories']) || in_array('spam_link', $modRes['categories'])) return 'spam';
+                return 'offensive';
             }
             return null;
         };

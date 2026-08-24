@@ -31,16 +31,22 @@ class ReviewService
                     userId: (int) $learner->id,
                     courseId: $courseId
                 );
-                if ($paidOrder === null || ! $hasActiveEnrollment) {
-                    throw new HttpException(403, 'Bạn cần học khóa này trước khi đánh giá.');
+                if ($paidOrder === null && ! $hasActiveEnrollment) {
+                    throw new HttpException(403, 'Bạn cần đăng ký hoặc mua khóa học trước khi đánh giá.');
                 }
-                if ($this->reviewRepository->hasReviewForUserCourse((int) $learner->id, $courseId)) {
-                    throw new HttpException(409, 'Bạn đã đánh giá khóa học này.');
+
+                $reviewContent = $payload['content'] ?? $payload['comment'] ?? null;
+                if ($reviewContent !== null && trim($reviewContent) !== '') {
+                    $modResult = app(\App\Services\Moderation\ContentModeratorService::class)->inspect($reviewContent);
+                    if ($modResult['is_violating']) {
+                        throw new HttpException(422, 'Nội dung đánh giá không phù hợp: ' . $modResult['reason']);
+                    }
                 }
+
                 return $this->reviewRepository->createReview(
                     order: $paidOrder,
                     rating: (int) $payload['rating'],
-                    comment: $payload['content'] ?? null
+                    comment: $reviewContent
                 );
             });
         } catch (QueryException $exception) {

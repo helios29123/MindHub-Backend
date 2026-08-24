@@ -50,8 +50,16 @@ class PaymentController extends Controller
     public function validateCoupon(Request $request): JsonResponse
     {
         $code = strtoupper(trim((string) ($request->input('code') ?? $request->query('code') ?? '')));
-        $courseId = $request->input('course_id') ?? $request->query('course_id');
-        $courseId = $courseId ? (int) $courseId : null;
+        $rawCourseId = $request->input('course_id') ?? $request->query('course_id');
+        $courseId = null;
+        if (!empty($rawCourseId)) {
+            if (is_numeric($rawCourseId)) {
+                $courseId = (int) $rawCourseId;
+            } else {
+                $courseObj = \App\Models\Course::where('slug', (string) $rawCourseId)->first();
+                $courseId = $courseObj ? (int) $courseObj->id : null;
+            }
+        }
 
         if (empty($code)) {
             return response()->json([
@@ -110,7 +118,16 @@ class PaymentController extends Controller
     public function checkCoupon(Request $request): JsonResponse
     {
         $code = $request->query('code');
-        $courseId = $request->query('course_id');
+        $rawCourseId = $request->query('course_id');
+        $courseId = null;
+        if (!empty($rawCourseId)) {
+            if (is_numeric($rawCourseId)) {
+                $courseId = (int) $rawCourseId;
+            } else {
+                $courseObj = \App\Models\Course::where('slug', (string) $rawCourseId)->first();
+                $courseId = $courseObj ? (int) $courseObj->id : null;
+            }
+        }
 
         if (!$code) {
             return response()->json(['success' => false, 'message' => 'Thiếu mã giảm giá.'], 422);
@@ -123,7 +140,7 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'message' => 'Mã giảm giá không hợp lệ hoặc đã hết hạn.'], 400);
         }
 
-        if ($coupon->course_id !== null && $courseId !== null && (int) $coupon->course_id !== (int) $courseId) {
+        if ($coupon->course_id !== null && $courseId !== null && (int) $coupon->course_id !== $courseId) {
             return response()->json(['success' => false, 'message' => 'Mã giảm giá không áp dụng cho khóa học này.'], 400);
         }
 

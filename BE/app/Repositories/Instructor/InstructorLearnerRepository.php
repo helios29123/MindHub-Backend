@@ -79,7 +79,7 @@ class InstructorLearnerRepository
 
         foreach ($paginator->items() as $item) {
             $totalLessons = DB::table('lessons')
-                ->join('course_sections', 'course_sections.id', '=', 'lessons.section_id')
+                ->join('course_sections', 'course_sections.id', '=', 'lessons.course_section_id')
                 ->where('lessons.course_id', $item->course_id)
                 ->where('lessons.status', 'published')
                 ->where('course_sections.status', 'published')

@@ -10,7 +10,8 @@ final class CommissionRuleSeeder extends Seeder
     public function run(): void
     {
         $rules = [
-            ['marketplace_default', 70, 30, 'Marketplace mặc định'],
+            ['marketplace_default', 85, 15, 'Marketplace mặc định'],
+            ['marketplace', 85, 15, 'Học viên tự mua trên marketplace'],
             ['platform_ads', 37, 63, 'Nền tảng tự chạy quảng cáo'],
             ['admin_campaign', 37, 63, 'Chiến dịch quảng bá của admin'],
             ['instructor_coupon', 97, 3, 'Mua bằng coupon do giảng viên tạo'],

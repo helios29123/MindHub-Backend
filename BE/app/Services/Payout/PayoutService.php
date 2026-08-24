@@ -117,6 +117,24 @@ class PayoutService
                 'updated_at' => now()
             ]);
         });
+
+        // Send Email & Notification to Instructor
+        try {
+            $user = $withdrawal->user;
+            if ($user && $user->email) {
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\WithdrawalSuccessInstructorMail($withdrawal, $user));
+
+                \App\Models\Notification::create([
+                    'user_id' => $user->id,
+                    'type' => 'payout_success',
+                    'title' => 'Chuyển tiền thành công',
+                    'message' => "Yêu cầu rút tiền #" . $withdrawal->id . " số tiền " . number_format($withdrawal->amount, 0, ',', '.') . " đ đã được chuyển thành công vào tài khoản ngân hàng của bạn.",
+                    'data' => json_encode(['withdrawal_id' => $withdrawal->id, 'amount' => $withdrawal->amount]),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send instructor payout success email/notification: ' . $e->getMessage());
+        }
     }
 
     /**

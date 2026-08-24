@@ -67,14 +67,82 @@ class LearningService
     }
 
     /**
-     * Get details of a lesson for the enrolled user and record progress.
+     * Check if user has permission to access a lesson or course.
      *
      * @param User $user
+     * @param \App\Models\Course $course
+     * @param \App\Models\Lesson|null $lesson
+     * @return Enrollment|null
+     * @throws \App\Exceptions\BusinessException
+     */
+    public function checkAccessPermission(?User $user, \App\Models\Course $course, ?\App\Models\Lesson $lesson = null): ?Enrollment
+    {
+        // 1. Preview lesson in published course is accessible by anyone
+        if ($lesson !== null && $lesson->is_preview && $lesson->status === 'published' && $course->status === 'published') {
+            if (!$user) {
+                return null;
+            }
+        }
+
+        if (!$user) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        $isOwnerOrAdmin = ((int) $course->instructor_id === (int) $user->id) || in_array($user->role, ['admin', 'system_admin']);
+
+        // Find or resolve enrollment
+        $enrollment = Enrollment::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
+            ->first();
+
+        if (!$enrollment) {
+            $hasPaidOrder = \App\Models\Order::where('user_id', $user->id)
+                ->where('course_id', $course->id)
+                ->whereIn('status', ['paid', 'completed', 'success'])
+                ->exists();
+
+            if ($hasPaidOrder) {
+                $enrollment = Enrollment::firstOrCreate(
+                    ['user_id' => $user->id, 'course_id' => $course->id],
+                    ['status' => Enrollment::STATUS_ACTIVE, 'enrolled_at' => now()]
+                );
+            }
+        }
+
+        if ($isOwnerOrAdmin) {
+            return $enrollment;
+        }
+
+        // Preview lesson in published course
+        if ($lesson !== null && $lesson->is_preview && $lesson->status === 'published' && $course->status === 'published') {
+            return $enrollment;
+        }
+
+        if ($course->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        if ($lesson !== null && $lesson->status !== 'published') {
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+        }
+
+        if (!$enrollment) {
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        }
+
+        return $enrollment;
+    }
+
+    /**
+     * Get details of a lesson for the enrolled user and record progress.
+     *
+     * @param User|null $user
      * @param int $lessonId
      * @return array
      * @throws \App\Exceptions\BusinessException
      */
-    public function getLessonDetails(User $user, int $lessonId): array
+    public function getLessonDetails(?User $user, int $lessonId): array
     {
         $lesson = \App\Models\Lesson::with('assets')->find($lessonId);
 
@@ -87,51 +155,49 @@ class LearningService
             throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
+        $enrollment = $this->checkAccessPermission($user, $course, $lesson);
 
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
-
-        // Upsert lesson progress
-        $progress = \App\Models\LessonProgress::firstOrCreate(
-            [
-                'user_id' => $user->id,
-                'lesson_id' => $lessonId,
-            ],
-            [
-                'status' => 'in_progress',
-                'started_at' => now(),
-                'last_accessed_at' => now(),
-                'learning_duration_seconds' => 0,
-            ]
-        );
-
-        if (!$progress->wasRecentlyCreated) {
-            $updates = ['last_accessed_at' => now()];
-            if ($progress->status === 'not_started') {
-                $updates['status'] = 'in_progress';
-                $updates['started_at'] = now();
-            }
-            $progress->update($updates);
-        }
-
-        // Get video progress if lesson type is video
+        $progress = null;
         $currentSecond = 0;
-        if ($lesson->lesson_type === 'video') {
-            $videoProgress = \App\Models\VideoProgress::where('user_id', $user->id)
-                ->where('lesson_id', $lessonId)
-                ->first();
-            if ($videoProgress) {
-                $currentSecond = (int) $videoProgress->current_second;
+
+        if ($user) {
+            // Upsert lesson progress
+            $progress = \App\Models\LessonProgress::firstOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'lesson_id' => $lessonId,
+                ],
+                [
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'last_accessed_at' => now(),
+                    'learning_duration_seconds' => 0,
+                ]
+            );
+
+            if (!$progress->wasRecentlyCreated) {
+                $updates = ['last_accessed_at' => now()];
+                if ($progress->status === 'not_started') {
+                    $updates['status'] = 'in_progress';
+                    $updates['started_at'] = now();
+                }
+                $progress->update($updates);
             }
+
+            // Get video progress if lesson type is video
+            if ($lesson->lesson_type === 'video') {
+                $videoProgress = \App\Models\VideoProgress::where('user_id', $user->id)
+                    ->where('lesson_id', $lessonId)
+                    ->first();
+                if ($videoProgress) {
+                    $currentSecond = (int) $videoProgress->current_second;
+                }
+            }
+        } else {
+            $progress = new \App\Models\LessonProgress([
+                'status' => 'not_started',
+                'learning_duration_seconds' => 0,
+            ]);
         }
 
         return [
@@ -150,7 +216,7 @@ class LearningService
      * @return array
      * @throws \App\Exceptions\BusinessException
      */
-    public function getCourseOutline(User $user, int $courseId): array
+    public function getCourseOutline(?User $user, int $courseId): array
     {
         $course = \App\Models\Course::find($courseId);
 
@@ -158,34 +224,37 @@ class LearningService
             throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
-        if ($course->status !== 'published') {
+        $isOwnerOrAdmin = $user && (((int) $course->instructor_id === (int) $user->id) || in_array($user->role, ['admin', 'system_admin']));
+        $hasEnrolled = $user ? \App\Models\Enrollment::where('user_id', $user->id)->where('course_id', $courseId)->whereIn('status', ['active', 'completed'])->exists() : false;
+
+        if (!$isOwnerOrAdmin && !$hasEnrolled && $course->status !== 'published') {
             throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
         }
 
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $courseId)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
-
         $course->load([
-            'sections' => function ($query) {
-                $query->where('status', 'published')->orderBy('sort_order');
+            'sections' => function ($query) use ($isOwnerOrAdmin, $hasEnrolled) {
+                if (!$isOwnerOrAdmin && !$hasEnrolled) {
+                    $query->where('status', 'published');
+                }
+                $query->orderBy('sort_order');
             },
-            'sections.lessons' => function ($query) {
-                $query->where('status', 'published')->orderBy('sort_order');
+            'sections.lessons' => function ($query) use ($isOwnerOrAdmin, $hasEnrolled) {
+                if (!$isOwnerOrAdmin && !$hasEnrolled) {
+                    $query->where('status', 'published');
+                }
+                $query->orderBy('sort_order');
             }
         ]);
 
         $lessonIds = $course->sections->flatMap->lessons->pluck('id');
 
-        $progresses = \App\Models\LessonProgress::where('user_id', $user->id)
-            ->whereIn('lesson_id', $lessonIds)
-            ->get()
-            ->keyBy('lesson_id');
+        $progresses = collect();
+        if ($user) {
+            $progresses = \App\Models\LessonProgress::where('user_id', $user->id)
+                ->whereIn('lesson_id', $lessonIds)
+                ->get()
+                ->keyBy('lesson_id');
+        }
 
         return [
             'sections' => $course->sections,
@@ -219,18 +288,7 @@ class LearningService
             throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
+        $enrollment = $this->checkAccessPermission($user, $course, $lesson);
 
         $currentSecond = (int) $data['current_second'];
         $durationSecond = isset($data['duration_second']) ? (int) $data['duration_second'] : null;
@@ -446,18 +504,7 @@ class LearningService
             throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
+        $enrollment = $this->checkAccessPermission($user, $course, $lesson);
 
         $completed = (bool) $data['completed'];
 
@@ -556,18 +603,7 @@ class LearningService
             throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
-        if ($course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $courseId)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
+        $enrollment = $this->checkAccessPermission($user, $course);
 
         $publishedLessonIds = \App\Models\Lesson::where('course_id', $courseId)
             ->where('status', 'published')
@@ -692,18 +728,7 @@ class LearningService
             throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
+        $enrollment = $this->checkAccessPermission($user, $course, $lesson);
 
         return $asset;
     }
@@ -729,22 +754,14 @@ class LearningService
             throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
+        $enrollment = $this->checkAccessPermission($user, $course, $lesson);
 
         $section = $lesson->section;
         if (!$section || $section->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+            $isOwnerOrAdmin = ((int) $course->instructor_id === (int) $user->id) || in_array($user->role, ['admin', 'system_admin']);
+            if (!$isOwnerOrAdmin) {
+                throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
+            }
         }
 
         // Query all published lessons in the course, ordered sequentially

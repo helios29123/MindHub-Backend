@@ -63,6 +63,11 @@ class InteractionController extends Controller
                 return ApiResponse::error('Dữ liệu không hợp lệ.', $bodyValidator->errors()->toArray(), 422);
             }
             $comment = $this->interactionService->createComment($lessonId, $bodyValidator->validated(), $request->user());
+            if ($comment->status === 'hidden') {
+                return ApiResponse::error('Bình luận chứa nội dung vi phạm tiêu chuẩn cộng đồng và đã bị tự động chặn.', [
+                    'content' => ['Bình luận vi phạm tiêu chuẩn cộng đồng (chứa ngôn từ không phù hợp/spam/thông tin nhạy cảm).']
+                ], 422);
+            }
             return ApiResponse::success(
                 new CommentResource($comment),
                 'Thao tác thành công',
@@ -105,21 +110,21 @@ class InteractionController extends Controller
     }
     public function storeReview(StoreReviewRequest $request, mixed $id): JsonResponse
     {
-        $validator = Validator::make(['id' => $id], [
-            'id' => 'required|integer|min:1',
-        ]);
-        if ($validator->fails()) {
-            return ApiResponse::error('Dữ liệu không hợp lệ.', $validator->errors()->toArray(), 422);
+        $course = \App\Models\Course::where('id', $id)->orWhere('slug', $id)->first();
+        if (!$course) {
+            return ApiResponse::error('Không tìm thấy khóa học.', [], 404);
         }
+        $courseId = $course->id;
+
         try {
             $review = $this->reviewService->storeReview(
-                courseId: (int) $id,
+                courseId: (int) $courseId,
                 payload: $request->validated(),
                 learner: $request->user()
             );
             return ApiResponse::success(
                 new ReviewResource($review),
-                'Dữ liệu không hợp lệ.',
+                'Đánh giá khóa học thành công.',
                 201
             );
         } catch (HttpExceptionInterface $exception) {
