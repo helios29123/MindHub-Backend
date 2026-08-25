@@ -2,29 +2,31 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CourseSection extends Model
 {
-    use HasFactory, SoftDeletes;
-
-    protected $table = "course_sections";
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_PUBLISHED = 'published';
+    public const STATUS_HIDDEN = 'hidden';
 
     protected $fillable = [
-        "course_id",
-        "title",
-        "description",
-        "sort_order",
-        "status",
+        'course_id',
+        'title',
+        'description',
+        'sort_order',
+        'status',
     ];
 
-    protected $casts = [
-        "sort_order" => "integer",
-    ];
+    protected function casts(): array
+    {
+        return [
+            'course_id' => 'integer',
+            'sort_order' => 'integer',
+        ];
+    }
 
     public function course(): BelongsTo
     {
@@ -33,9 +35,6 @@ class CourseSection extends Model
 
     public function lessons(): HasMany
     {
-        return $this->hasMany(Lesson::class, "course_section_id")->orderBy(
-            "sort_order",
-        );
+        return $this->hasMany(Lesson::class, 'course_section_id')->orderBy('sort_order');
     }
-
 }

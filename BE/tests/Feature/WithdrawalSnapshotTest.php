@@ -81,12 +81,7 @@ class WithdrawalSnapshotTest extends TestCase
             'gross_amount' => 500000,
             'instructor_amount' => $instructorAmount,
             'platform_fee_amount' => 150000,
-            'status' => Revenue::STATUS_AVAILABLE,
             'earned_at' => now()->subDays(35),
-            'available_at' => now()->subDays(5),
-            'sale_source' => 'marketplace_default',
-            'instructor_percent' => 70.0,
-            'platform_percent' => 30.0,
         ]);
     }
 

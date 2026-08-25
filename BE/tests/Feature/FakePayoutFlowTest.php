@@ -63,9 +63,9 @@ class FakePayoutFlowTest extends TestCase
             'order_id' => $order->id,
             'course_id' => $course->id,
             'instructor_id' => $this->instructor->id,
-            'amount' => $amount,
+            'gross_amount' => $amount,
             'instructor_amount' => $amount,
-            'status' => Revenue::STATUS_AVAILABLE,
+            'platform_fee_amount' => 0,
         ]);
     }
 
@@ -149,13 +149,13 @@ class FakePayoutFlowTest extends TestCase
         $controller->approve($withdrawal->id);
 
         $withdrawal->refresh();
-        $this->assertEquals(WithdrawRequest::STATUS_FAILED, $withdrawal->status);
+        $this->assertEquals(WithdrawRequest::STATUS_MANUAL_REQUIRED, $withdrawal->status);
 
         $service = app(\App\Services\Payout\EarlyWithdrawalService::class);
         $summary = $service->getPaymentSummary($this->instructor->id);
         
-        $this->assertEquals(1000000, $summary['early_withdrawable_balance']);
-        $this->assertEquals(2, $summary['early_withdrawal_requests_remaining']);
+        $this->assertEquals(0, $summary['early_withdrawable_balance']); // Remains locked
+        $this->assertEquals(1, $summary['early_withdrawal_requests_remaining']); // Quota is not returned
     }
 
     // D. Processing keeps reserve
@@ -192,8 +192,8 @@ class FakePayoutFlowTest extends TestCase
         $this->assertEquals(WithdrawRequest::STATUS_PAID, $withdrawal->status);
     }
 
-    // F. Processing -> Failed
-    public function test_processing_to_failed()
+    // F. Processing -> Failed (now manual_required)
+    public function test_processing_error_returns_manual_required()
     {
         Config::set('payout.fake.result', 'processing');
         $withdrawal = $this->createRealWithdrawalRequest(1000000);
@@ -204,11 +204,11 @@ class FakePayoutFlowTest extends TestCase
         $payoutService->resolveWebhook($withdrawal, 'failed', 'Webhook said failed');
 
         $withdrawal->refresh();
-        $this->assertEquals(WithdrawRequest::STATUS_FAILED, $withdrawal->status);
+        $this->assertEquals(WithdrawRequest::STATUS_MANUAL_REQUIRED, $withdrawal->status);
         $this->assertEquals('Webhook said failed', $withdrawal->failure_reason);
 
         $summary = app(\App\Services\Payout\EarlyWithdrawalService::class)->getPaymentSummary($this->instructor->id);
-        $this->assertEquals(1000000, $summary['early_withdrawable_balance']);
+        $this->assertEquals(0, $summary['early_withdrawable_balance']);
     }
 
     // G. Double approve (Idempotency)
@@ -264,8 +264,8 @@ class FakePayoutFlowTest extends TestCase
         app(\App\Http\Controllers\AdminWithdrawalController::class)->approve($withdrawal->id);
 
         $revenue = Revenue::first();
-        // Since only 1.2M allocated of 2M, revenue should NOT be paid yet
-        $this->assertEquals(Revenue::STATUS_AVAILABLE, $revenue->status);
+        // Since only 1.2M allocated of 2M, revenue is partially allocated.
+        // Revenue status doesn't exist in DB final, we rely on withdrawal_revenues pivot.
 
         $summary = $service->getPaymentSummary($this->instructor->id);
         $this->assertEquals(800000, $summary['early_withdrawable_balance']);
@@ -288,6 +288,6 @@ class FakePayoutFlowTest extends TestCase
         app(\App\Http\Controllers\AdminWithdrawalController::class)->approve($withdrawal->id);
 
         $summary = $service->getPaymentSummary($this->instructor->id);
-        $this->assertEquals(2000000, $summary['early_withdrawable_balance']); // All released
+        $this->assertEquals(800000, $summary['early_withdrawable_balance']); // Remains locked
     }
 }

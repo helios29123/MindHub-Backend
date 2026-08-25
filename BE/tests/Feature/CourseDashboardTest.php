@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class CourseDashboardTest extends TestCase
@@ -14,10 +15,10 @@ class CourseDashboardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        \Schema::disableForeignKeyConstraints();
-        if (!\Schema::hasColumn('sessions', 'refresh_token_hash')) {
-            \Schema::dropIfExists('sessions');
-            \Schema::create('sessions', function ($table) {
+        Schema::disableForeignKeyConstraints();
+        if (!Schema::hasColumn('sessions', 'refresh_token_hash')) {
+            Schema::dropIfExists('sessions');
+            Schema::create('sessions', function ($table) {
                 $table->id();
                 $table->foreignId('user_id');
                 $table->string('refresh_token_hash', 255)->nullable();

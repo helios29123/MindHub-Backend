@@ -2,24 +2,26 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CourseReview extends Model
 {
-    use HasFactory, SoftDeletes;
-
     protected $fillable = [
         'order_id',
         'rating',
         'comment',
+        'edited_at',
     ];
 
-    protected $casts = [
-        'rating' => 'integer',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'order_id' => 'integer',
+            'rating' => 'integer',
+            'edited_at' => 'datetime',
+        ];
+    }
 
     public function order(): BelongsTo
     {

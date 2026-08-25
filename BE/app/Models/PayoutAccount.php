@@ -5,36 +5,33 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PayoutAccount extends Model
 {
-    use SoftDeletes;
-
-    public const STATUS_ACTIVE = 'active';
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_REJECTED = 'rejected';
-    public const STATUS_INACTIVE = 'inactive';
-
-    protected $table = 'payout_accounts';
+    public const STATUS_PENDING_VERIFICATION = 'pending_verification';
+    public const STATUS_VERIFIED = 'verified';
+    public const STATUS_DISABLED = 'disabled';
 
     protected $fillable = [
         'user_id',
         'provider',
         'account_number',
         'account_name',
-        'connected_at',
         'status',
         'is_default',
+        'verified_at',
+        'disabled_at',
     ];
 
-    protected $casts = [
-        'connected_at' => 'datetime',
-        'is_default' => 'boolean',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'user_id' => 'integer',
+            'is_default' => 'boolean',
+            'verified_at' => 'datetime',
+            'disabled_at' => 'datetime',
+        ];
+    }
 
     public function user(): BelongsTo
     {
@@ -43,6 +40,6 @@ class PayoutAccount extends Model
 
     public function withdrawRequests(): HasMany
     {
-        return $this->hasMany(WithdrawRequest::class, 'payout_account_id');
+        return $this->hasMany(WithdrawRequest::class);
     }
 }

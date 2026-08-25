@@ -2,36 +2,34 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LessonNote extends Model
 {
-    use HasFactory;
-
-    protected $table = 'lesson_notes';
-
     protected $fillable = [
-        'user_id',
-        'course_id',
+        'enrollment_id',
         'lesson_id',
         'content',
         'note_time_second',
     ];
 
-    public function user(): BelongsTo
+    protected function casts(): array
     {
-        return $this->belongsTo(User::class);
+        return [
+            'enrollment_id' => 'integer',
+            'lesson_id' => 'integer',
+            'note_time_second' => 'integer',
+        ];
+    }
+
+    public function enrollment(): BelongsTo
+    {
+        return $this->belongsTo(Enrollment::class);
     }
 
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
-    }
-
-    public function course(): BelongsTo
-    {
-        return $this->belongsTo(Course::class);
     }
 }

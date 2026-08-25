@@ -3,20 +3,34 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-final class CommissionRule extends Model
+class CommissionRule extends Model
 {
-    protected $table = 'commission_rules';
-
-    protected $guarded = [];
-
-    protected $casts = [
-        'platform_rate' => 'float',
-        'instructor_rate' => 'float',
-        'platform_rate_percent' => 'float',
-        'instructor_rate_percent' => 'float',
-        'is_active' => 'boolean',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+    protected $fillable = [
+        'name',
+        'description',
+        'instructor_rate',
+        'platform_rate',
+        'is_active',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'instructor_rate' => 'decimal:4',
+            'platform_rate' => 'decimal:4',
+            'is_active' => 'boolean',
+        ];
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function revenues(): HasMany
+    {
+        return $this->hasMany(Revenue::class);
+    }
 }

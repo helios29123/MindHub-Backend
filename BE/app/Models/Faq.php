@@ -2,33 +2,37 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Faq extends Model
 {
-    use HasFactory, SoftDeletes;
+    public const SOURCE_SYSTEM = 'system';
+    public const SOURCE_INSTRUCTOR = 'instructor';
 
-    protected $table = 'faqs';
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_INACTIVE = 'inactive';
 
     protected $fillable = [
         'question',
         'answer',
         'type',
+        'source',
         'status',
         'sort_order',
     ];
 
-    protected $casts = [
-        'sort_order' => 'integer',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'sort_order' => 'integer',
+        ];
+    }
 
     public function courses(): BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'course_faqs', 'faq_id', 'course_id')
             ->withPivot('sort_order')
-            ->whereNull('course_faqs.deleted_at');
+            ->orderBy('course_faqs.sort_order');
     }
 }

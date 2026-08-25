@@ -7,11 +7,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LessonProgress extends Model
 {
+    public const STATUS_NOT_STARTED = 'not_started';
+    public const STATUS_IN_PROGRESS = 'in_progress';
+    public const STATUS_COMPLETED = 'completed';
+
     protected $table = 'lesson_progress';
 
     protected $fillable = [
+        'enrollment_id',
         'lesson_id',
-        'user_id',
         'status',
         'started_at',
         'completed_at',
@@ -19,20 +23,25 @@ class LessonProgress extends Model
         'last_accessed_at',
     ];
 
-    protected $casts = [
-        'started_at' => 'datetime',
-        'completed_at' => 'datetime',
-        'last_accessed_at' => 'datetime',
-        'learning_duration_seconds' => 'integer',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'enrollment_id' => 'integer',
+            'lesson_id' => 'integer',
+            'started_at' => 'datetime',
+            'completed_at' => 'datetime',
+            'learning_duration_seconds' => 'integer',
+            'last_accessed_at' => 'datetime',
+        ];
+    }
+
+    public function enrollment(): BelongsTo
+    {
+        return $this->belongsTo(Enrollment::class);
+    }
 
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
-    }
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
     }
 }

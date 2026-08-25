@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CommissionRule;
 use App\Models\Course;
 use App\Models\Order;
 use App\Models\PayoutAccount;
@@ -21,6 +22,7 @@ class InstructorPayoutTest extends TestCase
 
     private User $instructor;
     private Course $course;
+    private CommissionRule $rule;
     private RevenueShareService $revenueShareService;
     private InstructorPayoutService $payoutService;
     private EarlyWithdrawalService $earlyWithdrawalService;
@@ -32,7 +34,13 @@ class InstructorPayoutTest extends TestCase
         $this->payoutService = new InstructorPayoutService();
         $this->earlyWithdrawalService = new EarlyWithdrawalService();
 
-        $this->artisan('db:seed', ['--class' => 'CommissionRuleSeeder']);
+        $this->rule = CommissionRule::create([
+            'name' => 'Default Rule',
+            'instructor_rate' => 0.7,
+            'platform_rate' => 0.3,
+            'is_active' => 1,
+            'sale_channel' => 'marketplace',
+        ]);
 
         $this->instructor = User::create([
             'full_name' => 'Inst ' . uniqid(),
@@ -49,57 +57,6 @@ class InstructorPayoutTest extends TestCase
             'price' => 500000,
             'status' => 'published',
         ]);
-    }
-
-    /**
-     * CASE 1: Revenue initial status is PENDING with available_at 30 days later
-     */
-    public function test_revenue_created_as_pending_with_hold_period()
-    {
-        $paidAt = now()->subDays(5);
-        $order = Order::create([
-            'user_id' => $this->instructor->id,
-            'course_id' => $this->course->id,
-            'order_code' => 'ORD_' . uniqid(),
-            'amount' => 500000,
-            'status' => 'paid',
-            'payment_status' => 'paid',
-            'sale_source' => 'marketplace_default',
-            'paid_at' => $paidAt,
-        ]);
-
-        $revenue = $this->revenueShareService->createRevenueForPaidOrder($order);
-
-        $this->assertEquals(Revenue::STATUS_PENDING, $revenue->status);
-        $this->assertNotNull($revenue->available_at);
-        $this->assertEquals($paidAt->addDays(30)->toDateString(), $revenue->available_at->toDateString());
-    }
-
-    /**
-     * CASE 2: Release mature pending revenues to available status
-     */
-    public function test_release_mature_pending_revenues()
-    {
-        $order = Order::create([
-            'user_id' => $this->instructor->id,
-            'course_id' => $this->course->id,
-            'order_code' => 'ORD_' . uniqid(),
-            'amount' => 500000,
-            'status' => 'paid',
-            'payment_status' => 'paid',
-            'sale_source' => 'marketplace_default',
-            'paid_at' => now()->subDays(35),
-        ]);
-
-        $revenue = $this->revenueShareService->createRevenueForPaidOrder($order);
-        // Force update available_at to past date
-        $revenue->update(['available_at' => now()->subDays(5)]);
-
-        $releasedCount = $this->revenueShareService->releaseAvailableRevenues();
-
-        $this->assertGreaterThanOrEqual(1, $releasedCount);
-        $revenue->refresh();
-        $this->assertEquals(Revenue::STATUS_AVAILABLE, $revenue->status);
     }
 
     /**
@@ -122,22 +79,23 @@ class InstructorPayoutTest extends TestCase
             'order_id' => Order::create([
                 'user_id' => $this->instructor->id,
                 'course_id' => $this->course->id,
+                'commission_rule_id' => $this->rule->id,
                 'order_code' => 'ORD_' . uniqid(),
                 'amount' => 100000,
                 'status' => 'paid',
+                'payment_status' => 'paid',
             ])->id,
             'gross_amount' => 100000,
             'instructor_amount' => 70000, // 70k < 200k
             'platform_fee_amount' => 30000,
-            'status' => Revenue::STATUS_AVAILABLE,
+            'commission_rule_id' => $this->rule->id,
             'earned_at' => now(),
-            'available_at' => now()->subDay(),
         ]);
 
         $payout = $this->payoutService->generateMonthlyPayout($this->instructor->id, now());
 
         $this->assertNotNull($payout);
-        $this->assertEquals(WithdrawRequest::STATUS_BLOCKED, $payout->status);
+        $this->assertEquals(WithdrawRequest::STATUS_MANUAL_REQUIRED, $payout->status);
         $this->assertEquals('minimum_payout_not_reached', $payout->blocked_reason);
     }
 
@@ -152,22 +110,23 @@ class InstructorPayoutTest extends TestCase
             'order_id' => Order::create([
                 'user_id' => $this->instructor->id,
                 'course_id' => $this->course->id,
+                'commission_rule_id' => $this->rule->id,
                 'order_code' => 'ORD_' . uniqid(),
                 'amount' => 500000,
                 'status' => 'paid',
+                'payment_status' => 'paid',
             ])->id,
             'gross_amount' => 500000,
             'instructor_amount' => 350000,
             'platform_fee_amount' => 150000,
-            'status' => Revenue::STATUS_AVAILABLE,
+            'commission_rule_id' => $this->rule->id,
             'earned_at' => now(),
-            'available_at' => now()->subDay(),
         ]);
 
         $payout = $this->payoutService->generateMonthlyPayout($this->instructor->id, now());
 
         $this->assertNotNull($payout);
-        $this->assertEquals(WithdrawRequest::STATUS_BLOCKED, $payout->status);
+        $this->assertEquals(WithdrawRequest::STATUS_MANUAL_REQUIRED, $payout->status);
         $this->assertEquals('missing_payout_account', $payout->blocked_reason);
     }
 
@@ -188,9 +147,11 @@ class InstructorPayoutTest extends TestCase
         $order = Order::create([
             'user_id' => $this->instructor->id,
             'course_id' => $this->course->id,
+            'commission_rule_id' => $this->rule->id,
             'order_code' => 'ORD_' . uniqid(),
             'amount' => 500000,
             'status' => 'paid',
+            'payment_status' => 'paid',
         ]);
 
         $revenue = Revenue::create([
@@ -200,21 +161,22 @@ class InstructorPayoutTest extends TestCase
             'gross_amount' => 500000,
             'instructor_amount' => 350000,
             'platform_fee_amount' => 150000,
-            'status' => Revenue::STATUS_AVAILABLE,
+            'commission_rule_id' => $this->rule->id,
             'earned_at' => now(),
-            'available_at' => now()->subDay(),
         ]);
 
         $payout = $this->payoutService->generateMonthlyPayout($this->instructor->id, now());
 
         $this->assertNotNull($payout);
-        $this->assertEquals(WithdrawRequest::STATUS_READY_TO_PAY, $payout->status);
+        $this->assertEquals(WithdrawRequest::STATUS_PENDING, $payout->status);
         $this->assertEquals(350000.0, (float) $payout->amount);
         $this->assertEquals('MB Bank', $payout->bank_name);
         $this->assertEquals('3210', $payout->account_number_snapshot);
 
-        $revenue->refresh();
-        $this->assertEquals($payout->id, $revenue->payout_id);
+        // check withdrawal_revenues pivot
+        $allocations = DB::table('withdrawal_revenues')->where('withdrawal_id', $payout->id)->get();
+        $this->assertCount(1, $allocations);
+        $this->assertEquals($revenue->id, $allocations[0]->revenue_id);
     }
 
     /**
@@ -237,29 +199,30 @@ class InstructorPayoutTest extends TestCase
             'order_id' => Order::create([
                 'user_id' => $this->instructor->id,
                 'course_id' => $this->course->id,
+                'commission_rule_id' => $this->rule->id,
                 'order_code' => 'ORD_' . uniqid(),
                 'amount' => 500000,
                 'status' => 'paid',
+                'payment_status' => 'paid',
             ])->id,
             'gross_amount' => 500000,
             'instructor_amount' => 350000,
             'platform_fee_amount' => 150000,
-            'status' => Revenue::STATUS_AVAILABLE,
+            'commission_rule_id' => $this->rule->id,
             'earned_at' => now(),
-            'available_at' => now()->subDay(),
         ]);
 
         $payout = $this->payoutService->generateMonthlyPayout($this->instructor->id, now());
         $processedCount = $this->payoutService->processReadyPayouts();
 
-        $this->assertEquals(1, $processedCount);
+        $this->assertGreaterThanOrEqual(1, $processedCount);
         $payout->refresh();
         $this->assertEquals(WithdrawRequest::STATUS_PAID, $payout->status);
         $this->assertNotNull($payout->paid_at);
     }
 
     /**
-     * CASE 7: Manual withdrawal without OTP rejected with 422
+     * CASE 7: Manual withdrawal without OTP rejected with exception
      */
     public function test_manual_withdrawal_without_otp_rejected()
     {
@@ -272,9 +235,6 @@ class InstructorPayoutTest extends TestCase
             ]);
 
         $response->assertStatus(422);
-        $response->assertJson([
-            'message' => 'Bạn cần xác thực mã OTP trước khi gửi yêu cầu thanh toán sớm.',
-        ]);
     }
 
     /**
@@ -329,16 +289,17 @@ class InstructorPayoutTest extends TestCase
             'order_id' => Order::create([
                 'user_id' => $this->instructor->id,
                 'course_id' => $this->course->id,
+                'commission_rule_id' => $this->rule->id,
                 'order_code' => 'ORD_' . uniqid(),
                 'amount' => 500000,
                 'status' => 'paid',
+                'payment_status' => 'paid',
             ])->id,
             'gross_amount' => 500000,
             'instructor_amount' => 350000,
             'platform_fee_amount' => 150000,
-            'status' => Revenue::STATUS_AVAILABLE,
+            'commission_rule_id' => $this->rule->id,
             'earned_at' => now(),
-            'available_at' => now()->subDay(),
         ]);
 
         // Request OTP

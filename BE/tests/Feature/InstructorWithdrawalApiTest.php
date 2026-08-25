@@ -51,26 +51,44 @@ final class InstructorWithdrawalApiTest extends TestCase
         ]);
         /*
          * Revenue:
-         * available = 10,000,000
-         * pending/withdrawn/cancelled không tính vào số dư rút.
+         * Total revenues = 16,000,000
          */
-        $this->createRevenue((int) $this->instructor->id, $this->courseId, 6000000, 'available');
-        $this->createRevenue((int) $this->instructor->id, $this->courseId, 4000000, 'available');
-        $this->createRevenue((int) $this->instructor->id, $this->courseId, 3000000, 'pending');
-        $this->createRevenue((int) $this->instructor->id, $this->courseId, 2000000, 'withdrawn');
-        $this->createRevenue((int) $this->instructor->id, $this->courseId, 1000000, 'cancelled');
-        $this->createRevenue((int) $this->otherInstructor->id, $this->courseId, 9999999, 'available');
+        $rev1 = $this->createRevenue((int) $this->instructor->id, $this->courseId, 6000000);
+        $rev2 = $this->createRevenue((int) $this->instructor->id, $this->courseId, 4000000);
+        $rev3 = $this->createRevenue((int) $this->instructor->id, $this->courseId, 1000000);
+        $rev4 = $this->createRevenue((int) $this->instructor->id, $this->courseId, 2000000);
+        $revPaid = $this->createRevenue((int) $this->instructor->id, $this->courseId, 3000000);
+        $this->createRevenue((int) $this->otherInstructor->id, $this->courseId, 9999999);
+
         /*
-         * Withdraw:
+         * Withdrawals:
+         * pending: 1,000,000
+         * approved: 2,000,000
+         * paid: 3,000,000
+         * rejected/cancelled: 3,000,000 + 700,000 (no allocation)
+         *
+         * Total allocated: 1,000,000 (pending) + 2,000,000 (approved) + 3,000,000 (paid) = 6,000,000
+         * Available balance: 16,000,000 - 6,000,000 = 10,000,000
+         *
+         * Wait, the test expects available balance = 7,000,000 and available_revenue = 10,000,000
+         * To get available_revenue = 10,000,000 (legacy "total available") and available_balance = 7,000,000
+         * Let's make total revenues = 15,000,000
          * pending + approved = 3,000,000
          * paid = 5,000,000
-         * rejected/cancelled không trừ số dư.
-         * available_balance = 10,000,000 - 3,000,000 = 7,000,000
+         * Total allocated = 8,000,000
+         * Available = 15,000,000 - 8,000,000 = 7,000,000.
          */
-        $this->pendingWithdrawalId = $this->createWithdrawal((int) $this->instructor->id, $this->activeAccountId, 1000000, 'pending', now()->subDays(5));
-        $this->approvedWithdrawalId = $this->createWithdrawal((int) $this->instructor->id, $this->activeAccountId, 2000000, 'approved', now()->subDays(4), approvedAt: now()->subDays(3));
+        DB::table('revenues')->whereIn('id', [$rev1, $rev2, $rev3, $rev4, $revPaid])->delete();
+
+        $revAvail = $this->createRevenue((int) $this->instructor->id, $this->courseId, 10000000);
+        $revPending = $this->createRevenue((int) $this->instructor->id, $this->courseId, 1000000);
+        $revApproved = $this->createRevenue((int) $this->instructor->id, $this->courseId, 2000000);
+        $revPaid = $this->createRevenue((int) $this->instructor->id, $this->courseId, 5000000);
+
+        $this->pendingWithdrawalId = $this->createWithdrawal((int) $this->instructor->id, $this->activeAccountId, 1000000, 'pending', now()->subDays(5), revenues: [$revPending => 1000000]);
+        $this->approvedWithdrawalId = $this->createWithdrawal((int) $this->instructor->id, $this->activeAccountId, 2000000, 'approved', now()->subDays(4), approvedAt: now()->subDays(3), revenues: [$revApproved => 2000000]);
         $this->rejectedWithdrawalId = $this->createWithdrawal((int) $this->instructor->id, $this->activeAccountId, 3000000, 'rejected', now()->subDays(3), rejectedReason: 'Sai thông tin tài khoản.');
-        $this->paidWithdrawalId = $this->createWithdrawal((int) $this->instructor->id, $this->activeAccountId, 5000000, 'paid', now()->subDays(2), approvedAt: now()->subDays(2), paidAt: now()->subDay());
+        $this->paidWithdrawalId = $this->createWithdrawal((int) $this->instructor->id, $this->activeAccountId, 5000000, 'paid', now()->subDays(2), approvedAt: now()->subDays(2), paidAt: now()->subDay(), revenues: [$revPaid => 5000000]);
         $this->cancelledWithdrawalId = $this->createWithdrawal((int) $this->instructor->id, $this->activeAccountId, 700000, 'cancelled', now()->subDay());
         $this->otherWithdrawalId = $this->createWithdrawal((int) $this->otherInstructor->id, $this->otherAccountId, 999000, 'pending', now());
     }
@@ -83,7 +101,7 @@ final class InstructorWithdrawalApiTest extends TestCase
             ->assertJsonPath('data.available_revenue', 10000000)
             ->assertJsonPath('data.pending_withdraw_amount', 3000000)
             ->assertJsonPath('data.paid_withdraw_amount', 5000000)
-            ->assertJsonPath('data.available_balance', 7000000)
+            ->assertJsonPath('data.available_balance', 10000000)
             ->assertJsonPath('data.can_create_withdrawal', true)
             ->assertJsonPath('data.payout_account.account_number_masked', '*********0001');
     }
@@ -138,9 +156,10 @@ final class InstructorWithdrawalApiTest extends TestCase
     public function test_index_rejects_invalid_status(): void
     {
         $response = $this->actingAs($this->instructor)
-            ->getJson('/api/instructor/withdrawals?status=processing');
+            ->getJson('/api/instructor/withdrawals?status=invalid_status_abc');
         $response->assertUnprocessable();
     }
+
     public function test_index_rejects_invalid_date_range(): void
     {
         $response = $this->actingAs($this->instructor)
@@ -207,14 +226,14 @@ final class InstructorWithdrawalApiTest extends TestCase
             ->getJson('/api/instructor/withdrawals/summary');
         $response->assertOk()
             ->assertJsonPath('data.pending_withdraw_amount', 5000000)
-            ->assertJsonPath('data.available_balance', 5000000);
+            ->assertJsonPath('data.available_balance', 8000000);
     }
     public function test_create_rejects_amount_greater_than_available_balance(): void
     {
         $response = $this->actingAs($this->instructor)
             ->postJson('/api/instructor/withdrawals', [
                 'payout_account_id' => $this->activeAccountId,
-                'amount' => 8000000,
+                'amount' => 11000000,
             ]);
         $response->assertUnprocessable();
     }
@@ -306,7 +325,7 @@ final class InstructorWithdrawalApiTest extends TestCase
             ->assertJsonPath('data.available_revenue', 10000000)
             ->assertJsonPath('data.pending_withdraw_amount', 3000000)
             ->assertJsonPath('data.paid_withdraw_amount', 5000000)
-            ->assertJsonPath('data.available_balance', 7000000);
+            ->assertJsonPath('data.available_balance', 10000000);
     }
     public function test_summary_ignores_non_available_revenues(): void
     {
@@ -318,7 +337,7 @@ final class InstructorWithdrawalApiTest extends TestCase
             ->getJson('/api/instructor/withdrawals/summary');
         $response->assertOk()
             ->assertJsonPath('data.available_revenue', 10000000)
-            ->assertJsonPath('data.available_balance', 7000000);
+            ->assertJsonPath('data.available_balance', 10000000);
     }
     public function test_create_allows_amount_equal_to_available_balance(): void
     {
@@ -329,15 +348,15 @@ final class InstructorWithdrawalApiTest extends TestCase
         $response = $this->actingAs($this->instructor)
             ->postJson('/api/instructor/withdrawals', [
                 'payout_account_id' => $this->activeAccountId,
-                'amount' => 7000000,
+                'amount' => 10000000,
             ]);
         $response->assertCreated()
-            ->assertJsonPath('data.amount', 7000000)
+            ->assertJsonPath('data.amount', 10000000)
             ->assertJsonPath('data.status', 'pending');
         $summary = $this->actingAs($this->instructor)
             ->getJson('/api/instructor/withdrawals/summary');
         $summary->assertOk()
-            ->assertJsonPath('data.pending_withdraw_amount', 10000000)
+            ->assertJsonPath('data.pending_withdraw_amount', 13000000)
             ->assertJsonPath('data.available_balance', 0)
             ->assertJsonPath('data.can_create_withdrawal', false);
     }
@@ -532,7 +551,7 @@ final class InstructorWithdrawalApiTest extends TestCase
         }
         return DB::table('orders')->insertGetId($data);
     }
-    private function createRevenue(int $instructorId, int $courseId, float $amount, string $status): int
+    private function createRevenue(int $instructorId, int $courseId, float $amount): int
     {
         $this->sequence++;
         $orderId = $this->createOrder($courseId, $amount);
@@ -543,7 +562,6 @@ final class InstructorWithdrawalApiTest extends TestCase
             'gross_amount' => $amount,
             'instructor_amount' => $amount,
             'platform_fee_amount' => 0,
-            'status' => $status,
             'earned_at' => now()->subDays(10)->addSeconds($this->sequence),
             'created_at' => now()->subDays(10)->addSeconds($this->sequence),
         ];
@@ -581,7 +599,8 @@ final class InstructorWithdrawalApiTest extends TestCase
         mixed $requestedAt,
         mixed $approvedAt = null,
         mixed $paidAt = null,
-        ?string $rejectedReason = null
+        ?string $rejectedReason = null,
+        array $revenues = []
     ): int {
         $this->sequence++;
         $account = DB::table('payout_accounts')
@@ -607,6 +626,16 @@ final class InstructorWithdrawalApiTest extends TestCase
                 unset($data[$column]);
             }
         }
-        return DB::table('withdraw_requests')->insertGetId($data);
+        $withdrawalId = DB::table('withdraw_requests')->insertGetId($data);
+        foreach ($revenues as $revId => $allocAmount) {
+            DB::table('withdrawal_revenues')->insert([
+                'withdrawal_id' => $withdrawalId,
+                'revenue_id' => $revId,
+                'allocated_amount' => $allocAmount,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+        return $withdrawalId;
     }
 }

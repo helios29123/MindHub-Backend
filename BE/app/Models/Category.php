@@ -6,38 +6,44 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Category extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_INACTIVE = 'inactive';
 
     protected $fillable = [
-        "parent_id",
-        "name",
-        "slug",
-        "description",
-        "sort_order",
-        "status",
+        'parent_id',
+        'name',
+        'slug',
+        'description',
+        'sort_order',
+        'status',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'parent_id' => 'integer',
+            'sort_order' => 'integer',
+        ];
+    }
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(Category::class, "parent_id");
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('sort_order');
     }
 
     public function courses(): BelongsToMany
     {
-        return $this->belongsToMany(
-            Course::class,
-            "course_categories",
-            "category_id",
-            "course_id",
-        )->withPivot("created_at");
-    }
-
-    public function children(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(Category::class, "parent_id");
+        return $this->belongsToMany(Course::class, 'course_categories', 'category_id', 'course_id');
     }
 }

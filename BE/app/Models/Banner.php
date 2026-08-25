@@ -4,15 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Banner extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_INACTIVE = 'inactive';
 
     protected $fillable = [
         'title',
         'image_url',
+        'image_public_id',
         'target_url',
         'position',
         'sort_order',
@@ -21,8 +24,12 @@ class Banner extends Model
         'status',
     ];
 
-    protected $casts = [
-        'start_at' => 'datetime',
-        'end_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'sort_order' => 'integer',
+            'start_at' => 'datetime',
+            'end_at' => 'datetime',
+        ];
+    }
 }

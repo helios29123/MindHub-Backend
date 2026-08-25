@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Course;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class RevenueReportTest extends TestCase
@@ -15,10 +16,10 @@ class RevenueReportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        \Schema::disableForeignKeyConstraints();
-        if (!\Schema::hasColumn('sessions', 'refresh_token_hash')) {
-            \Schema::dropIfExists('sessions');
-            \Schema::create('sessions', function ($table) {
+        Schema::disableForeignKeyConstraints();
+        if (!Schema::hasColumn('sessions', 'refresh_token_hash')) {
+            Schema::dropIfExists('sessions');
+            Schema::create('sessions', function ($table) {
                 $table->id();
                 $table->foreignId('user_id');
                 $table->string('refresh_token_hash', 255)->nullable();
@@ -31,8 +32,8 @@ class RevenueReportTest extends TestCase
             });
         }
 
-        if (!\Schema::hasTable('orders')) {
-            \Schema::create('orders', function ($table) {
+        if (!Schema::hasTable('orders')) {
+            Schema::create('orders', function ($table) {
                 $table->id();
                 $table->foreignId('user_id');
                 $table->foreignId('course_id');
@@ -162,6 +163,7 @@ class RevenueReportTest extends TestCase
             'course_id' => $courseId,
             'order_code' => 'ORD-1',
             'status' => 'paid',
+            'payment_status' => 'paid',
             'paid_at' => '2026-06-15 10:00:00',
             'amount' => 1000,
         ]);
@@ -171,6 +173,7 @@ class RevenueReportTest extends TestCase
             'course_id' => $courseId,
             'order_code' => 'ORD-2',
             'status' => 'paid',
+            'payment_status' => 'paid',
             'paid_at' => '2026-06-15 12:00:00',
             'amount' => 500,
         ]);
@@ -180,12 +183,13 @@ class RevenueReportTest extends TestCase
             'course_id' => $courseId,
             'order_code' => 'ORD-3',
             'status' => 'paid',
+            'payment_status' => 'paid',
             'paid_at' => '2026-06-16 10:00:00',
             'amount' => 2000,
         ]);
 
         $response = $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->getJson('/api/admin/reports/revenue?group_by=day&sort_by=date&sort_direction=asc');
+            ->getJson("/api/admin/reports/revenue?group_by=day&sort_by=date&sort_direction=asc&course_id={$courseId}&date_from=2026-06-15&date_to=2026-06-16");
         
         $response->assertStatus(200);
         $data = $response->json('data');
