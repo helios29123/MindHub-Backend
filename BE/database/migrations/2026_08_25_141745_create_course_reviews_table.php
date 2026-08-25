@@ -6,20 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('course_reviews', function (Blueprint $table) {
+            $table->charset = 'utf8mb4';
+            $table->collation = 'utf8mb4_vietnamese_ci';
+
             $table->id();
-            $table->timestamps();
+            $table->unsignedBigInteger('order_id')->unique('uq_course_reviews_order');
+            $table->unsignedTinyInteger('rating');
+            $table->text('comment')->nullable();
+            $table->dateTime('edited_at')->nullable();
+            $table->dateTime('created_at')->useCurrent();
+            $table->dateTime('updated_at')->useCurrent()->useCurrentOnUpdate();
+            
+            $table->foreign('order_id', 'fk_course_reviews_order')->references('id')->on('orders')->restrictOnDelete()->cascadeOnUpdate();
         });
+
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('course_reviews');
