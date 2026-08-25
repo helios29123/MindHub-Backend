@@ -36,7 +36,7 @@ class InstructorWithdrawalValidationTest extends TestCase
 
     private function generateAuthToken(User $user): string
     {
-        $session = \App\Models\AuthSession::create([
+        $session = \App\Models\Session::create([
             'user_id' => $user->id,
             'refresh_token_hash' => 'dummy_' . uniqid(),
             'expires_at' => now()->addDays(1),

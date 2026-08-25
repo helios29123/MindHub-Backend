@@ -214,6 +214,19 @@ class InstructorProfileTest extends TestCase
 
     public function test_can_upload_avatar(): void
     {
+        $mockCloudinary = \Mockery::mock(\App\Services\Storage\CloudinaryService::class);
+        $mockCloudinary->shouldReceive('uploadImage')
+            ->once()
+            ->andReturn([
+                'url' => 'https://example.com/avatar.jpg',
+                'public_id' => 'avatars/avatar_123',
+                'width' => 200,
+                'height' => 200,
+                'format' => 'jpg',
+                'bytes' => 1024,
+            ]);
+        $this->app->instance(\App\Services\Storage\CloudinaryService::class, $mockCloudinary);
+
         \Illuminate\Support\Facades\Storage::fake('public');
 
         $file = \Illuminate\Http\UploadedFile::fake()->image('avatar.jpg', 200, 200);

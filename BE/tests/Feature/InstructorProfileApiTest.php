@@ -504,12 +504,25 @@ final class InstructorProfileApiTest extends TestCase
 
     public function test_avatar_upload_updates_users_table_database_column(): void
     {
+        $mockCloudinary = \Mockery::mock(\App\Services\Storage\CloudinaryService::class);
+        $mockCloudinary->shouldReceive('uploadImage')
+            ->once()
+            ->andReturn([
+                'url' => 'https://example.com/storage/avatars/avatar.jpg',
+                'public_id' => 'avatars/avatar_123',
+                'width' => 200,
+                'height' => 200,
+                'format' => 'jpg',
+                'bytes' => 1024,
+            ]);
+        $this->app->instance(\App\Services\Storage\CloudinaryService::class, $mockCloudinary);
+
         \Illuminate\Support\Facades\Storage::fake('public');
 
         $file = \Illuminate\Http\UploadedFile::fake()->image('avatar.jpg', 300, 300);
 
         $response = $this->actingAs($this->instructor)
-            ->postJson('/api/account/avatar', [
+            ->postJson('/api/instructor/profile/avatar', [
                 'avatar' => $file,
             ]);
 
@@ -529,7 +542,7 @@ final class InstructorProfileApiTest extends TestCase
     public function test_select_avatar_preset_updates_users_table_database_column(): void
     {
         $response = $this->actingAs($this->instructor)
-            ->patchJson('/api/account/avatar/preset', [
+            ->patchJson('/api/instructor/profile/avatar/preset', [
                 'preset_id' => 'avatar_01',
             ]);
 
@@ -547,7 +560,7 @@ final class InstructorProfileApiTest extends TestCase
         $this->instructor->save();
 
         $response = $this->actingAs($this->instructor)
-            ->deleteJson('/api/account/avatar');
+            ->deleteJson('/api/instructor/profile/avatar');
 
         $response->assertOk()
             ->assertJsonPath('success', true);

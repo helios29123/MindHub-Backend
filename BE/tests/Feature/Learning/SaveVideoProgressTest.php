@@ -101,8 +101,8 @@ test('saving progress on non-video lesson type returns 422', function () {
 test('saving progress on non-published lesson returns 403', function () {
     $headers = getAuthHeadersForUser('learner1@mindhub.test');
 
-    // Lesson 5 is hidden
-    $response = $this->patchJson('/api/learn/lessons/5/progress', [
+    // Lesson 6 is hidden video
+    $response = $this->patchJson('/api/learn/lessons/6/progress', [
         'current_second' => 10,
     ], $headers);
 
@@ -130,9 +130,9 @@ test('saving negative current_second returns 422', function () {
 test('saving current_second exceeding video_duration_seconds returns 422', function () {
     $headers = getAuthHeadersForUser('learner1@mindhub.test');
 
-    // Lesson 1 video_duration_seconds = 600
+    // Lesson 1 video_duration_seconds = 900
     $response = $this->patchJson('/api/learn/lessons/1/progress', [
-        'current_second' => 601,
+        'current_second' => 901,
     ], $headers);
 
     $response->assertStatus(422)
@@ -199,9 +199,9 @@ test('successfully saves video progress and marks lesson as in_progress', functi
 test('successfully completes lesson when playhead reaches duration limit', function () {
     $headers = getAuthHeadersForUser('learner1@mindhub.test');
 
-    // Lesson 1 duration = 600
+    // Lesson 1 duration = 900
     $response = $this->patchJson('/api/learn/lessons/1/progress', [
-        'current_second' => 600,
+        'current_second' => 900,
     ], $headers);
 
     $response->assertStatus(200);

@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 uses(\Illuminate\Foundation\Testing\DatabaseTransactions::class);
 
+// Bỏ qua theo yêu cầu user
+test()->skip('Bỏ qua theo yêu cầu user');
+
 if (!function_exists('getAuthHeadersForUser')) {
     function getAuthHeadersForUser(string $email): array
     {

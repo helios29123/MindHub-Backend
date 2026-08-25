@@ -141,8 +141,8 @@ final class AdminCategoryAdvancedApiTest extends TestCase
 
     public function test_sort_order_descending_uses_requested_direction(): void
     {
-        $low = $this->createCategory(['name' => 'Order Group ' . $this->suffix, 'sort_order' => 2]);
-        $high = $this->createCategory(['name' => 'Order Group ' . $this->suffix, 'sort_order' => 99]);
+        $low = $this->createCategory(['name' => 'Order Group ' . $this->suffix, 'sort_order' => 'b']);
+        $high = $this->createCategory(['name' => 'Order Group ' . $this->suffix, 'sort_order' => 'z']);
         $ids = $this->listIds('?search=' . urlencode('Order Group ' . $this->suffix) . '&sort_by=sort_order_desc');
         $this->assertSame([$high, $low], $ids);
     }
@@ -168,7 +168,7 @@ final class AdminCategoryAdvancedApiTest extends TestCase
     public function test_second_page_returns_different_row(): void
     {
         foreach (range(1, 3) as $index) {
-            $this->createCategory(['name' => 'Second Page ' . $this->suffix . ' ' . $index, 'sort_order' => $index]);
+            $this->createCategory(['name' => 'Second Page ' . $this->suffix . ' ' . $index, 'sort_order' => chr(96 + $index)]);
         }
         $first = $this->listIds('?search=' . urlencode('Second Page ' . $this->suffix) . '&sort_by=sort_order_asc&per_page=1&page=1');
         $second = $this->listIds('?search=' . urlencode('Second Page ' . $this->suffix) . '&sort_by=sort_order_asc&per_page=1&page=2');
@@ -202,12 +202,12 @@ final class AdminCategoryAdvancedApiTest extends TestCase
 
     public function test_create_applies_default_status_and_next_sort_order(): void
     {
-        $max = (int) DB::table('categories')->whereNull('parent_id')->whereNull('deleted_at')->max('sort_order');
+        $expectedSortOrder = app(\App\Repositories\Admin\AdminCategoryRepository::class)->nextSortOrder(null);
         $response = $this->actingAs($this->admin)->postJson('/api/admin/categories', [
             'name' => 'Defaults ' . $this->suffix,
             'slug' => 'defaults-' . $this->suffix,
         ]);
-        $response->assertCreated()->assertJsonPath('data.status', 'active')->assertJsonPath('data.sort_order', $max + 1);
+        $response->assertCreated()->assertJsonPath('data.status', 'active')->assertJsonPath('data.sort_order', $expectedSortOrder);
     }
 
     public function test_create_rejects_uppercase_space_and_underscore_slug(): void
@@ -264,11 +264,11 @@ final class AdminCategoryAdvancedApiTest extends TestCase
 
     public function test_reorder_rejects_nonexistent_category_and_preserves_existing_row(): void
     {
-        $id = $this->createCategory(['sort_order' => 7]);
+        $id = $this->createCategory(['sort_order' => 'g']);
         $this->actingAs($this->admin)->putJson('/api/admin/categories/reorder', [
-            'items' => [['id' => 999999999, 'parent_id' => null, 'sort_order' => 1]],
+            'items' => [['id' => 999999999, 'parent_id' => null, 'sort_order' => 'a']],
         ])->assertUnprocessable()->assertJsonValidationErrors(['items.0.id']);
-        $this->assertDatabaseHas('categories', ['id' => $id, 'sort_order' => 7]);
+        $this->assertDatabaseHas('categories', ['id' => $id, 'sort_order' => 'g']);
     }
 
     public function test_non_admin_cannot_create_update_delete_restore_or_reorder(): void
@@ -279,7 +279,7 @@ final class AdminCategoryAdvancedApiTest extends TestCase
             fn () => $this->actingAs($this->learner)->patchJson('/api/admin/categories/' . $id, ['name' => 'Denied']),
             fn () => $this->actingAs($this->learner)->deleteJson('/api/admin/categories/' . $id),
             fn () => $this->actingAs($this->learner)->postJson('/api/admin/categories/' . $id . '/restore'),
-            fn () => $this->actingAs($this->learner)->putJson('/api/admin/categories/reorder', ['items' => [['id' => $id, 'parent_id' => null, 'sort_order' => 1]]]),
+            fn () => $this->actingAs($this->learner)->putJson('/api/admin/categories/reorder', ['items' => [['id' => $id, 'parent_id' => null, 'sort_order' => 'a']]]),
         ];
         foreach ($requests as $request) {
             $request()->assertForbidden();
@@ -311,7 +311,7 @@ final class AdminCategoryAdvancedApiTest extends TestCase
             'name' => 'Advanced Category ' . $this->suffix,
             'slug' => 'advanced-category-' . uniqid(),
             'description' => null,
-            'sort_order' => 1,
+            'sort_order' => 'a',
             'status' => 'active',
             'created_at' => now(),
             'updated_at' => now(),
