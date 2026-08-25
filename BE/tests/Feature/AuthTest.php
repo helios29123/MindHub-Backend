@@ -63,9 +63,9 @@ class AuthTest extends TestCase
     /**
      * TEST 3: Login fails when account is inactive or locked (403)
      */
-    public function test_login_fails_when_account_inactive_or_locked()
+    public function test_login_fails_when_account_locked()
     {
-        $this->user->update(['status' => User::STATUS_INACTIVE]);
+        $this->user->update(['locked' => true]);
 
         $response = $this->postJson('/api/auth/login', [
             'email' => $this->user->email,

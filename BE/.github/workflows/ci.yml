@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
+          MARIADB_DATABASE: test
+        ports:
+          - 3306:3306
+        options: --health-cmd="healthcheck.sh --su-mysql --connect --innodb_initialized" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_mysql, bcmath, soap, intl, gd, exif, iconv, imagick
+        coverage: none
+
+    - name: Copy .env
+      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+    - name: Install Dependencies
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Generate key
+      run: php artisan key:generate
+
+    - name: Configure Database for Testing
+      run: |
+        echo "" >> .env
+        echo "DB_CONNECTION=mariadb" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
+        echo "DB_PORT=3306" >> .env
+        echo "DB_DATABASE=test" >> .env
+        echo "DB_USERNAME=root" >> .env
+        echo "DB_PASSWORD=" >> .env
+
+    - name: Run Migrations and Seed Database
+      run: php artisan migrate:fresh --seed --env=testing
+
+    - name: Execute tests (Unit and Feature tests) via Pest
+      run: php -d memory_limit=-1 ./vendor/bin/pest

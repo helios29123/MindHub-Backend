@@ -60,9 +60,9 @@ class InactiveLearnersReportTest extends TestCase
 
     private function generateAuthToken(User $user)
     {
-        $session = \App\Models\AuthSession::create([
+        $session = \App\Models\Session::create([
             'user_id' => $user->id,
-            'refresh_token_hash' => 'dummy',
+            'refresh_token_hash' => 'dummy_' . uniqid(),
             'expires_at' => now()->addDays(1),
         ]);
         
@@ -337,9 +337,17 @@ class InactiveLearnersReportTest extends TestCase
             'status' => 'published'
         ]);
         
+        $sectionId = DB::table('course_sections')->insertGetId([
+            'course_id' => $courseId,
+            'title' => 'Section 1',
+            'sort_order' => 1
+        ]);
+        
         $lessonId = DB::table('lessons')->insertGetId([
             'course_id' => $courseId,
-            'title' => 'Lesson 1'
+            'course_section_id' => $sectionId,
+            'title' => 'Lesson 1',
+            'slug' => 'lesson-1-' . uniqid()
         ]);
         
         $learnerInactive = $this->createUser('learner');

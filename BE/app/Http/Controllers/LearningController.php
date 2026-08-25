@@ -45,7 +45,7 @@ final class LearningController extends Controller
         return ApiResponse::paginated(
             MyCourseResource::collection($enrollments),
             $enrollments,
-            'L蘯･y danh sﾃ｡ch khﾃｳa h盻皇 ﾄ妥｣ mua thﾃnh cﾃｴng.'
+            'Lấy danh sách khóa học đã mua thành công.'
         );
     }
 
@@ -76,7 +76,7 @@ final class LearningController extends Controller
                 'last_accessed_at' => $details['progress']->last_accessed_at ? $details['progress']->last_accessed_at->toISOString() : null,
                 'current_second' => (int) $details['current_second'],
             ]
-        ], 'Thao tﾃ｡c thﾃnh cﾃｴng');
+        ], 'Thao tác thành công');
     }
 
     /**
@@ -90,16 +90,16 @@ final class LearningController extends Controller
     {
         $lesson = \App\Models\Lesson::find($id);
         if (!$lesson) {
-            throw new \App\Exceptions\BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
         $course = $lesson->course;
         if (!$course) {
-            throw new \App\Exceptions\BusinessException('Khﾃｴng tﾃｬm th蘯･y d盻ｯ li盻㎡.', 404);
+            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
         }
 
         if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('N盻冓 dung chﾆｰa kh蘯｣ d盻･ng.', 403);
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
         }
 
         $user = request()->user();
@@ -107,7 +107,7 @@ final class LearningController extends Controller
         if ($lesson->is_preview) {
             return ApiResponse::success([
                 'can_access' => true,
-            ], 'Thao tﾃ｡c thﾃnh cﾃｴng');
+            ], 'Thao tác thành công');
         }
 
         if (!$user) {
@@ -117,12 +117,12 @@ final class LearningController extends Controller
         $hasAccess = $user->can('canAccessLesson', $lesson);
 
         if (!$hasAccess) {
-            throw new \App\Exceptions\BusinessException('B蘯｡n chﾆｰa cﾃｳ quy盻］ truy c蘯ｭp n盻冓 dung nﾃy.', 403);
+            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
         }
 
         return ApiResponse::success([
             'can_access' => true,
-        ], 'Thao tﾃ｡c thﾃnh cﾃｴng');
+        ], 'Thao tác thành công');
     }
 
     /**
@@ -143,7 +143,7 @@ final class LearningController extends Controller
             $secResource->additional(['progresses' => $result['progresses']]);
         });
 
-        return ApiResponse::success($resource, 'L蘯･y l盻・trﾃｬnh khﾃｳa h盻皇 thﾃnh cﾃｴng');
+        return ApiResponse::success($resource, 'Lấy lộ trình khóa học thành công');
     }
 
     /**
@@ -174,7 +174,7 @@ final class LearningController extends Controller
                 'last_accessed_at' => $details['progress']->last_accessed_at ? $details['progress']->last_accessed_at->toISOString() : null,
                 'current_second' => (int) $details['current_second'],
             ]
-        ], 'Thao tﾃ｡c thﾃnh cﾃｴng');
+        ], 'Thao tác thành công');
     }
 
     /**
@@ -205,7 +205,7 @@ final class LearningController extends Controller
                 'current_second' => (int) $details['current_second'],
             ] : null,
             'current_second' => (int) $details['current_second'],
-        ], 'Thao tﾃ｡c thﾃnh cﾃｴng');
+        ], 'Thao tác thành công');
     }
 
     /**
@@ -236,7 +236,7 @@ final class LearningController extends Controller
                 'last_accessed_at' => $details['progress']->last_accessed_at ? $details['progress']->last_accessed_at->toISOString() : null,
                 'current_second' => (int) $details['current_second'],
             ]
-        ], 'Thao tﾃ｡c thﾃnh cﾃｴng');
+        ], 'Thao tác thành công');
     }
 
     /**
@@ -252,7 +252,7 @@ final class LearningController extends Controller
         
         $progress = $this->learningService->getCourseProgress($user, $id);
 
-        return ApiResponse::success($progress, 'Thao tﾃ｡c thﾃnh cﾃｴng');
+        return ApiResponse::success($progress, 'Thao tác thành công');
     }
 
     /**
@@ -273,7 +273,7 @@ final class LearningController extends Controller
         return ApiResponse::paginated(
             LearningLogResource::collection($logs),
             $logs,
-            'Thao tﾃ｡c thﾃnh cﾃｴng'
+            'Thao tác thành công'
         );
     }
 
@@ -292,7 +292,7 @@ final class LearningController extends Controller
 
         return ApiResponse::success(
             new AssetDownloadResource($asset),
-            'Thao tﾃ｡c thﾃnh cﾃｴng'
+            'Thao tác thành công'
         );
     }
 
@@ -311,7 +311,7 @@ final class LearningController extends Controller
 
         return ApiResponse::success(
             $nextLesson ? new LearningLessonResource($nextLesson) : null,
-            'Thao tﾃ｡c thﾃnh cﾃｴng'
+            'Thao tác thành công'
         );
     }
 
@@ -336,7 +336,7 @@ final class LearningController extends Controller
             return ApiResponse::paginated(
                 \App\Http\Resources\Learning\RuleBasedRecommendationResource::collection($result),
                 $result,
-                'L蘯･y g盻｣i ﾃｽ khﾃｳa h盻皇 thﾃnh cﾃｴng.'
+                'Lấy gợi ý khóa học thành công.'
             );
         }
         
@@ -346,7 +346,7 @@ final class LearningController extends Controller
         
         return ApiResponse::success(
             \App\Http\Resources\Learning\RuleBasedRecommendationResource::collection($result),
-            'L蘯･y g盻｣i ﾃｽ khﾃｳa h盻皇 thﾃnh cﾃｴng.'
+            'Lấy gợi ý khóa học thành công.'
         );
     }
 
@@ -370,7 +370,7 @@ final class LearningController extends Controller
         
         return ApiResponse::success(
             \App\Http\Resources\Learning\NextLearningPathResource::collection($result),
-            'L蘯･y g盻｣i ﾃｽ l盻・trﾃｬnh h盻皇 t蘯ｭp thﾃnh cﾃｴng.'
+            'Lấy gợi ý lộ trình học tập thành công.'
         );
     }
 
@@ -394,7 +394,7 @@ final class LearningController extends Controller
         
         return ApiResponse::success(
             \App\Http\Resources\Learning\DynamicAlertResource::collection($result),
-            'L蘯･y c蘯｣nh bﾃ｡o thﾃnh cﾃｴng.'
+            'Lấy cảnh báo thành công.'
         );
     }
 
@@ -416,7 +416,7 @@ final class LearningController extends Controller
         
         return ApiResponse::success(
             new \App\Http\Resources\Learning\SignedAssetUrlResource($result),
-            'L蘯･y URL b蘯｣o m蘯ｭt thﾃnh cﾃｴng.'
+            'Lấy URL bảo mật thành công.'
         );
     }
     public function dashboard(\App\Http\Requests\Learning\LearningDashboardRequest $request, \App\Services\Learning\LearningDashboardService $service): \Illuminate\Http\JsonResponse

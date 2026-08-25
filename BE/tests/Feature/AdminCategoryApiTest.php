@@ -81,7 +81,7 @@ final class AdminCategoryApiTest extends TestCase
             'name' => 'Child category',
             'slug' => 'child-create-' . $this->suffix,
             'parent_id' => $rootId,
-            'sort_order' => 1,
+            'sort_order' => 'a',
             'status' => 'active',
         ]);
 
@@ -203,12 +203,12 @@ final class AdminCategoryApiTest extends TestCase
 
         $this->actingAs($this->admin)->putJson('/api/admin/categories/reorder', [
             'items' => [
-                ['id' => $rootId, 'parent_id' => null, 'sort_order' => 2],
-                ['id' => $childId, 'parent_id' => $rootId, 'sort_order' => 1],
+                ['id' => $rootId, 'parent_id' => null, 'sort_order' => 'b'],
+                ['id' => $childId, 'parent_id' => $rootId, 'sort_order' => 'a'],
             ],
         ])->assertOk();
 
-        $this->assertDatabaseHas('categories', ['id' => $childId, 'parent_id' => $rootId, 'sort_order' => 1]);
+        $this->assertDatabaseHas('categories', ['id' => $childId, 'parent_id' => $rootId, 'sort_order' => 'a']);
     }
 
     public function test_reorder_rejects_duplicate_id_and_invalid_sort_order(): void
@@ -217,26 +217,26 @@ final class AdminCategoryApiTest extends TestCase
 
         $this->actingAs($this->admin)->putJson('/api/admin/categories/reorder', [
             'items' => [
-                ['id' => $categoryId, 'parent_id' => null, 'sort_order' => 0],
-                ['id' => $categoryId, 'parent_id' => null, 'sort_order' => 2],
+                ['id' => $categoryId, 'parent_id' => null, 'sort_order' => 0], // integer 0 is invalid type
+                ['id' => $categoryId, 'parent_id' => null, 'sort_order' => 'b'],
             ],
         ])->assertUnprocessable()->assertJsonValidationErrors(['items.0.id', 'items.0.sort_order']);
     }
 
     public function test_reorder_rolls_back_all_items_when_tree_is_invalid(): void
     {
-        $rootId = $this->createCategory(['slug' => 'rollback-root-' . $this->suffix, 'sort_order' => 1]);
-        $childId = $this->createCategory(['parent_id' => $rootId, 'slug' => 'rollback-child-' . $this->suffix, 'sort_order' => 1]);
+        $rootId = $this->createCategory(['slug' => 'rollback-root-' . $this->suffix, 'sort_order' => 'a']);
+        $childId = $this->createCategory(['parent_id' => $rootId, 'slug' => 'rollback-child-' . $this->suffix, 'sort_order' => 'a']);
 
         $this->actingAs($this->admin)->putJson('/api/admin/categories/reorder', [
             'items' => [
-                ['id' => $rootId, 'parent_id' => $childId, 'sort_order' => 9],
-                ['id' => $childId, 'parent_id' => $rootId, 'sort_order' => 8],
+                ['id' => $rootId, 'parent_id' => $childId, 'sort_order' => 'i'],
+                ['id' => $childId, 'parent_id' => $rootId, 'sort_order' => 'h'],
             ],
         ])->assertUnprocessable();
 
-        $this->assertDatabaseHas('categories', ['id' => $rootId, 'parent_id' => null, 'sort_order' => 1]);
-        $this->assertDatabaseHas('categories', ['id' => $childId, 'parent_id' => $rootId, 'sort_order' => 1]);
+        $this->assertDatabaseHas('categories', ['id' => $rootId, 'parent_id' => null, 'sort_order' => 'a']);
+        $this->assertDatabaseHas('categories', ['id' => $childId, 'parent_id' => $rootId, 'sort_order' => 'a']);
     }
 
     public function test_unauthenticated_user_cannot_access_admin_categories(): void
@@ -268,7 +268,7 @@ final class AdminCategoryApiTest extends TestCase
             'name' => 'Category ' . $this->suffix,
             'slug' => 'category-' . uniqid(),
             'description' => null,
-            'sort_order' => 1,
+            'sort_order' => 'a',
             'status' => 'active',
             'created_at' => now(),
             'updated_at' => now(),

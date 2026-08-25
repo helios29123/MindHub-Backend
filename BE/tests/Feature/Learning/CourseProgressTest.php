@@ -143,7 +143,7 @@ test('invalid ID path parameter (0) returns 422', function () {
 test('successfully calculates course progress and updates enrollment percentage', function () {
     $headers = getAuthHeadersForUser('learner1@mindhub.test');
 
-    // Create completed progress for 2 out of 4 published lessons in course 1
+    // Create completed progress for 2 out of 3 published lessons in course 1
     LessonProgress::create([
         'user_id' => 4,
         'lesson_id' => 1,
@@ -164,15 +164,15 @@ test('successfully calculates course progress and updates enrollment percentage'
             'message' => 'Thao tác thành công',
             'data' => [
                 'course_id' => 1,
-                'total_lessons' => 4,
+                'total_lessons' => 3,
                 'completed_lessons' => 2,
-                'progress_percent' => 50.00,
+                'progress_percent' => 66.67,
             ]
         ]);
 
     // Check database
     $enrollment = Enrollment::where('user_id', 4)->where('course_id', 1)->first();
-    $this->assertEquals(50.00, (float) $enrollment->progress_percent);
+    $this->assertEquals(66.67, (float) $enrollment->progress_percent);
     $this->assertEquals(Enrollment::STATUS_ACTIVE, $enrollment->status);
     $this->assertNull($enrollment->completed_at);
 });
@@ -180,8 +180,8 @@ test('successfully calculates course progress and updates enrollment percentage'
 test('automatically transitions enrollment to completed at 100 percent progress', function () {
     $headers = getAuthHeadersForUser('learner1@mindhub.test');
 
-    // Complete all 4 published lessons in course 1
-    for ($i = 1; $i <= 4; $i++) {
+    // Complete all 3 published lessons in course 1
+    for ($i = 1; $i <= 3; $i++) {
         LessonProgress::create([
             'user_id' => 4,
             'lesson_id' => $i,
@@ -206,7 +206,7 @@ test('automatically transitions enrollment to completed at 100 percent progress'
     $this->assertNotNull($enrollment->completed_at);
 
     // Unmark lesson progress and check enrollment reverts to active
-    LessonProgress::where('user_id', 4)->where('lesson_id', 4)->update([
+    LessonProgress::where('user_id', 4)->where('lesson_id', 3)->update([
         'status' => 'in_progress',
     ]);
 
@@ -215,12 +215,12 @@ test('automatically transitions enrollment to completed at 100 percent progress'
         ->assertJson([
             'success' => true,
             'data' => [
-                'progress_percent' => 75.00,
+                'progress_percent' => 66.67,
             ]
         ]);
 
     $enrollment->refresh();
-    $this->assertEquals(75.00, (float) $enrollment->progress_percent);
+    $this->assertEquals(66.67, (float) $enrollment->progress_percent);
     $this->assertEquals(Enrollment::STATUS_ACTIVE, $enrollment->status);
     $this->assertNull($enrollment->completed_at);
 });

@@ -11,7 +11,7 @@ final class InstructorWithdrawalIndexRequest extends FormRequest
     {
         return [
             'type' => ['nullable', 'string', 'in:all,automatic_payout,early_withdrawal,automatic,early'],
-            'status' => ['nullable', 'string', 'in:all,pending,approved,processing,manual_required,paid,rejected,cancelled,failed'],
+            'status' => ['nullable', 'string', 'in:all,pending,approved,processing,manual_required,paid,rejected,cancelled,failed,queued,blocked,ready_to_pay'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'page' => ['nullable', 'integer', 'min:1'],

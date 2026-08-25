@@ -293,11 +293,36 @@ test('courseReviews API returns filtered results based on status and reviewed_da
     $headers = getAuthHeadersForAdminTest('admin@mindhub.test');
 
     // Create courses with different statuses
-    $instructor = User::factory()->create(['role' => 'instructor']);
-    $pending = \App\Models\Course::factory()->create(['status' => 'pending_review', 'instructor_id' => $instructor->id]);
-    $approved = \App\Models\Course::factory()->create(['status' => 'approved', 'instructor_id' => $instructor->id, 'updated_at' => now()]);
-    $published = \App\Models\Course::factory()->create(['status' => 'published', 'instructor_id' => $instructor->id, 'updated_at' => now()]);
-    $rejected = \App\Models\Course::factory()->create(['status' => 'rejected', 'instructor_id' => $instructor->id, 'updated_at' => now()]);
+    $instructorId = DB::table('users')->insertGetId([
+        'full_name' => 'Instructor',
+        'email' => 'instructor_' . uniqid() . '@example.com',
+        'password_hash' => bcrypt('password'),
+        'role' => 'instructor',
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $createCourse = function ($status) use ($instructorId) {
+        return DB::table('courses')->insertGetId([
+            'instructor_id' => $instructorId,
+            'title' => 'Test course ' . uniqid(),
+            'slug' => 'test-course-' . uniqid(),
+            'price' => 0,
+            'level' => 'beginner',
+            'language' => 'vi',
+            'status' => $status,
+            'total_duration_seconds' => 0,
+            'is_featured' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    };
+
+    $pending = $createCourse('pending_review');
+    $approved = $createCourse('approved');
+    $published = $createCourse('published');
+    $rejected = $createCourse('rejected');
     
     // Test without status
     $resAll = $this->getJson('/api/admin/course-reviews', $headers);

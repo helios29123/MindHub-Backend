@@ -66,24 +66,17 @@ final class AuthenticateSessionToken
             $request->setUserResolver(fn () => $user);
             $request->attributes->set('auth_session', $session);
             $request->attributes->set('auth_token_payload', $tokenPayload);
+            $request->setUserResolver(fn () => $user);
+            $request->attributes->set('auth_session', $session);
+            $request->attributes->set('auth_token_payload', $tokenPayload);
             return $next($request);
-        } catch (BusinessException $exception) {
-            $user = Auth::user() ?: $request->user();
-            if ($user) {
-                $request->setUserResolver(fn () => $user);
-                return $next($request);
-            }
+        } catch (\App\Exceptions\BusinessException $exception) {
             return ApiResponse::error(
                 $exception->getMessage(),
                 $exception->getErrors(),
                 $exception->getStatusCode()
             );
         } catch (\Throwable $e) {
-            $user = Auth::user() ?: $request->user();
-            if ($user) {
-                $request->setUserResolver(fn () => $user);
-                return $next($request);
-            }
             return ApiResponse::error('Unauthenticated.', [], 401);
         }
     }

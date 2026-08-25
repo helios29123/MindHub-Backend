@@ -107,19 +107,28 @@ test('admin can list homepage banners paginated', function () {
             'success',
             'message',
             'data' => [
-                '*' => [
-                    'id',
-                    'banner_id',
-                    'title',
-                    'image_url',
-                    'target_url',
-                    'position',
-                    'sort_order',
-                    'start_at',
-                    'end_at',
-                    'status',
-                    'created_at',
-                    'updated_at',
+                'summary' => [
+                    'total_banners',
+                    'active_count',
+                    'scheduled_count',
+                    'expired_count',
+                    'inactive_count',
+                ],
+                'items' => [
+                    '*' => [
+                        'id',
+                        'banner_id',
+                        'title',
+                        'image_url',
+                        'target_url',
+                        'position',
+                        'sort_order',
+                        'start_at',
+                        'end_at',
+                        'status',
+                        'created_at',
+                        'updated_at',
+                    ]
                 ]
             ],
             'meta' => [
@@ -163,13 +172,13 @@ test('admin can create a new homepage banner', function () {
     ], $headers);
 
     $response->assertStatus(200);
-    $bannerId = json_decode($response->json('data'), true)['id'];
+    $bannerId = $response->json('data.id');
 
     $response->assertJson([
         'success' => true,
         'message' => 'Thao tác thành công',
-        'data' => json_encode(['id' => $bannerId, 'status' => 'updated']),
     ]);
+    $response->assertJsonPath('data.id', $bannerId);
 
     $this->assertDatabaseHas('banners', [
         'id' => $bannerId,
@@ -196,8 +205,8 @@ test('admin can update a homepage banner', function () {
         ->assertJson([
             'success' => true,
             'message' => 'Thao tác thành công',
-            'data' => json_encode(['id' => 1, 'status' => 'updated']),
-        ]);
+        ])
+        ->assertJsonPath('data.id', 1);
 
     $this->assertDatabaseHas('banners', [
         'id' => 1,

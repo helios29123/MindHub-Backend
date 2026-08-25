@@ -44,11 +44,24 @@ final class CourseViewTest extends TestCase
         ]);
     }
 
+    private function generateAuthToken(User $user)
+    {
+        $session = \App\Models\Session::create([
+            'user_id' => $user->id,
+            'refresh_token_hash' => 'dummy_' . uniqid(),
+            'expires_at' => now()->addDays(1),
+        ]);
+        
+        $tokenService = $this->app->make(\App\Services\Auth\AccessTokenService::class);
+        return $tokenService->createAccessToken($user->id, $session->id)['token'];
+    }
+
     public function test_course_detail_page_logs_view(): void
     {
         $initialCount = CourseView::where('course_id', $this->courseId)->count();
+        $token = $this->generateAuthToken($this->otherUser);
 
-        $response = $this->actingAs($this->otherUser)->getJson("/api/courses/{$this->courseSlug}");
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)->getJson("/api/courses/{$this->courseSlug}");
 
         $response->assertStatus(200);
 
@@ -58,11 +71,12 @@ final class CourseViewTest extends TestCase
 
     public function test_anti_duplicate_rule_prevents_view_increment_within_30_minutes(): void
     {
-        $this->actingAs($this->otherUser)->getJson("/api/courses/{$this->courseSlug}");
+        $token = $this->generateAuthToken($this->otherUser);
+        $this->withHeader('Authorization', 'Bearer ' . $token)->getJson("/api/courses/{$this->courseSlug}");
         $count1 = CourseView::where('course_id', $this->courseId)->count();
 
         // Immediate refresh / second request within 30 minutes
-        $this->actingAs($this->otherUser)->getJson("/api/courses/{$this->courseSlug}");
+        $this->withHeader('Authorization', 'Bearer ' . $token)->getJson("/api/courses/{$this->courseSlug}");
         $count2 = CourseView::where('course_id', $this->courseId)->count();
 
         $this->assertEquals($count1, $count2);
@@ -71,8 +85,9 @@ final class CourseViewTest extends TestCase
     public function test_instructor_viewing_own_course_does_not_log_view(): void
     {
         $initialCount = CourseView::where('course_id', $this->courseId)->count();
+        $token = $this->generateAuthToken($this->instructor);
 
-        $this->actingAs($this->instructor)->getJson("/api/courses/{$this->courseSlug}");
+        $this->withHeader('Authorization', 'Bearer ' . $token)->getJson("/api/courses/{$this->courseSlug}");
 
         $newCount = CourseView::where('course_id', $this->courseId)->count();
         $this->assertEquals($initialCount, $newCount);
@@ -80,14 +95,15 @@ final class CourseViewTest extends TestCase
 
     public function test_explicit_post_view_endpoint(): void
     {
-        $response = $this->actingAs($this->otherUser)
+        $token = $this->generateAuthToken($this->otherUser);
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->postJson("/api/courses/{$this->courseId}/view");
 
         $response->assertStatus(200)
             ->assertJsonPath('data.recorded', true);
 
         // Immediate second call should return false due to anti-duplicate
-        $response2 = $this->actingAs($this->otherUser)
+        $response2 = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->postJson("/api/courses/{$this->courseId}/view");
 
         $response2->assertStatus(200)

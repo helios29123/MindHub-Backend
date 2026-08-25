@@ -34,9 +34,9 @@ class CourseDashboardTest extends TestCase
 
     private function generateAuthToken(User $user)
     {
-        $session = \App\Models\AuthSession::create([
+        $session = \App\Models\Session::create([
             'user_id' => $user->id,
-            'refresh_token_hash' => 'dummy',
+            'refresh_token_hash' => 'dummy_' . uniqid(),
             'expires_at' => now()->addDays(1),
         ]);
         

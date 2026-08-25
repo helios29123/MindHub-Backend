@@ -33,9 +33,9 @@ class AdminUserManagementTest extends TestCase
 
     private function generateAuthToken(User $user)
     {
-        $session = \App\Models\AuthSession::create([
+        $session = \App\Models\Session::create([
             'user_id' => $user->id,
-            'refresh_token_hash' => 'dummy',
+            'refresh_token_hash' => 'dummy_' . uniqid(),
             'expires_at' => now()->addDays(1),
         ]);
         
@@ -94,17 +94,20 @@ class AdminUserManagementTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    '*' => [
-                        'id', 'full_name', 'email', 'phone', 'role', 'status',
-                        'locked', 'created_at', 'updated_at'
+                    'summary',
+                    'items' => [
+                        '*' => [
+                            'id', 'full_name', 'email', 'phone', 'role', 'status',
+                            'locked', 'created_at', 'updated_at'
+                        ]
                     ]
                 ],
                 'meta' => ['current_page', 'per_page', 'total']
             ]);
             
         // password_hash should not be present
-        $this->assertArrayNotHasKey('password_hash', $response->json('data.0'));
-        $this->assertArrayNotHasKey('password_reset', $response->json('data.0'));
+        $this->assertArrayNotHasKey('password_hash', $response->json('data.items.0'));
+        $this->assertArrayNotHasKey('password_reset', $response->json('data.items.0'));
     }
 
     public function test_per_page_exceeds_max()
@@ -130,9 +133,11 @@ class AdminUserManagementTest extends TestCase
             ->getJson('/api/admin/users?role=learner&status=inactive');
             
         $response->assertStatus(200);
-        $this->assertCount(1, $response->json('data'));
-        $this->assertEquals('learner', $response->json('data.0.role'));
-        $this->assertEquals('inactive', $response->json('data.0.status'));
+        $this->assertNotEmpty($response->json('data.items'));
+        foreach ($response->json('data.items') as $item) {
+            $this->assertEquals('learner', $item['role']);
+            $this->assertEquals('inactive', $item['status']);
+        }
         
         $response2 = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/admin/users?role=invalid_role');

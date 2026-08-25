@@ -7,7 +7,7 @@ use Cloudinary\Api\Upload\UploadApi;
 use Illuminate\Http\UploadedFile;
 use RuntimeException;
 
-final class CloudinaryService
+class CloudinaryService
 {
     private Cloudinary $cloudinary;
 
