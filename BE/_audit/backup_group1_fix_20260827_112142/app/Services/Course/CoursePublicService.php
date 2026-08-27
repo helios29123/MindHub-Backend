@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Course;
 
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Wishlist;
-use App\Repositories\SessionRepository;
-use App\Repositories\UserRepository;
-use App\Services\AccessTokenService;
+use App\Repositories\Auth\SessionRepository;
+use App\Repositories\User\UserRepository;
+use App\Services\Auth\AccessTokenService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class CoursePublicService
@@ -21,8 +21,13 @@ class CoursePublicService
 
     public function show(string $slug): array
     {
-        // 1. Fetch the course
-        $course = Course::where('slug', $slug)
+        // 1. Fetch the course by slug or numeric ID
+        $course = Course::where(function ($query) use ($slug) {
+                $query->where('slug', $slug);
+                if (is_numeric($slug)) {
+                    $query->orWhere('id', (int) $slug);
+                }
+            })
             ->where('status', 'published')
             ->first();
 
@@ -32,6 +37,9 @@ class CoursePublicService
 
         // 2. Resolve optional authenticated user from Bearer token
         $user = $this->resolveOptionalUser();
+
+        // 2.1 Record course view asynchronously / safely (Removed)
+        // app(\App\Services\Course\CourseViewService::class)->recordView($course, $user, request());
 
         // 3. Eager load relationships with status and ordering constraints
         $course->load([
@@ -235,13 +243,43 @@ class CoursePublicService
                     ->join('courses', 'courses.id', '=', 'orders.course_id')
                     ->whereColumn('courses.instructor_id', 'users.id')
                     ->where('courses.status', 'published')
-                    ->whereNull('course_reviews.deleted_at')
                     ->select(\Illuminate\Support\Facades\DB::raw('AVG(course_reviews.rating)'));
             }, 'average_rating')
             ->first();
 
         // 4. Resolve optional authenticated user
         $currentUser = $this->resolveOptionalUser();
+
+        // Enforce Privacy Visibility Settings
+        $userModel = $user->fresh() ?? $user;
+        $rawMeta = $userModel->locked_reason;
+        $meta = ($rawMeta && str_starts_with(trim((string)$rawMeta), '{')) ? json_decode((string)$rawMeta, true) : [];
+        $privacy = data_get($meta, 'privacy_settings', [
+            'profile_visibility' => 'public',
+        ]);
+
+        $visibility = $privacy['profile_visibility'] ?? 'public';
+        $isOwner = $currentUser && (int)$currentUser->id === (int)$id;
+
+        if (!$isOwner) {
+            if ($visibility === 'private') {
+                throw new \App\Exceptions\BusinessException('Hồ sơ giảng viên này đang ở chế độ riêng tư.', 403);
+            }
+            if ($visibility === 'students_only') {
+                $isStudent = false;
+                if ($currentUser) {
+                    $isStudent = \Illuminate\Support\Facades\DB::table('enrollments')
+                        ->join('courses', 'courses.id', '=', 'enrollments.course_id')
+                        ->where('courses.instructor_id', $user->id)
+                        ->where('enrollments.user_id', $currentUser->id)
+                        ->whereIn('enrollments.status', ['active', 'completed'])
+                        ->exists();
+                }
+                if (!$isStudent) {
+                    throw new \App\Exceptions\BusinessException('Hồ sơ giảng viên này chỉ dành cho học viên đã đăng ký khóa học.', 403);
+                }
+            }
+        }
 
         foreach ($instructor->publishedCourses as $course) {
             $isEnrolled = false;
@@ -313,6 +351,9 @@ class CoursePublicService
         $plainAccessToken = request()->bearerToken();
 
         if (!$plainAccessToken) {
+            if (request()->header('Authorization')) {
+                return request()->user();
+            }
             return null;
         }
 

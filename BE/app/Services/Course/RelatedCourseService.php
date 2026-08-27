@@ -71,7 +71,7 @@ class RelatedCourseService
             }
 
             // 2. Same level (+40)
-            if ($currentCourse->level && $candidate->level === $currentCourse->level) {
+            if ($currentCourse->course_level && $candidate->course_level === $currentCourse->course_level) {
                 $score += 40;
                 $reasons[] = 'Cùng cấp độ';
             }

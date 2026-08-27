@@ -28,10 +28,7 @@ final class InstructorLessonRepository
         }
         if (!empty($filters['search'])) {
             $search = trim((string) $filters['search']);
-            $query->where(function ($query) use ($search): void {
-                $query->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('slug', 'like', '%' . $search . '%');
-            });
+            $query->where('title', 'like', '%' . $search . '%');
         }
         $sortBy = $filters['sort_by'] ?? 'sort_order';
         $sortDirection = $filters['sort_direction'] ?? 'asc';
@@ -90,14 +87,5 @@ final class InstructorLessonRepository
             ->max('sort_order');
         return ((int) $maxSortOrder) + 1;
     }
-    public function slugExistsInCourse(int $courseId, string $slug, ?int $ignoreLessonId = null): bool
-    {
-        return Lesson::query()
-            ->where('course_id', $courseId)
-            ->where('slug', $slug)
-            ->when($ignoreLessonId !== null, function ($query) use ($ignoreLessonId): void {
-                $query->whereKeyNot($ignoreLessonId);
-            })
-            ->exists();
-    }
 }
+

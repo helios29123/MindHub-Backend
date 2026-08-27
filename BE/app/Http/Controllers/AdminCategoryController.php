@@ -70,13 +70,6 @@ final class AdminCategoryController extends Controller
         return ApiResponse::success(null, 'Xóa danh mục thành công.');
     }
 
-    public function restore(int $id): JsonResponse
-    {
-        return ApiResponse::success(
-            new AdminCategoryResource($this->categoryService->restore($id)),
-            'Khôi phục danh mục thành công.'
-        );
-    }
 
     public function reorder(ReorderCategoryRequest $request): JsonResponse
     {

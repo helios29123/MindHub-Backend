@@ -24,7 +24,6 @@ class CatalogService
 
         $faqs = \App\Models\Faq::query()
             ->where('status', 'active')
-            ->whereNull('deleted_at')
             ->orderBy('sort_order')
             ->orderByDesc('id')
             ->limit(6)
@@ -35,7 +34,6 @@ class CatalogService
             ->where('rating', '>=', 4)
             ->whereNotNull('comment')
             ->where('comment', '!=', '')
-            ->whereNull('deleted_at')
             ->orderByDesc('rating')
             ->orderByDesc('id')
             ->limit(6)
@@ -43,7 +41,6 @@ class CatalogService
 
         $vouchers = \App\Models\Coupon::query()
             ->where('status', 'active')
-            ->whereNull('deleted_at')
             ->where(function ($q) use ($now) {
                 $q->whereNull('start_at')->orWhere('start_at', '<=', $now);
             })
@@ -55,10 +52,10 @@ class CatalogService
             ->get();
 
         $stats = [
-            'total_courses' => \App\Models\Course::query()->where('status', 'published')->whereNull('deleted_at')->count(),
-            'total_students' => \App\Models\User::query()->where('role', 'learner')->whereNull('deleted_at')->count(),
-            'total_instructors' => \App\Models\User::query()->where('role', 'instructor')->whereNull('deleted_at')->count(),
-            'total_reviews' => \App\Models\CourseReview::query()->whereNull('deleted_at')->count(),
+            'total_courses' => \App\Models\Course::query()->where('status', 'published')->count(),
+            'total_students' => \App\Models\User::query()->where('role', 'learner')->count(),
+            'total_instructors' => \App\Models\User::query()->where('role', 'instructor')->count(),
+            'total_reviews' => \App\Models\CourseReview::query()->count(),
         ];
 
         return [
@@ -130,3 +127,4 @@ class CatalogService
         return $this->courseRepository->suggestions($keyword, $limit);
     }
 }
+

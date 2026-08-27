@@ -275,7 +275,6 @@ class AdminService
                 'sections',
                 'lessons',
                 'reviews as review_count',
-                'comments as comment_count' => fn($q) => $q->where('comments.status', 'visible'),
                 'orders as paid_order_count' => fn($q) => $q->where('orders.status', 'paid'),
             ])
             ->withSum([
@@ -307,7 +306,7 @@ class AdminService
         }
 
         if (!empty($queryParams['level'])) {
-            $query->where('level', $queryParams['level']);
+            $query->where('course_level', $queryParams['level']);
         }
 
         $sortBy = $queryParams['sort_by'] ?? 'created_at';
@@ -423,11 +422,15 @@ class AdminService
                 'intro_video_url',
                 'price',
                 'sale_price',
-                'level',
+                'course_level',
                 'language',
                 'requirements',
                 'outcomes'
             ];
+
+            if (isset($data['level']) && !isset($data['course_level'])) {
+                $data['course_level'] = $data['level'];
+            }
 
             $updateData = [];
             foreach ($allowedFields as $field) {
@@ -474,7 +477,7 @@ class AdminService
     public function getUsers(array $queryParams): LengthAwarePaginator
     {
         $perPage = min((int) ($queryParams['per_page'] ?? 15), 100);
-        $query = \App\Models\User::query()->whereNull('deleted_at');
+        $query = \App\Models\User::query();
 
         if (!empty($queryParams['search'])) {
             $search = trim((string) $queryParams['search']);
@@ -504,7 +507,7 @@ class AdminService
 
     public function getUsersReport(array $queryParams): array
     {
-        $baseQuery = \App\Models\User::query()->whereNull('deleted_at');
+        $baseQuery = \App\Models\User::query();
 
         $totalUsers = (clone $baseQuery)->count();
         $totalLearners = (clone $baseQuery)->where('role', 'learner')->count();
@@ -544,7 +547,7 @@ class AdminService
             'new_users_in_period' => $newUsersInPeriod,
         ];
 
-        $query = \App\Models\User::query()->whereNull('deleted_at');
+        $query = \App\Models\User::query();
 
         if (!empty($queryParams['search'])) {
             $search = trim((string) $queryParams['search']);
@@ -630,7 +633,7 @@ class AdminService
 
     public function getUser(int $id): \App\Models\User
     {
-        $user = \App\Models\User::where('id', $id)->whereNull('deleted_at')->first();
+        $user = \App\Models\User::where('id', $id)->first();
 
         if (!$user) {
             throw new BusinessException('Không tìm thấy dữ liệu.', 404);

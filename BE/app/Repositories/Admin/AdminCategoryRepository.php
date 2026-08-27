@@ -8,7 +8,6 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 final class AdminCategoryRepository
 {
@@ -17,11 +16,7 @@ final class AdminCategoryRepository
         $query = Category::query()->with('parent')->withCount('courses');
         $status = $filters['status'] ?? null;
 
-        if ($status === 'deleted') {
-            $query->onlyTrashed();
-        } elseif ($status === 'all_with_deleted') {
-            $query->withTrashed();
-        } elseif (in_array($status, ['active', 'inactive'], true)) {
+        if (in_array($status, ['active', 'inactive'], true)) {
             $query->where('status', $status);
         }
 
@@ -101,19 +96,11 @@ final class AdminCategoryRepository
             ->groupBy('course_id')
             ->pluck('aggregate', 'course_id');
 
-        $reviewQuery = DB::table('course_reviews')->whereIn('course_id', $courseIds);
-        if (Schema::hasColumn('course_reviews', 'deleted_at')) {
-            $reviewQuery->whereNull('deleted_at');
-        }
         $reviewAggregates = empty($courseIds)
             ? collect()
             : DB::table('course_reviews as reviews')
             ->join('orders as orders', 'orders.id', '=', 'reviews.order_id')
             ->whereIn('orders.course_id', $courseIds)
-            ->when(
-                Schema::hasColumn('course_reviews', 'deleted_at'),
-                fn($query) => $query->whereNull('reviews.deleted_at')
-            )
             ->selectRaw(
                 'orders.course_id as course_id,
              COUNT(reviews.id) as review_count,
@@ -149,15 +136,7 @@ final class AdminCategoryRepository
         return $category;
     }
 
-    public function findWithTrashed(int $id): ?Category
-    {
-        return Category::withTrashed()->find($id);
-    }
 
-    public function findOnlyTrashed(int $id): ?Category
-    {
-        return Category::onlyTrashed()->find($id);
-    }
 
     public function findActiveRoot(int $id): ?Category
     {
@@ -185,22 +164,10 @@ final class AdminCategoryRepository
         return $category->courses()->exists();
     }
 
-    public function nextSortOrder(?int $parentId): string
+    public function nextSortOrder(?int $parentId): int
     {
         $max = Category::query()->where('parent_id', $parentId)->max('sort_order');
-        if (!$max) {
-            return 'a';
-        }
-        
-        $len = strlen($max);
-        $lastChar = $max[$len - 1];
-        
-        if ($lastChar < 'z') {
-            $max[$len - 1] = chr(ord($lastChar) + 1);
-            return $max;
-        } else {
-            return $max . 'n';
-        }
+        return ((int) $max) + 1;
     }
 
     public function allParentMap(): Collection

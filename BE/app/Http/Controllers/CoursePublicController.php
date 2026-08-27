@@ -246,24 +246,6 @@ class CoursePublicController extends Controller
         );
     }
 
-    public function recordView(mixed $id): JsonResponse
-    {
-        $course = \App\Models\Course::find($id);
-
-        if (!$course) {
-            return ApiResponse::error('Không tìm thấy khóa học.', [], 404);
-        }
-
-        $recorded = app(\App\Services\Course\CourseViewService::class)->recordView(
-            $course,
-            request()->user(),
-            request()
-        );
-
-        return ApiResponse::success([
-            'recorded' => $recorded,
-        ], 'Ghi nhận lượt xem thành công.');
-    }
 
     public function aiSearch(): JsonResponse
     {

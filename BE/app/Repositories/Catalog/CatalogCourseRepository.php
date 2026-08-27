@@ -35,8 +35,7 @@ class CatalogCourseRepository
 
             $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryIds) {
                 $categoryQuery->whereIn('categories.id', $categoryIds)
-                    ->where('categories.status', 'active')
-                    ->whereNull('categories.deleted_at');
+                    ->where('categories.status', 'active');
             });
         }
 
@@ -53,20 +52,18 @@ class CatalogCourseRepository
 
                 $query->whereHas('categories', function (Builder $categoryQuery) use ($categoryIds) {
                     $categoryQuery->whereIn('categories.id', $categoryIds)
-                        ->where('categories.status', 'active')
-                        ->whereNull('categories.deleted_at');
+                        ->where('categories.status', 'active');
                 });
             } else {
                 $query->whereHas('categories', function (Builder $categoryQuery) use ($categorySlug) {
                     $categoryQuery->where('categories.slug', $categorySlug)
-                        ->where('categories.status', 'active')
-                        ->whereNull('categories.deleted_at');
+                        ->where('categories.status', 'active');
                 });
             }
         }
 
         if (! empty($filters['level'])) {
-            $query->where('courses.level', $filters['level']);
+            $query->where('courses.course_level', $filters['level']);
         }
 
         if (! empty($filters['instructor_id'])) {
@@ -190,13 +187,11 @@ class CatalogCourseRepository
                 DB::raw("'course' as type"),
             ])
             ->where('courses.status', 'published')
-            ->whereNull('courses.deleted_at')
             ->whereExists(function ($query) {
                 $query->selectRaw('1')
                     ->from('users')
                     ->whereColumn('users.id', 'courses.instructor_id')
                     ->where('users.status', 'active')
-                    ->whereNull('users.deleted_at')
                     ->where(function ($userQuery) {
                         $userQuery->whereNull('users.locked')
                             ->orWhere('users.locked', 0);
@@ -214,10 +209,6 @@ class CatalogCourseRepository
         /*
          * Gợi ý danh mục:
          * Chỉ lấy danh mục active và có ít nhất 1 khóa học public hợp lệ.
-         *
-         * Có 2 trường hợp:
-         * 1. Danh mục đó có khóa học trực tiếp.
-         * 2. Danh mục cha có danh mục con đang có khóa học.
          */
         $categories = DB::table('categories')
             ->select([
@@ -227,12 +218,7 @@ class CatalogCourseRepository
                 DB::raw("'category' as type"),
             ])
             ->where('categories.status', 'active')
-            ->whereNull('categories.deleted_at')
             ->where(function ($categoryQuery) {
-                /*
-                 * Trường hợp 1:
-                 * Danh mục hiện tại có khóa học public trực tiếp.
-                 */
                 $categoryQuery->whereExists(function ($exists) {
                     $exists->selectRaw('1')
                         ->from('course_categories')
@@ -240,19 +226,12 @@ class CatalogCourseRepository
                         ->join('users', 'users.id', '=', 'courses.instructor_id')
                         ->whereColumn('course_categories.category_id', 'categories.id')
                         ->where('courses.status', 'published')
-                        ->whereNull('courses.deleted_at')
                         ->where('users.status', 'active')
-                        ->whereNull('users.deleted_at')
                         ->where(function ($userQuery) {
                             $userQuery->whereNull('users.locked')
                                 ->orWhere('users.locked', 0);
                         });
                 })
-
-                /*
-                 * Trường hợp 2:
-                 * Danh mục cha không có khóa trực tiếp nhưng danh mục con có khóa học public.
-                 */
                 ->orWhereExists(function ($exists) {
                     $exists->selectRaw('1')
                         ->from('categories as child_categories')
@@ -261,11 +240,8 @@ class CatalogCourseRepository
                         ->join('users', 'users.id', '=', 'courses.instructor_id')
                         ->whereColumn('child_categories.parent_id', 'categories.id')
                         ->where('child_categories.status', 'active')
-                        ->whereNull('child_categories.deleted_at')
                         ->where('courses.status', 'published')
-                        ->whereNull('courses.deleted_at')
                         ->where('users.status', 'active')
-                        ->whereNull('users.deleted_at')
                         ->where(function ($userQuery) {
                             $userQuery->whereNull('users.locked')
                                 ->orWhere('users.locked', 0);
@@ -295,34 +271,24 @@ class CatalogCourseRepository
                 'categories:id,parent_id,name,slug,description,sort_order',
             ])
             ->where('courses.status', 'published')
-            ->whereNull('courses.deleted_at')
-
-            /*
-             * Rule mới:
-             * Instructor bị khóa/inactive thì course không hiển thị public.
-             */
             ->whereHas('instructor', function (Builder $instructorQuery) {
                 $instructorQuery->where('users.status', 'active')
-                    ->whereNull('users.deleted_at')
                     ->where(function (Builder $lockedQuery) {
                         $lockedQuery->whereNull('users.locked')
                             ->orWhere('users.locked', 0);
                     });
             })
-
             ->select('courses.*')
             ->selectSub(function ($query) {
                 $query->from('orders')
                     ->join('course_reviews', 'course_reviews.order_id', '=', 'orders.id')
                     ->whereColumn('orders.course_id', 'courses.id')
-                    ->whereNull('course_reviews.deleted_at')
                     ->selectRaw('COALESCE(AVG(course_reviews.rating), 0)');
             }, 'average_rating')
             ->selectSub(function ($query) {
                 $query->from('orders')
                     ->join('course_reviews', 'course_reviews.order_id', '=', 'orders.id')
                     ->whereColumn('orders.course_id', 'courses.id')
-                    ->whereNull('course_reviews.deleted_at')
                     ->selectRaw('COUNT(course_reviews.id)');
             }, 'reviews_count')
             ->selectSub(function ($query) {
@@ -372,3 +338,4 @@ class CatalogCourseRepository
         };
     }
 }
+

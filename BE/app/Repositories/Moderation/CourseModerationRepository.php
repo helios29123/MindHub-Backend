@@ -22,8 +22,7 @@ class CourseModerationRepository
                     ]);
                 },
                 'categories'
-            ])
-            ->with('categories');
+            ]);
 
         $status = $filters['status'] ?? null;
         if ($status === 'pending') {

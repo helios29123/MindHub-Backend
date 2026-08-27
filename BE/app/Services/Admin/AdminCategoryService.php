@@ -78,38 +78,6 @@ final class AdminCategoryService
         });
     }
 
-    public function restore(int $id): Category
-    {
-        return DB::transaction(function () use ($id): Category {
-            $category = $this->categoryRepository->findOnlyTrashed($id);
-
-            if (!$category) {
-                throw new BusinessException('Không tìm thấy danh mục đã xóa.', 404);
-            }
-
-            $slugConflict = Category::withTrashed()
-                ->where('slug', $category->slug)
-                ->where('id', '<>', $category->id)
-                ->exists();
-
-            if ($slugConflict) {
-                throw new BusinessException('Không thể khôi phục vì slug đã được sử dụng.', 409);
-            }
-
-            if ($category->parent_id !== null) {
-                $parent = $this->categoryRepository->find((int) $category->parent_id);
-                if (!$parent || $parent->parent_id !== null) {
-                    throw new BusinessException('Không thể khôi phục vì danh mục cha không còn hợp lệ.', 409);
-                }
-            }
-
-            $category->restore();
-
-            return $category->refresh()
-                ->load(['parent', 'children'])
-                ->loadCount('courses');
-        });
-    }
 
     public function reorder(array $items): void
     {
@@ -137,7 +105,7 @@ final class AdminCategoryService
             foreach ($items as $item) {
                 Category::query()->whereKey((int) $item['id'])->update([
                     'parent_id' => $item['parent_id'],
-                    'sort_order' => (string) $item['sort_order'],
+                    'sort_order' => (int) $item['sort_order'],
                     'updated_at' => now(),
                 ]);
             }

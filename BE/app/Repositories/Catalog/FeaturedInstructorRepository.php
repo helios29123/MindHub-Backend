@@ -51,7 +51,6 @@ class FeaturedInstructorRepository
                     ->join('courses', 'courses.id', '=', 'orders.course_id')
                     ->whereColumn('courses.instructor_id', 'users.id')
                     ->where('courses.status', 'published')
-                    ->whereNull('course_reviews.deleted_at')
                     ->select(DB::raw('AVG(course_reviews.rating)'));
             }, 'average_rating')
             ->selectSub(function ($query) use ($timeframe) {
@@ -77,3 +76,4 @@ class FeaturedInstructorRepository
             ->orderByDesc('published_courses_count');
     }
 }
+

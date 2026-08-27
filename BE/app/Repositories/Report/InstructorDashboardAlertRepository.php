@@ -51,7 +51,7 @@ class InstructorDashboardAlertRepository
             ->join('lessons', 'lessons.id', '=', 'q.lesson_id')
             ->join('courses', 'courses.id', '=', 'lessons.course_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereNull('q.parent_id')
             ->where('q.status', 'visible')
             ->where('learner.role', 'learner')

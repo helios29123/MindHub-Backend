@@ -30,7 +30,7 @@ class ModerationService
         }
 
         if ($targetType === 'review') {
-            $review = CourseReview::withTrashed()->find($id);
+            $review = CourseReview::find($id);
 
             if (!$review) {
                 throw new BusinessException('Không tìm thấy dữ liệu.', 404);
@@ -38,8 +38,6 @@ class ModerationService
 
             if ($status === 'deleted') {
                 $review->delete();
-            } else {
-                $review->restore();
             }
 
             return $review;
@@ -66,8 +64,8 @@ class ModerationService
         $rating = $params['rating'] ?? 'all';
 
         // 1. Fetch comments and reviews with their relations
-        $comments = Comment::with(['user', 'lesson.course', 'order.course', 'parent'])->get();
-        $reviews = CourseReview::withTrashed()->with(['order.user', 'order.course'])->get();
+        $comments = Comment::with(['user', 'lesson.course', 'parent'])->get();
+        $reviews = CourseReview::with(['order.user', 'order.course'])->get();
 
         // 2. Helper warning evaluator
         $evaluateWarningType = function ($content) {
@@ -176,7 +174,6 @@ class ModerationService
                 'parent_id' => $c->parent_id ? (int) $c->parent_id : null,
                 'created_at' => $c->created_at ? $c->created_at->toISOString() : null,
                 'updated_at' => $c->updated_at ? $c->updated_at->toISOString() : null,
-                'deleted_at' => null,
                 'user' => $c->user ? [
                     'id' => (int) $c->user->id,
                     'full_name' => $c->user->full_name ?: $c->user->name,
@@ -224,7 +221,7 @@ class ModerationService
         $reviewsList = $reviews->map(function ($r) use ($evaluateWarningType, $now) {
             $userObj = $r->order ? $r->order->user : null;
             $courseObj = $r->order ? $r->order->course : null;
-            $statusVal = $r->deleted_at ? 'deleted' : 'visible';
+            $statusVal = 'visible';
 
             $createdAtMs = $r->created_at ? $r->created_at->timestamp * 1000 : 0;
             $nowMs = $now->timestamp * 1000;
@@ -270,7 +267,6 @@ class ModerationService
                 'parent_id' => null,
                 'created_at' => $r->created_at ? $r->created_at->toISOString() : null,
                 'updated_at' => $r->updated_at ? $r->updated_at->toISOString() : null,
-                'deleted_at' => $r->deleted_at ? $r->deleted_at->toISOString() : null,
                 'user' => $userObj ? [
                     'id' => (int) $userObj->id,
                     'full_name' => $userObj->full_name ?: $userObj->name,

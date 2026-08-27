@@ -116,7 +116,7 @@ class InstructorRevenueRepository
             ->join('courses', 'courses.id', '=', 'revenues.course_id')
             ->leftJoin('orders', 'orders.id', '=', 'revenues.order_id')
             ->where('revenues.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at');
+            ;
 
         if (!empty($filters['course_id'])) {
             $query->where('revenues.course_id', (int) $filters['course_id']);

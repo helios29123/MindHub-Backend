@@ -5,6 +5,7 @@ namespace App\Services\Faq;
 use App\Models\Faq;
 use App\Models\Course;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FaqAdminService
 {
@@ -200,14 +201,10 @@ class FaqAdminService
         }
 
         return DB::transaction(function () use ($faq) {
-            // Free up sort_order and soft-delete pivot links
+            // Delete pivot links
             DB::table('course_faqs')
                 ->where('faq_id', $faq->id)
-                ->whereNull('deleted_at')
-                ->update([
-                    'sort_order' => DB::raw('faq_id + 1000000'),
-                    'deleted_at' => now()
-                ]);
+                ->delete();
 
             return (bool) $faq->delete();
         });
@@ -253,39 +250,35 @@ class FaqAdminService
     /**
      * Custom sync courses to support soft delete and prevent sort_order collisions.
      */
-    private function customSyncCourses($faq, array $courseIds): void
+    private function customSyncCourses(Faq $faq, array $courseIds): void
     {
         $now = now();
         
-        // 1. Get existing pivot records (including soft-deleted ones)
+        // 1. Get existing pivot records
         $existing = DB::table('course_faqs')
             ->where('faq_id', $faq->id)
             ->get()
             ->keyBy('course_id');
 
-        // 2. Determine which courses to detach (soft delete)
+        // 2. Determine which courses to detach (delete)
         foreach ($existing as $courseId => $pivot) {
-            if (!in_array($courseId, $courseIds) && $pivot->deleted_at === null) {
+            if (!in_array($courseId, $courseIds)) {
                 DB::table('course_faqs')
                     ->where('faq_id', $faq->id)
                     ->where('course_id', $courseId)
-                    ->update([
-                        'sort_order' => $faq->id + 1000000 + $courseId, // ensure uniqueness
-                        'deleted_at' => $now
-                    ]);
+                    ->delete();
             }
         }
 
-        // 3. Determine which courses to attach / restore / update
+        // 3. Determine which courses to attach / update
         foreach ($courseIds as $index => $courseId) {
             if (isset($existing[$courseId])) {
-                // If it exists (active or soft-deleted), restore it and update sort_order
+                // If it exists, update sort_order
                 DB::table('course_faqs')
                     ->where('faq_id', $faq->id)
                     ->where('course_id', $courseId)
                     ->update([
                         'sort_order' => $index,
-                        'deleted_at' => null,
                         'created_at' => $existing[$courseId]->created_at ?? $now
                     ]);
             } else {
@@ -295,7 +288,6 @@ class FaqAdminService
                     'course_id' => $courseId,
                     'sort_order' => $index,
                     'created_at' => $now,
-                    'deleted_at' => null
                 ]);
             }
         }
@@ -315,7 +307,6 @@ class FaqAdminService
 
         // Count unique courses that have at least one active FAQ linked
         $linkedCourses = DB::table('course_faqs')
-            ->whereNull('deleted_at')
             ->distinct('course_id')
             ->count('course_id');
 

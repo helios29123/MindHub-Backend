@@ -8,7 +8,6 @@ class BannerRepository
     return \App\Models\Banner::query()
         ->where('status', 'active')
         ->where('position', 'home')
-        ->whereNull('deleted_at')
         ->where(function ($query) {
             $query->whereNull('start_at')
                 ->orWhere('start_at', '<=', now());
@@ -22,3 +21,4 @@ class BannerRepository
         ->get();
 }
 }
+

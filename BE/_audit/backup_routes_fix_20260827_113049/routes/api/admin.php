@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminCategoryController;
+use App\Http\Controllers\AdminFaqController;
 use App\Http\Controllers\AdminCourseApprovalController;
 use App\Http\Controllers\AdminCreditPackageController;
 use App\Http\Controllers\AdminInstructorCreditController;
@@ -18,6 +20,17 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         |--------------------------------------------------------------------------
         */
         Route::get('/orders', [AdminController::class, 'orders']);
+        Route::get('/orders/{id}', [AdminController::class, 'showOrder'])
+            ->whereNumber('id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Revenues
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/revenues', [AdminController::class, 'revenues']);
+        Route::get('/revenues/{id}', [AdminController::class, 'showRevenue'])
+            ->whereNumber('id');
 
         // Health-check kết nối admin (frontend: ApiService.verifyAdminAuthConnection)
         Route::get('/test', fn () => response()->json([
@@ -30,7 +43,7 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         | Course moderation / review
         |--------------------------------------------------------------------------
         */
-        Route::get('/course-reviews', [AdminModerationController::class, 'pendingCourses']);
+        Route::get('/course-reviews', [AdminModerationController::class, 'courseReviews']);
 
         /*
          * Rule mới:
@@ -42,6 +55,11 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
 
         Route::patch('/courses/{courseId}/reject', [AdminCourseApprovalController::class, 'reject'])
             ->whereNumber('courseId');
+
+        Route::get('/moderation/items', [AdminModerationController::class, 'moderationItems']);
+        Route::get('/moderation/items/{targetType}/{id}', [AdminModerationController::class, 'moderationItemDetail'])
+            ->whereIn('targetType', ['comment', 'review'])
+            ->whereNumber('id');
 
         Route::patch('/moderation/items/{id}', [AdminModerationController::class, 'moderateItem'])
             ->whereNumber('id');
@@ -95,20 +113,25 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         | Categories
         |--------------------------------------------------------------------------
         */
-        Route::get('/categories', [AdminController::class, 'categories']);
+        Route::get('/categories', [AdminCategoryController::class, 'index']);
+        Route::post('/categories', [AdminCategoryController::class, 'store']);
 
-        Route::post('/categories', [AdminController::class, 'storeCategory']);
+        // Static route must stay before /categories/{id}.
+        Route::put('/categories/reorder', [AdminCategoryController::class, 'reorder']);
 
-        Route::get('/categories/{id}', [AdminController::class, 'showCategory'])
+        Route::post('/categories/{id}/restore', [AdminCategoryController::class, 'restore'])
             ->whereNumber('id');
 
-        Route::put('/categories/{id}', [AdminController::class, 'updateCategory'])
+        Route::get('/categories/{id}', [AdminCategoryController::class, 'show'])
             ->whereNumber('id');
 
-        Route::patch('/categories/{id}', [AdminController::class, 'updateCategory'])
+        Route::put('/categories/{id}', [AdminCategoryController::class, 'update'])
             ->whereNumber('id');
 
-        Route::delete('/categories/{id}', [AdminController::class, 'deleteCategory'])
+        Route::patch('/categories/{id}', [AdminCategoryController::class, 'update'])
+            ->whereNumber('id');
+
+        Route::delete('/categories/{id}', [AdminCategoryController::class, 'destroy'])
             ->whereNumber('id');
 
         /*
@@ -181,4 +204,54 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
 
         Route::patch('/instructor-upgrade-requests/{userId}/reject', [InstructorUpgradeController::class, 'reject'])
             ->whereNumber('userId');
+
+        /*
+        |--------------------------------------------------------------------------
+        | FAQs
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/faqs', [AdminFaqController::class, 'index']);
+        Route::get('/faqs/{id}', [AdminFaqController::class, 'show'])
+            ->whereNumber('id');
+        Route::post('/faqs', [AdminFaqController::class, 'store']);
+        Route::patch('/faqs/reorder', [AdminFaqController::class, 'reorder']);
+        Route::patch('/faqs/{id}', [AdminFaqController::class, 'update'])
+            ->whereNumber('id');
+        Route::delete('/faqs/{id}', [AdminFaqController::class, 'destroy'])
+            ->whereNumber('id');
+        Route::patch('/faqs/{id}/courses', [AdminFaqController::class, 'syncCourses'])
+            ->whereNumber('id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Withdrawals
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/withdrawals', [\App\Http\Controllers\AdminWithdrawalController::class, 'index']);
+        Route::get('/withdrawals/{id}', [\App\Http\Controllers\AdminWithdrawalController::class, 'show'])
+            ->whereNumber('id');
+        Route::patch('/withdrawals/{id}/approve', [\App\Http\Controllers\AdminWithdrawalController::class, 'approve'])
+            ->whereNumber('id');
+        Route::patch('/withdrawals/{id}/reject', [\App\Http\Controllers\AdminWithdrawalController::class, 'reject'])
+            ->whereNumber('id');
+        Route::patch('/withdrawals/{id}/mark-paid', [\App\Http\Controllers\AdminWithdrawalController::class, 'markPaid'])
+            ->whereNumber('id');
+        Route::patch('/withdrawals/{id}/mark-failed', [\App\Http\Controllers\AdminWithdrawalController::class, 'markFailed'])
+            ->whereNumber('id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Payout Accounts
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/payout-accounts', [\App\Http\Controllers\AdminPayoutAccountController::class, 'index']);
+        Route::get('/payout-accounts/{id}', [\App\Http\Controllers\AdminPayoutAccountController::class, 'show'])
+            ->whereNumber('id');
+        Route::patch('/payout-accounts/{id}/approve', [\App\Http\Controllers\AdminPayoutAccountController::class, 'approve'])
+            ->whereNumber('id');
+        Route::patch('/payout-accounts/{id}/reject', [\App\Http\Controllers\AdminPayoutAccountController::class, 'reject'])
+            ->whereNumber('id');
+        Route::patch('/payout-accounts/{id}/disable', [\App\Http\Controllers\AdminPayoutAccountController::class, 'disable'])
+            ->whereNumber('id');
     });
+

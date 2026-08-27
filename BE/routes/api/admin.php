@@ -119,8 +119,6 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         // Static route must stay before /categories/{id}.
         Route::put('/categories/reorder', [AdminCategoryController::class, 'reorder']);
 
-        Route::post('/categories/{id}/restore', [AdminCategoryController::class, 'restore'])
-            ->whereNumber('id');
 
         Route::get('/categories/{id}', [AdminCategoryController::class, 'show'])
             ->whereNumber('id');

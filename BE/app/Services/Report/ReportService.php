@@ -403,7 +403,7 @@ class ReportService
                 DB::raw('COALESCE(lp.max_lesson_accessed_at, enrollments.last_accessed_at, enrollments.enrolled_at, enrollments.created_at) as last_activity_at')
             )
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at');
+            ;
 
         // Base condition for "bỏ dở": not completed
         $query->where(function ($q) {

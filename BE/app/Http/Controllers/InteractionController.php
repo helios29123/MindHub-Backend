@@ -208,7 +208,7 @@ class InteractionController extends Controller
             $lessons = \Illuminate\Support\Facades\DB::table('lessons')
                 ->join('courses', 'courses.id', '=', 'lessons.course_id')
                 ->where('courses.instructor_id', $instructorId)
-                ->whereNull('courses.deleted_at')
+                
                 ->select('lessons.id', 'lessons.title')
                 ->when($courseId, function ($query, $courseId) {
                     $query->where('lessons.course_id', $courseId);
