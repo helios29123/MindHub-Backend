@@ -42,7 +42,6 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructo
     ->group(function (): void {
         Route::post('/payments/vnpay/create', [PaymentController::class, 'createVnpayPayment']);
         Route::post('/payments/sepay/create', [PaymentController::class, 'createSepayPayment']);
-        Route::post('/payments/sepay/confirm', [PaymentController::class, 'confirmSepayPayment']);
     });
 
 /*

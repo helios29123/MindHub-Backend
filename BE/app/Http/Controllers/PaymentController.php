@@ -178,20 +178,6 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function confirmSepayPayment(StorePaymentRequest $request): JsonResponse
-    {
-        $result = $this->paymentService->confirmSepayPayment(
-            $request->validated(),
-            (int) $request->user()->id
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Xác nhận thanh toán SePay thành công.',
-            'data' => $result,
-        ]);
-    }
-
     public function vnpayReturn(Request $request)
     {
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');

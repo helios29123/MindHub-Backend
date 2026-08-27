@@ -7,7 +7,6 @@ use App\Models\Order;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class PaymentService
 {
@@ -68,9 +67,7 @@ class PaymentService
         return DB::transaction(function () use ($orderId, $userId): array {
             $order = $this->findUserOrderForUpdate($orderId, $userId);
 
-            if (($order->payment_status ?? null) === Order::PAYMENT_PAID) {
-                throw new BusinessException('Đơn hàng này đã được thanh toán.', 422);
-            }
+            $this->assertOrderCanCreatePayment($order);
 
             $amount = $this->getOrderAmount($order);
             if ($amount <= 0) {
@@ -111,6 +108,8 @@ class PaymentService
 
     public function handleSepayWebhook(array $payload): array
     {
+        $this->assertSepayWebhookSignature();
+
         $content = (string) ($payload['content'] ?? '');
         $transferAmount = (float) ($payload['transferAmount'] ?? 0);
         $referenceCode = (string) ($payload['referenceCode'] ?? $payload['id'] ?? '');
@@ -146,11 +145,13 @@ class PaymentService
             }
 
             $orderAmount = $this->getOrderAmount($order);
-            if ($transferAmount < ($orderAmount - 100)) {
-                return ['success' => false, 'message' => 'Số tiền chuyển khoản chưa đủ.'];
+
+            if (abs($transferAmount - $orderAmount) > 0.01) {
+                throw new BusinessException('Số tiền thanh toán không khớp với đơn hàng.', 422);
             }
 
-            if (($order->payment_status ?? null) !== Order::PAYMENT_PAID) {
+            if (($order->status ?? null) !== Order::STATUS_PAID) {
+                $this->assertOrderCanBePaid($order);
                 $this->markOrderAsPaid($order, 'sepay', $referenceCode ?: ('SEPAY-' . time()));
 
                 $paidOrder = DB::table('orders')
@@ -163,32 +164,6 @@ class PaymentService
             return [
                 'success' => true,
                 'message' => 'Xử lý thanh toán SePay thành công.',
-                'order_id' => $order->id,
-                'order_code' => $order->order_code ?? null,
-            ];
-        });
-    }
-
-    public function confirmSepayPayment(array $validated, int $userId): array
-    {
-        $orderId = (int) $validated['order_id'];
-
-        return DB::transaction(function () use ($orderId, $userId): array {
-            $order = $this->findUserOrderForUpdate($orderId, $userId);
-
-            if (($order->payment_status ?? null) !== Order::PAYMENT_PAID) {
-                $this->markOrderAsPaid($order, 'sepay', 'SEPAY-CONFIRM-' . time());
-
-                $paidOrder = DB::table('orders')
-                    ->where('id', $order->id)
-                    ->first();
-
-                $this->applyPaidSideEffects($paidOrder);
-            }
-
-            return [
-                'success' => true,
-                'message' => 'Xác nhận thanh toán thành công.',
                 'order_id' => $order->id,
                 'order_code' => $order->order_code ?? null,
             ];
@@ -215,12 +190,12 @@ class PaymentService
 
             $expectedAmount = $this->getOrderAmount($order);
 
-            if ($amountPaid < $expectedAmount) {
-                // If paid amount is less, we shouldn't mark it as paid, or mark it as partial
-                throw new BusinessException('Số tiền thanh toán không đủ.', 422);
+            if (abs($amountPaid - $expectedAmount) > 0.01) {
+                throw new BusinessException('Số tiền thanh toán không khớp với đơn hàng.', 422);
             }
 
-            if (($order->payment_status ?? null) !== Order::PAYMENT_PAID) {
+            if (($order->status ?? null) !== Order::STATUS_PAID) {
+                $this->assertOrderCanBePaid($order);
                 $this->markOrderAsPaid($order, 'sepay', $providerTransactionId);
 
                 $paidOrder = DB::table('orders')
@@ -239,7 +214,6 @@ class PaymentService
                 'message' => 'Xác nhận thanh toán SePay thành công.',
                 'order_id' => (int) $order->id,
                 'order_code' => $order->order_code ?? null,
-                'order_type' => $this->resolveOrderType($order),
                 'order' => $latestOrder,
                 'sepay' => $payload,
             ];
@@ -253,11 +227,7 @@ class PaymentService
             ->where('user_id', $userId)
             ->lockForUpdate();
 
-        if (Schema::hasColumn('orders', 'deleted_at')) {
-            $query;
-        }
-
-        $order = $query->first();
+$order = $query->first();
 
         if (! $order) {
             throw new BusinessException('Không tìm thấy đơn hàng.', 404);
@@ -268,48 +238,20 @@ class PaymentService
 
     private function assertOrderCanCreatePayment(object $order): void
     {
-        $status = (string) ($order->status ?? '');
-        $paymentStatus = (string) ($order->payment_status ?? '');
-
-        if ($status !== Order::STATUS_PENDING) {
+        if ($order->status !== Order::STATUS_PENDING_PAYMENT) {
             throw new BusinessException('Đơn hàng không ở trạng thái có thể thanh toán.', 409);
         }
-
-        if ($paymentStatus === Order::PAYMENT_PAID) {
-            throw new BusinessException('Đơn hàng đã được thanh toán.', 409);
-        }
-
-        if ($paymentStatus === Order::PAYMENT_FAILED) {
-            throw new BusinessException('Đơn hàng đã thanh toán thất bại, vui lòng tạo đơn mới.', 409);
-        }
-
-        if ($paymentStatus === Order::PAYMENT_PROCESSING) {
-            throw new BusinessException('Đơn hàng đang được xử lý thanh toán.', 409);
-        }
-
-        if (! in_array($paymentStatus, [Order::PAYMENT_UNPAID, ''], true)) {
+        if ($order->payment_status !== Order::PAYMENT_PENDING) {
             throw new BusinessException('Trạng thái thanh toán của đơn hàng không hợp lệ.', 409);
         }
     }
 
     private function assertOrderCanBePaid(object $order): void
     {
-        $status = (string) ($order->status ?? '');
-        $paymentStatus = (string) ($order->payment_status ?? '');
-
-        if ($status !== Order::STATUS_PENDING) {
+        if ($order->status !== Order::STATUS_PENDING_PAYMENT) {
             throw new BusinessException('Đơn hàng không ở trạng thái có thể thanh toán.', 409);
         }
-
-        if ($paymentStatus === Order::PAYMENT_PAID) {
-            throw new BusinessException('Đơn hàng đã được thanh toán.', 409);
-        }
-
-        if ($paymentStatus === Order::PAYMENT_FAILED) {
-            throw new BusinessException('Đơn hàng đã thanh toán thất bại.', 409);
-        }
-
-        if (! in_array($paymentStatus, [Order::PAYMENT_UNPAID, Order::PAYMENT_PROCESSING, ''], true)) {
+        if ($order->payment_status !== Order::PAYMENT_PENDING) {
             throw new BusinessException('Trạng thái thanh toán của đơn hàng không hợp lệ.', 409);
         }
     }
@@ -319,37 +261,25 @@ class PaymentService
         if (empty($order->course_id)) {
             throw new BusinessException('Đơn mua khóa học không hợp lệ.', 422);
         }
-
-        $courseQuery = DB::table('courses')
-            ->where('id', $order->course_id);
-
-        if (Schema::hasColumn('courses', 'deleted_at')) {
-            $courseQuery;
-        }
-
-        $course = $courseQuery->first();
-
+        $course = DB::table('courses')->where('id', $order->course_id)->first();
         if (! $course) {
             throw new BusinessException('Không tìm thấy khóa học.', 404);
         }
-
-        if ((int) ($course->instructor_id ?? 0) === $userId) {
+        if ((int) $course->instructor_id === $userId) {
             throw new BusinessException('Bạn không thể thanh toán khóa học của chính mình.', 409);
         }
     }
 
     private function markOrderAsPaid(object $order, string $paymentMethod, string $providerTransactionId): void
     {
-        DB::table('orders')
-            ->where('id', $order->id)
-            ->update([
-                'status' => Order::STATUS_PAID,
-                'payment_status' => Order::PAYMENT_PAID,
-                'payment_method' => $paymentMethod,
-                'provider_transaction_id' => $providerTransactionId,
-                'paid_at' => now(),
-                'updated_at' => now(),
-            ]);
+        DB::table('orders')->where('id', $order->id)->update([
+            'status' => Order::STATUS_PAID,
+            'payment_status' => Order::PAYMENT_PAID,
+            'payment_method' => $paymentMethod,
+            'provider_transaction_id' => $providerTransactionId,
+            'paid_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function applyPaidSideEffects(?object $order): void
@@ -357,206 +287,79 @@ class PaymentService
         if (! $order) {
             return;
         }
-
-        $orderType = $this->resolveOrderType($order);
-
-        if ($orderType === Order::TYPE_INSTRUCTOR_CREDIT) {
-            $this->addCreditsAfterInstructorCreditOrderPaid($order);
-            return;
+        $orderModel = Order::query()->find($order->id);
+        if (! $orderModel || ! $orderModel->isPaid()) {
+            throw new BusinessException('Order chưa đủ điều kiện xử lý sau thanh toán.', 409);
         }
+        app(EnrollmentAfterPaymentService::class)->createEnrollmentAfterPayment($orderModel);
+        app(RevenueShareService::class)->createRevenueForPaidOrder($orderModel);
 
-        if ($orderType === Order::TYPE_COURSE_PURCHASE) {
-            $this->createEnrollmentAfterCourseOrderPaid($order);
-            $this->createRevenueAfterCourseOrderPaid($order);
-        }
+        $this->finalizeCouponUsage($orderModel);
+
+        DB::table('wishlist')
+            ->where('user_id', $orderModel->user_id)
+            ->where('course_id', $orderModel->course_id)
+            ->delete();
     }
 
-    private function addCreditsAfterInstructorCreditOrderPaid(object $order): void
+    private function finalizeCouponUsage(Order $order): void
     {
-        $instructorId = (int) $order->user_id;
-
-        $credits = (int) ($order->package_snapshot_credits ?? 0);
-
-        if ($credits <= 0 && ! empty($order->credit_package_id)) {
-            $package = DB::table('course_credit_packages')
-                ->where('id', $order->credit_package_id)
-                ->first();
-
-            $credits = (int) ($package->credits ?? 0);
-        }
-
-        if ($credits <= 0) {
-            throw new BusinessException('Số lượt trong đơn mua gói không hợp lệ.', 422);
-        }
-
-        $alreadyApplied = DB::table('instructor_credit_transactions')
-            ->where('instructor_id', $instructorId)
-            ->where('order_id', $order->id)
-            ->where('type', 'purchase')
-            ->exists();
-
-        if ($alreadyApplied) {
+        if ($order->coupon_id === null) {
             return;
         }
 
-        $balance = DB::table('instructor_course_credits')
-            ->where('instructor_id', $instructorId)
+        $coupon = DB::table('coupons')
+            ->where('id', $order->coupon_id)
             ->lockForUpdate()
             ->first();
 
-        if (! $balance) {
-            DB::table('instructor_course_credits')->insert([
-                'instructor_id' => $instructorId,
-                'total_credits' => 0,
-                'used_credits' => 0,
-                'remaining_credits' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            $balance = DB::table('instructor_course_credits')
-                ->where('instructor_id', $instructorId)
-                ->lockForUpdate()
-                ->first();
+        if (! $coupon) {
+            throw new BusinessException('Coupon của đơn hàng không còn tồn tại.', 409);
         }
 
-        $balanceBefore = (int) ($balance->remaining_credits ?? 0);
-        $balanceAfter = $balanceBefore + $credits;
+        $nextUsedCount = (int) $coupon->used_count + 1;
+        $nextStatus = $coupon->status;
 
-        DB::table('instructor_course_credits')
-            ->where('instructor_id', $instructorId)
+        if (
+            $coupon->usage_limit !== null
+            && $nextUsedCount >= (int) $coupon->usage_limit
+        ) {
+            $nextStatus = 'used_up';
+        }
+
+        DB::table('coupons')
+            ->where('id', $coupon->id)
             ->update([
-                'total_credits' => (int) ($balance->total_credits ?? 0) + $credits,
-                'remaining_credits' => $balanceAfter,
+                'used_count' => $nextUsedCount,
+                'status' => $nextStatus,
                 'updated_at' => now(),
             ]);
-
-        DB::table('instructor_credit_transactions')->insert([
-            'instructor_id' => $instructorId,
-            'order_id' => $order->id,
-            'course_id' => null,
-            'type' => 'purchase',
-            'credits' => $credits,
-            'balance_before' => $balanceBefore,
-            'balance_after' => $balanceAfter,
-            'note' => 'Cộng lượt sau khi thanh toán gói tạo khóa học.',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
     }
 
-    private function createEnrollmentAfterCourseOrderPaid(object $order): void
+    private function assertSepayWebhookSignature(): void
     {
-        if (empty($order->course_id)) {
-            return;
+        $secret = (string) config('sepay.webhook_secret');
+
+        if ($secret === '') {
+            throw new BusinessException('Cấu hình SePay Webhook chưa đầy đủ.', 500);
         }
 
-        $query = DB::table('enrollments')
-            ->where('user_id', $order->user_id)
-            ->where('course_id', $order->course_id);
+        $signature = (string) request()->header('X-SePay-Signature');
 
-        if (Schema::hasColumn('enrollments', 'deleted_at')) {
-            $query;
+        if ($signature === '') {
+            throw new BusinessException('Thiếu chữ ký xác thực SePay Webhook.', 401);
         }
 
-        if ($query->exists()) {
-            return;
+        $expected = hash_hmac('sha256', request()->getContent(), $secret);
+
+        if (! hash_equals($expected, $signature)) {
+            throw new BusinessException('Xác thực SePay Webhook thất bại. Chữ ký không hợp lệ.', 401);
         }
-
-        $insertData = [
-            'user_id' => $order->user_id,
-            'course_id' => $order->course_id,
-        ];
-
-        if (Schema::hasColumn('enrollments', 'order_id')) {
-            $insertData['order_id'] = $order->id;
-        }
-
-        if (Schema::hasColumn('enrollments', 'status')) {
-            $insertData['status'] = 'active';
-        }
-
-        if (Schema::hasColumn('enrollments', 'progress_percent')) {
-            $insertData['progress_percent'] = 0;
-        }
-
-        if (Schema::hasColumn('enrollments', 'created_at')) {
-            $insertData['created_at'] = now();
-        }
-
-        if (Schema::hasColumn('enrollments', 'updated_at')) {
-            $insertData['updated_at'] = now();
-        }
-
-        DB::table('enrollments')->insert($insertData);
-
-        try {
-            $user = \App\Models\User::find($order->user_id);
-            $course = \App\Models\Course::with('instructor')->find($order->course_id);
-
-            if ($user && $course) {
-                // Create in-app Notification record
-                \App\Models\Notification::create([
-                    'user_id' => $user->id,
-                    'type' => 'payment',
-                    'channel' => 'web',
-                    'title' => '🎉 Thanh toán thành công',
-                    'message' => "Chào mừng bạn đến với khóa học \"{$course->title}\". Chúng tôi đã mở khóa toàn bộ bài học và gửi email hướng dẫn học tập cho bạn.",
-                    'action_url' => "/courses",
-                    'read_at' => null,
-                ]);
-
-                // Send Welcome Mail
-                if (! empty($user->email)) {
-                    \Illuminate\Support\Facades\Mail::to($user->email)
-                        ->send(new \App\Mail\CourseWelcomeMail($user, $course, $order));
-                }
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to process purchase notification or email: ' . $e->getMessage());
-        }
-    }
-
-    private function createRevenueAfterCourseOrderPaid(object $order): void
-    {
-        if (! Schema::hasTable('revenues')) {
-            return;
-        }
-
-        if (empty($order->course_id)) {
-            return;
-        }
-
-        $orderModel = Order::query()->find($order->id);
-        if (!$orderModel) {
-            return;
-        }
-
-        app(RevenueShareService::class)->createRevenueForPaidOrder($orderModel);
-    }
-
-    private function resolveOrderType(object $order): string
-    {
-        if (! empty($order->order_type)) {
-            return (string) $order->order_type;
-        }
-
-        if (! empty($order->credit_package_id)) {
-            return Order::TYPE_INSTRUCTOR_CREDIT;
-        }
-
-        return Order::TYPE_COURSE_PURCHASE;
     }
 
     private function getOrderAmount(object $order): float
     {
-        $amount = $order->final_amount
-            ?? $order->amount
-            ?? $order->price_snapshot
-            ?? $order->price
-            ?? 0;
-
-        return (float) $amount;
+        return (float) ($order->amount ?? 0);
     }
 
     private function generateVnpayTxnRef(object $order): string

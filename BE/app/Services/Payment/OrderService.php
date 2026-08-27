@@ -3,9 +3,9 @@
 namespace App\Services\Payment;
 
 use App\Exceptions\BusinessException;
+use App\Models\CommissionRule;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class OrderService
@@ -26,102 +26,48 @@ class OrderService
         return DB::transaction(function () use ($courseId, $userId): object {
             $course = $this->coursePurchaseGuardService->assertCanBuyCourse($userId, $courseId);
 
-            $pendingQuery = DB::table('orders')
+            $pendingOrder = DB::table('orders')
                 ->where('user_id', $userId)
-                ->where('course_id', $courseId);
-
-            if (Schema::hasColumn('orders', 'status')) {
-                $pendingQuery->where('status', Order::STATUS_PENDING);
-            }
-
-            if (Schema::hasColumn('orders', 'payment_status')) {
-                $pendingQuery->where('payment_status', Order::PAYMENT_UNPAID);
-            }
-
-            if (Schema::hasColumn('orders', 'order_type')) {
-                $pendingQuery->where('order_type', Order::TYPE_COURSE_PURCHASE);
-            }
-
-            if (Schema::hasColumn('orders', 'deleted_at')) {
-                $pendingQuery;
-            }
-
-            $pendingOrder = $pendingQuery->first();
+                ->where('course_id', $courseId)
+                ->where('status', Order::STATUS_PENDING_PAYMENT)
+                ->where('payment_status', Order::PAYMENT_PENDING)
+                ->lockForUpdate()
+                ->first();
 
             if ($pendingOrder) {
                 return $pendingOrder;
             }
 
-            $activeCommissionRule = \App\Models\CommissionRule::where('is_active', 1)->first();
-            if (!$activeCommissionRule) {
+            $activeCommissionRule = CommissionRule::query()
+                ->where('is_active', 1)
+                ->first();
+
+            if (! $activeCommissionRule) {
                 throw new BusinessException('Không tìm thấy luật hoa hồng đang áp dụng. Vui lòng liên hệ Admin.', 500);
             }
 
             $amount = $this->resolveCoursePrice($course);
 
-            $insertData = [
+            $orderId = DB::table('orders')->insertGetId([
+                'order_code' => $this->generateOrderCode(),
                 'user_id' => $userId,
                 'course_id' => $courseId,
+                'coupon_id' => null,
                 'commission_rule_id' => $activeCommissionRule->id,
-            ];
-
-            if (Schema::hasColumn('orders', 'coupon_id')) {
-                $insertData['coupon_id'] = null;
-            }
-
-            if (Schema::hasColumn('orders', 'order_code')) {
-                $insertData['order_code'] = $this->generateOrderCode();
-            }
-
-            if (Schema::hasColumn('orders', 'order_type')) {
-                $insertData['order_type'] = Order::TYPE_COURSE_PURCHASE;
-            }
-
-            if (Schema::hasColumn('orders', 'price_snapshot')) {
-                $insertData['price_snapshot'] = $amount;
-            }
-
-            if (Schema::hasColumn('orders', 'amount')) {
-                $insertData['amount'] = $amount;
-            }
-
-            if (Schema::hasColumn('orders', 'discount_amount')) {
-                $insertData['discount_amount'] = 0;
-            }
-
-            if (Schema::hasColumn('orders', 'status')) {
-                $insertData['status'] = Order::STATUS_PENDING;
-            }
-
-            if (Schema::hasColumn('orders', 'payment_status')) {
-                $insertData['payment_status'] = Order::PAYMENT_UNPAID;
-            }
-
-            if (Schema::hasColumn('orders', 'payment_method')) {
-                $insertData['payment_method'] = null;
-            }
-
-            if (Schema::hasColumn('orders', 'provider_transaction_id')) {
-                $insertData['provider_transaction_id'] = null;
-            }
-
-            if (Schema::hasColumn('orders', 'paid_at')) {
-                $insertData['paid_at'] = null;
-            }
-
-            if (Schema::hasColumn('orders', 'expires_at')) {
-                $insertData['expires_at'] = null;
-            }
-
-            if (Schema::hasColumn('orders', 'created_at')) {
-                $insertData['created_at'] = now();
-            }
-
-            if (Schema::hasColumn('orders', 'updated_at')) {
-                $insertData['updated_at'] = now();
-            }
-
-            $orderId = DB::table('orders')->insertGetId($insertData);
+                'status' => Order::STATUS_PENDING_PAYMENT,
+                'payment_status' => Order::PAYMENT_PENDING,
+                'price_snapshot' => $amount,
+                'discount_amount' => 0,
+                'amount' => $amount,
+                'payment_method' => null,
+                'provider_transaction_id' => null,
+                'paid_at' => null,
+                'expires_at' => now()->addHours(max(1, (int) config('mindhub.pending_order_expire_hours', 24))),
+                'cancelled_reason' => null,
+                'failed_reason' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
             return DB::table('orders')->where('id', $orderId)->first();
         });
@@ -129,91 +75,44 @@ class OrderService
 
     public function showUserOrder(int $orderId, int $userId): object
     {
-        $query = DB::table('orders')
-            ->where('id', $orderId)
-            ->where('user_id', $userId);
-
-        if (Schema::hasColumn('orders', 'deleted_at')) {
-            $query;
-        }
-
-        $order = $query->first();
-
+        $order = DB::table('orders')->where('id', $orderId)->where('user_id', $userId)->first();
         if (! $order) {
             throw new BusinessException('Không tìm thấy đơn hàng.', 404);
         }
-
         return $order;
     }
 
     public function getMyOrders(int $userId, array $filters = []): array
     {
-        $query = DB::table('orders')
-            ->where('user_id', $userId)
-            ->orderByDesc('id');
-
-        if (Schema::hasColumn('orders', 'deleted_at')) {
-            $query;
-        }
-
-        if (! empty($filters['status']) && Schema::hasColumn('orders', 'status')) {
+        $query = DB::table('orders')->where('user_id', $userId)->orderByDesc('id');
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
-
-        if (! empty($filters['payment_status']) && Schema::hasColumn('orders', 'payment_status')) {
+        if (! empty($filters['payment_status'])) {
             $query->where('payment_status', $filters['payment_status']);
         }
-
-        if (! empty($filters['order_type']) && Schema::hasColumn('orders', 'order_type')) {
-            $query->where('order_type', $filters['order_type']);
-        }
-
-        $perPage = (int) ($filters['per_page'] ?? 15);
-        $perPage = max(1, min($perPage, 100));
-
+        $perPage = max(1, min((int) ($filters['per_page'] ?? 15), 100));
         return $query->paginate($perPage)->toArray();
     }
 
     public function cancelUserOrder(int $orderId, int $userId): object
     {
         return DB::transaction(function () use ($orderId, $userId): object {
-            $query = DB::table('orders')
-                ->where('id', $orderId)
-                ->where('user_id', $userId)
-                ->lockForUpdate();
-
-            if (Schema::hasColumn('orders', 'deleted_at')) {
-                $query;
-            }
-
-            $order = $query->first();
-
+            $order = DB::table('orders')->where('id', $orderId)->where('user_id', $userId)->lockForUpdate()->first();
             if (! $order) {
                 throw new BusinessException('Không tìm thấy đơn hàng.', 404);
             }
-
-            if (Schema::hasColumn('orders', 'status') && (string) ($order->status ?? '') !== Order::STATUS_PENDING) {
+            if ($order->status !== Order::STATUS_PENDING_PAYMENT) {
                 throw new BusinessException('Chỉ được hủy đơn hàng đang chờ thanh toán.', 409);
             }
-
-            if (Schema::hasColumn('orders', 'payment_status') && (string) ($order->payment_status ?? '') === Order::PAYMENT_PAID) {
-                throw new BusinessException('Không thể hủy đơn hàng đã thanh toán.', 409);
+            if ($order->payment_status !== Order::PAYMENT_PENDING) {
+                throw new BusinessException('Đơn hàng không còn ở trạng thái có thể hủy.', 409);
             }
-
-            $updateData = [];
-
-            if (Schema::hasColumn('orders', 'status')) {
-                $updateData['status'] = Order::STATUS_CANCELLED;
-            }
-
-            if (Schema::hasColumn('orders', 'updated_at')) {
-                $updateData['updated_at'] = now();
-            }
-
-            DB::table('orders')
-                ->where('id', $orderId)
-                ->update($updateData);
-
+            DB::table('orders')->where('id', $orderId)->update([
+                'status' => Order::STATUS_CANCELLED,
+                'cancelled_reason' => 'Người dùng hủy đơn hàng.',
+                'updated_at' => now(),
+            ]);
             return DB::table('orders')->where('id', $orderId)->first();
         });
     }
@@ -221,11 +120,9 @@ class OrderService
     private function resolveCoursePrice(object $course): float
     {
         $salePrice = $course->sale_price ?? null;
-
         if ($salePrice !== null && (float) $salePrice > 0) {
             return (float) $salePrice;
         }
-
         return (float) ($course->price ?? 0);
     }
 

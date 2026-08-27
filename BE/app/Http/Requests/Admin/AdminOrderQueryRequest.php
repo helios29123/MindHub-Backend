@@ -16,8 +16,8 @@ class AdminOrderQueryRequest extends FormRequest
         return [
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-            'status' => ['nullable', 'string', Rule::in(['pending', 'paid', 'cancelled', 'failed', 'expired'])],
-            'payment_status' => ['nullable', 'string', Rule::in(['unpaid', 'processing', 'paid', 'failed'])],
+            'status' => ['nullable', 'string', Rule::in(['pending_payment', 'paid', 'cancelled', 'failed', 'expired'])],
+            'payment_status' => ['nullable', 'string', Rule::in(['pending', 'paid', 'failed', 'expired'])],
             'user_id' => [
                 'nullable',
                 'integer',

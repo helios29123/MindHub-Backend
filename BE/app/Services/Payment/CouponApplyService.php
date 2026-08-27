@@ -33,8 +33,8 @@ class CouponApplyService
             }
 
             if (
-                $order->status !== Order::STATUS_PENDING ||
-                $order->payment_status !== Order::PAYMENT_UNPAID
+                $order->status !== Order::STATUS_PENDING_PAYMENT ||
+                $order->payment_status !== Order::PAYMENT_PENDING
             ) {
                 throw new BusinessException('Chỉ có thể áp coupon cho đơn hàng đang chờ thanh toán.', 400);
             }
@@ -57,6 +57,7 @@ class CouponApplyService
 
             $order->update([
                 'coupon_id' => $coupon->id,
+                'discount_amount' => $discountAmount,
                 'amount' => $finalAmount,
             ]);
 
@@ -68,10 +69,6 @@ class CouponApplyService
     {
         if ($coupon->discount_type === Coupon::TYPE_PERCENT) {
             $discountAmount = $price * ((float) $coupon->discount_value / 100);
-
-            if ($coupon->max_order_amount !== null) {
-                $discountAmount = min($discountAmount, (float) $coupon->max_order_amount);
-            }
 
             return $discountAmount;
         }

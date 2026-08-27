@@ -3,8 +3,8 @@
 namespace App\Services\Payment;
 
 use App\Exceptions\BusinessException;
+use App\Models\Order;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class CoursePurchaseGuardService
 {
@@ -12,12 +12,7 @@ class CoursePurchaseGuardService
     {
         $courseQuery = DB::table('courses')
             ->where('id', $courseId);
-
-        if (Schema::hasColumn('courses', 'deleted_at')) {
-            $courseQuery;
-        }
-
-        $course = $courseQuery->first();
+$course = $courseQuery->first();
 
         if (! $course) {
             throw new BusinessException('Không tìm thấy khóa học.', 404);
@@ -41,25 +36,16 @@ class CoursePurchaseGuardService
         $enrollmentQuery = DB::table('enrollments')
             ->where('user_id', $userId)
             ->where('course_id', $courseId);
-
-        if (Schema::hasColumn('enrollments', 'deleted_at')) {
-            $enrollmentQuery;
-        }
-
-        if ($enrollmentQuery->exists()) {
+if ($enrollmentQuery->exists()) {
             throw new BusinessException('Bạn đã sở hữu khóa học này.', 409);
         }
 
         $paidOrderQuery = DB::table('orders')
             ->where('user_id', $userId)
             ->where('course_id', $courseId)
-            ->where('payment_status', 'paid');
-
-        if (Schema::hasColumn('orders', 'deleted_at')) {
-            $paidOrderQuery;
-        }
-
-        if ($paidOrderQuery->exists()) {
+            ->where('status', Order::STATUS_PAID)
+            ->where('payment_status', Order::PAYMENT_PAID);
+if ($paidOrderQuery->exists()) {
             throw new BusinessException('Bạn đã thanh toán khóa học này.', 409);
         }
 

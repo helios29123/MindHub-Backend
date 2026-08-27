@@ -45,6 +45,32 @@ class Coupon extends Model
         return $this->belongsTo(Course::class);
     }
 
+    public function isActiveNow(): bool
+    {
+        if ($this->status !== self::STATUS_ACTIVE) {
+            return false;
+        }
+
+        $now = now();
+
+        if ($this->start_at !== null && $this->start_at->gt($now)) {
+            return false;
+        }
+
+        if ($this->end_at !== null && $this->end_at->lt($now)) {
+            return false;
+        }
+
+        if (
+            $this->usage_limit !== null
+            && (int) $this->used_count >= (int) $this->usage_limit
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);

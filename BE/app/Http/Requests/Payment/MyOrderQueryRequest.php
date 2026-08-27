@@ -19,8 +19,8 @@ class MyOrderQueryRequest extends FormRequest
         return [
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
-            'status' => ['nullable', 'string', 'in:pending,paid,cancelled,failed,expired'],
-            'payment_status' => ['nullable', 'string', 'in:unpaid,processing,paid,failed'],
+            'status' => ['nullable', 'string', 'in:pending_payment,paid,cancelled,failed,expired'],
+            'payment_status' => ['nullable', 'string', 'in:pending,paid,failed,expired'],
         ];
     }
 
