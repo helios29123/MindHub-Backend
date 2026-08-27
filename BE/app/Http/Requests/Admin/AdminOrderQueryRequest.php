@@ -21,12 +21,12 @@ class AdminOrderQueryRequest extends FormRequest
             'user_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('users', 'id')->whereNull('deleted_at'),
+                Rule::exists('users', 'id'),
             ],
             'course_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('courses', 'id')->whereNull('deleted_at'),
+                Rule::exists('courses', 'id'),
             ],
             'order_code' => ['nullable', 'string', 'max:50'],
             'date_from' => ['nullable', 'date'],

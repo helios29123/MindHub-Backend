@@ -118,6 +118,7 @@ class CatalogOrdersSeeder extends Seeder
             DB::table('orders')->updateOrInsert(
                 ['order_code' => $order['order_code']],
                 array_merge($order, [
+                    'commission_rule_id' => DB::table('commission_rules')->value('id') ?? 1,
                     'status' => 'paid',
                     'created_at' => $now,
                     'updated_at' => $now,

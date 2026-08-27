@@ -12,7 +12,7 @@ class InstructorTopCourseRepository
 
         $coursesQuery = DB::table('courses')
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at');
+            ;
 
         if (!empty($filters['status']) && $filters['status'] !== 'all') {
             $statusInput = strtolower(trim((string) $filters['status']));

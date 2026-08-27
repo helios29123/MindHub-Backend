@@ -83,7 +83,7 @@ class InstructorUpgradeRepository
             ->join('payout_accounts as pa', 'pa.user_id', '=', 'u.id')
             ->where('u.role', 'learner')
             ->where('pa.status', 'pending_verification')
-            ->whereNull('u.deleted_at')
+            
             ->select([
                 'u.id as user_id',
                 'u.full_name',

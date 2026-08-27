@@ -104,7 +104,7 @@ final class LessonVideoAccessService
             ->where('course_id', $courseId)
             ->whereIn('status', ['active', 'completed']);
         if (Schema::hasColumn('enrollments', 'deleted_at')) {
-            $query->whereNull('deleted_at');
+            $query;
         }
         return $query->exists();
     }

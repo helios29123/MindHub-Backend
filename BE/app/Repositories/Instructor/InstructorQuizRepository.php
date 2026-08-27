@@ -18,11 +18,11 @@ class InstructorQuizRepository
                 'lesson:id,course_id,title,status',
                 'questions.options',
             ])
-            ->whereNull('quizzes.deleted_at')
+            
             ->whereHas('course', function ($builder) use ($instructorId): void {
                 $builder
                     ->where('instructor_id', $instructorId)
-                    ->whereNull('deleted_at');
+                    ;
             });
 
         if (!empty($filters['course_id'])) {
@@ -52,11 +52,11 @@ class InstructorQuizRepository
                 'questions.options',
             ])
             ->whereKey($quizId)
-            ->whereNull('quizzes.deleted_at')
+            
             ->whereHas('course', function ($builder) use ($instructorId): void {
                 $builder
                     ->where('instructor_id', $instructorId)
-                    ->whereNull('deleted_at');
+                    ;
             })
             ->first();
     }
@@ -66,7 +66,7 @@ class InstructorQuizRepository
         return Lesson::query()
             ->with('course')
             ->whereKey($lessonId)
-            ->whereNull('deleted_at')
+            
             ->first();
     }
 }

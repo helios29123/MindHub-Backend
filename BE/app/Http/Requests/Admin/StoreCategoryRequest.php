@@ -26,7 +26,7 @@ final class StoreCategoryRequest extends FormRequest
             'parent_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('categories', 'id')->whereNull('deleted_at'),
+                Rule::exists('categories', 'id'),
             ],
             'description' => ['nullable', 'string'],
             'sort_order' => ['nullable', 'string', 'max:100'],

@@ -47,7 +47,6 @@ class CatalogCourseCategoriesSeeder extends Seeder
             DB::table('course_categories')->insertOrIgnore([
                 'course_id' => $courseId,
                 'category_id' => $categoryId,
-                'created_at' => $now,
             ]);
         }
     }

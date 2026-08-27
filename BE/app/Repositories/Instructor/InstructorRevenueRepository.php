@@ -98,7 +98,7 @@ class InstructorRevenueRepository
         return DB::table('courses')
             ->where('id', $courseId)
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->exists();
     }
 
@@ -106,7 +106,7 @@ class InstructorRevenueRepository
     {
         return DB::table('courses')
             ->where('id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->exists();
     }
 

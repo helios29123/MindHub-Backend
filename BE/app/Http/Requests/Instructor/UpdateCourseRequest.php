@@ -34,7 +34,7 @@ final class UpdateCourseRequest extends FormRequest
                 'string',
                 'max:255',
                 'alpha_dash',
-                Rule::unique('courses', 'slug')->ignore($courseId)->whereNull('deleted_at'),
+                Rule::unique('courses', 'slug')->ignore($courseId),
             ],
             'short_description' => ['sometimes', 'nullable', 'string', 'max:500'],
             'description' => ['sometimes', 'nullable', 'string'],
@@ -53,7 +53,7 @@ final class UpdateCourseRequest extends FormRequest
             'category_ids.*' => [
                 'integer',
                 'distinct',
-                Rule::exists('categories', 'id')->where('status', 'active')->whereNull('deleted_at'),
+                Rule::exists('categories', 'id')->where('status', 'active'),
             ],
         ];
     }
