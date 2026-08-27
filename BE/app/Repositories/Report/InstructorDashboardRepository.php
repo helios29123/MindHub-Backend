@@ -41,7 +41,7 @@ class InstructorDashboardRepository
         $rows = DB::table('courses')
             ->selectRaw('status, COUNT(*) as total')
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->groupBy('status')
             ->pluck('total', 'status')
             ->all();

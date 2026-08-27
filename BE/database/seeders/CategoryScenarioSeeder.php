@@ -38,7 +38,6 @@ final class CategoryScenarioSeeder extends Seeder
                         'status' => $status,
                         'created_at' => $now,
                         'updated_at' => $now,
-                        'deleted_at' => null,
                     ]
                 );
 
@@ -86,7 +85,6 @@ final class CategoryScenarioSeeder extends Seeder
                         'status' => $status,
                         'created_at' => $now,
                         'updated_at' => $now,
-                        'deleted_at' => null,
                     ]
                 );
             }
@@ -103,13 +101,12 @@ final class CategoryScenarioSeeder extends Seeder
                         'status' => $index % 2 === 0 ? 'inactive' : 'active',
                         'created_at' => $now,
                         'updated_at' => $now,
-                        'deleted_at' => $now,
                     ]
                 );
             }
 
             if (Schema::hasTable('courses') && Schema::hasTable('course_categories')) {
-                $courseId = DB::table('courses')->whereNull('deleted_at')->orderBy('id')->value('id');
+                $courseId = DB::table('courses')->orderBy('id')->value('id');
                 if ($courseId !== null) {
                     DB::table('course_categories')->updateOrInsert(
                         ['course_id' => $courseId, 'category_id' => $rootIds['co-khoa-hoc']],

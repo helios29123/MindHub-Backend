@@ -101,7 +101,7 @@ class ReportService
             ->join('orders', 'orders.id', '=', 'course_reviews.order_id')
             ->select('orders.course_id')
             ->selectRaw('AVG(course_reviews.rating) as average_rating')
-            ->whereNull('course_reviews.deleted_at')
+            
             ->groupBy('orders.course_id');
 
         if (!empty($filters['date_from'])) {
@@ -262,7 +262,7 @@ class ReportService
             ->select('instructor_id')
             ->selectRaw('COUNT(id) as total_courses')
             ->selectRaw("SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) as published_courses")
-            ->whereNull('deleted_at')
+            
             ->groupBy('instructor_id');
 
         if (!empty($filters['course_id'])) {
@@ -487,7 +487,7 @@ class ReportService
         $userStatusCounts = (clone $userQuery)->select('status', DB::raw('count(*) as count'))->groupBy('status')->pluck('count', 'status')->toArray();
 
         // Courses
-        $courseQuery = DB::table('courses')->whereNull('deleted_at');
+        $courseQuery = DB::table('courses');
         $applyDateFilter($courseQuery, 'created_at');
         if ($courseId) $courseQuery->where('id', $courseId);
 
@@ -548,7 +548,7 @@ class ReportService
         // Recent courses (eager load instructor and map to instructor_name)
         $latestCoursesQuery = \App\Models\Course::query()
             ->with(['instructor:id,full_name'])
-            ->whereNull('deleted_at')
+            
             ->orderBy('id', 'desc')
             ->limit(5);
         if ($courseId) $latestCoursesQuery->where('id', $courseId);
@@ -572,20 +572,20 @@ class ReportService
         $paidWithdrawAmount = $paidWithdrawRequests->sum('amount');
 
         // Action required backlog
-        $pendingCourseReviews = DB::table('courses')->whereNull('deleted_at')->where('status', 'pending_review')->count();
+        $pendingCourseReviews = DB::table('courses')->where('status', 'pending_review')->count();
 
         $pendingInstructorUpgrades = DB::table('payout_accounts')
             ->join('users', 'payout_accounts.user_id', '=', 'users.id')
             ->where('payout_accounts.status', 'pending_verification')
             ->where('users.role', 'learner')
-            ->whereNull('payout_accounts.deleted_at')
+            
             ->count();
 
         $pendingPayoutAccounts = DB::table('payout_accounts')
             ->join('users', 'payout_accounts.user_id', '=', 'users.id')
             ->where('payout_accounts.status', 'pending_verification')
             ->where('users.role', 'instructor')
-            ->whereNull('payout_accounts.deleted_at')
+            
             ->count();
 
         $pendingWithdrawals = DB::table('withdraw_requests')->where('status', 'pending')->count();
@@ -728,7 +728,7 @@ class ReportService
     {
         $course = DB::table('courses')
             ->where('id', $courseId)
-            ->whereNull('deleted_at')
+            
             ->first();
 
         if (!$course) {

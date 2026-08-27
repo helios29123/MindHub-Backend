@@ -43,7 +43,7 @@ class OrderService
             }
 
             if (Schema::hasColumn('orders', 'deleted_at')) {
-                $pendingQuery->whereNull('deleted_at');
+                $pendingQuery;
             }
 
             $pendingOrder = $pendingQuery->first();
@@ -134,7 +134,7 @@ class OrderService
             ->where('user_id', $userId);
 
         if (Schema::hasColumn('orders', 'deleted_at')) {
-            $query->whereNull('deleted_at');
+            $query;
         }
 
         $order = $query->first();
@@ -153,7 +153,7 @@ class OrderService
             ->orderByDesc('id');
 
         if (Schema::hasColumn('orders', 'deleted_at')) {
-            $query->whereNull('deleted_at');
+            $query;
         }
 
         if (! empty($filters['status']) && Schema::hasColumn('orders', 'status')) {
@@ -183,7 +183,7 @@ class OrderService
                 ->lockForUpdate();
 
             if (Schema::hasColumn('orders', 'deleted_at')) {
-                $query->whereNull('deleted_at');
+                $query;
             }
 
             $order = $query->first();

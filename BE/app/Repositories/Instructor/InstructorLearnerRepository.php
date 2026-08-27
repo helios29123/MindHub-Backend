@@ -377,20 +377,20 @@ class InstructorLearnerRepository
         // Total lessons count
         $totalLessons = DB::table('lessons')
             ->where('course_id', $enrollment->course_id)
-            ->whereNull('deleted_at')
+            
             ->count();
 
         // Total course duration seconds
         $totalDurationSeconds = (int) ($enrollment->course_duration_seconds ?: DB::table('lessons')
             ->where('course_id', $enrollment->course_id)
-            ->whereNull('deleted_at')
+            
             ->sum('video_duration_seconds'));
 
         // Completed lessons count
         $completedLessons = DB::table('lesson_progress')
             ->where('user_id', $enrollment->user_id)
             ->whereIn('lesson_id', function ($query) use ($enrollment) {
-                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id)->whereNull('deleted_at');
+                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id);
             })
             ->where(function ($q) {
                 $q->where('status', 'completed')->orWhereNotNull('completed_at');
@@ -401,14 +401,14 @@ class InstructorLearnerRepository
         $learnedDurationSeconds = (int) DB::table('lesson_progress')
             ->where('user_id', $enrollment->user_id)
             ->whereIn('lesson_id', function ($query) use ($enrollment) {
-                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id)->whereNull('deleted_at');
+                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id);
             })
             ->sum('learning_duration_seconds');
 
         // Roadmap by section
         $sections = DB::table('course_sections')
             ->where('course_id', $enrollment->course_id)
-            ->whereNull('deleted_at')
+            
             ->orderBy('sort_order')
             ->get();
 
@@ -416,7 +416,7 @@ class InstructorLearnerRepository
         foreach ($sections as $sec) {
             $secLessonIds = DB::table('lessons')
                 ->where('course_section_id', $sec->id)
-                ->whereNull('deleted_at')
+                
                 ->pluck('id');
 
             $secTotal = count($secLessonIds);
@@ -466,7 +466,7 @@ class InstructorLearnerRepository
                      ->where('lesson_progress.user_id', '=', $enrollment->user_id);
             })
             ->where('lessons.course_id', $enrollment->course_id)
-            ->whereNull('lessons.deleted_at')
+            
             ->select([
                 'lessons.id as lesson_id',
                 'lessons.title as lesson_title',

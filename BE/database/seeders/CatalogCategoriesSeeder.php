@@ -17,9 +17,8 @@ class CatalogCategoriesSeeder extends Seeder
             'name' => 'CATEGORY_ACTIVE Programming',
             'slug' => 'cat-category-active-programming',
             'description' => 'Danh mục lập trình active.',
-            'sort_order' => 'a',
+            'sort_order' => 1,
             'status' => 'active',
-            'deleted_at' => null,
         ], $now);
 
         $this->upsert([
@@ -27,9 +26,8 @@ class CatalogCategoriesSeeder extends Seeder
             'name' => 'CATEGORY_ACTIVE Design',
             'slug' => 'cat-category-active-design',
             'description' => 'Danh mục design active.',
-            'sort_order' => 'b',
+            'sort_order' => 2,
             'status' => 'active',
-            'deleted_at' => null,
         ], $now);
 
         $this->upsert([
@@ -37,9 +35,8 @@ class CatalogCategoriesSeeder extends Seeder
             'name' => 'CATEGORY_ACTIVE Marketing',
             'slug' => 'cat-category-active-marketing',
             'description' => 'Danh mục marketing active.',
-            'sort_order' => 'c',
+            'sort_order' => 3,
             'status' => 'active',
-            'deleted_at' => null,
         ], $now);
 
         $programmingId = (int) DB::table('categories')
@@ -51,9 +48,8 @@ class CatalogCategoriesSeeder extends Seeder
             'name' => 'CATEGORY_ACTIVE Laravel Child',
             'slug' => 'cat-category-active-laravel-child',
             'description' => 'Danh mục con Laravel active.',
-            'sort_order' => 'a',
+            'sort_order' => 1,
             'status' => 'active',
-            'deleted_at' => null,
         ], $now);
 
         $this->upsert([
@@ -61,9 +57,8 @@ class CatalogCategoriesSeeder extends Seeder
             'name' => 'CATEGORY_ACTIVE PHP Child',
             'slug' => 'cat-category-active-php-child',
             'description' => 'Danh mục con PHP active.',
-            'sort_order' => 'b',
+            'sort_order' => 2,
             'status' => 'active',
-            'deleted_at' => null,
         ], $now);
 
         $this->upsert([
@@ -71,9 +66,8 @@ class CatalogCategoriesSeeder extends Seeder
             'name' => 'CATEGORY_INACTIVE Hidden',
             'slug' => 'cat-category-inactive-hidden',
             'description' => 'Danh mục inactive, không nên public.',
-            'sort_order' => 'd',
+            'sort_order' => 4,
             'status' => 'inactive',
-            'deleted_at' => null,
         ], $now);
 
         $this->upsert([
@@ -81,9 +75,8 @@ class CatalogCategoriesSeeder extends Seeder
             'name' => 'CATEGORY_ACTIVE Soft Deleted Not Public',
             'slug' => 'cat-category-active-soft-deleted',
             'description' => 'Danh mục active nhưng soft deleted.',
-            'sort_order' => 'e',
+            'sort_order' => 5,
             'status' => 'active',
-            'deleted_at' => $now,
         ], $now);
     }
 

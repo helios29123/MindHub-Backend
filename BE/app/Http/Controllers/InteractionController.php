@@ -176,7 +176,7 @@ class InteractionController extends Controller
     {
         $courses = \Illuminate\Support\Facades\DB::table('courses')
             ->where('instructor_id', $request->user()->id)
-            ->whereNull('deleted_at')
+            
             ->select('id', 'title')
             ->when($request->query('search'), function ($query, $search) {
                 $query->where('title', 'like', '%' . $search . '%');
@@ -198,7 +198,7 @@ class InteractionController extends Controller
                 $owns = \Illuminate\Support\Facades\DB::table('courses')
                     ->where('id', $courseId)
                     ->where('instructor_id', $instructorId)
-                    ->whereNull('deleted_at')
+                    
                     ->exists();
                 if (!$owns) {
                     return ApiResponse::error('Khoá học không hợp lệ hoặc không thuộc về giảng viên.', [], 422);

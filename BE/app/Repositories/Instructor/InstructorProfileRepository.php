@@ -12,7 +12,7 @@ final class InstructorProfileRepository
         return User::query()
             ->where('id', $userId)
             ->where('role', User::ROLE_INSTRUCTOR)
-            ->whereNull('deleted_at')
+            
             ->first();
     }
 

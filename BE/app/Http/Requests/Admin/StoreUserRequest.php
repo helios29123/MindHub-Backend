@@ -20,7 +20,7 @@ class StoreUserRequest extends FormRequest
                 'required',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->whereNull('deleted_at'),
+                Rule::unique('users', 'email'),
             ],
             'password' => ['required', 'string', 'min:8', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],

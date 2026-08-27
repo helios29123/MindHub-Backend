@@ -25,17 +25,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-laravel-api.jpg',
                 'intro_video_url' => 'https://example.com/videos/cat-laravel-api.mp4',
                 'price' => 1200000,
-                'sale_price' => 799000,
-                'level' => 'beginner',
+                
+                'course_level' => 'beginner',
                 'language' => 'vi',
-                'requirements' => 'Biết PHP cơ bản',
-                'outcomes' => 'Xây dựng được REST API Laravel',
+                'requirements' => json_encode(['']),
+                'outcomes' => json_encode(['']),
                 'status' => 'published',
                 'is_featured' => true,
-                'total_duration_seconds' => 36000,
+                
                 'published_at' => $now->copy()->subDays(10),
                 'admin_reject_reason' => null,
-                'deleted_at' => null,
+                
             ],
             [
                 'instructor_id' => $instructor01Id,
@@ -46,17 +46,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-php-mysql.jpg',
                 'intro_video_url' => 'https://example.com/videos/cat-php-mysql.mp4',
                 'price' => 900000,
-                'sale_price' => 499000,
-                'level' => 'beginner',
+                
+                'course_level' => 'beginner',
                 'language' => 'vi',
-                'requirements' => 'Không yêu cầu kinh nghiệm',
-                'outcomes' => 'Nắm được PHP và MySQL căn bản',
+                'requirements' => json_encode(['']),
+                'outcomes' => json_encode(['']),
                 'status' => 'published',
                 'is_featured' => false,
-                'total_duration_seconds' => 28000,
+                
                 'published_at' => $now->copy()->subDays(20),
                 'admin_reject_reason' => null,
-                'deleted_at' => null,
+                
             ],
             [
                 'instructor_id' => $instructor02Id,
@@ -67,17 +67,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-react-latest.jpg',
                 'intro_video_url' => 'https://example.com/videos/cat-react-latest.mp4',
                 'price' => 1500000,
-                'sale_price' => 1199000,
-                'level' => 'intermediate',
+                
+                'course_level' => 'intermediate',
                 'language' => 'vi',
-                'requirements' => 'Biết HTML, CSS, JavaScript',
-                'outcomes' => 'Xây dựng được UI React',
+                'requirements' => json_encode(['']),
+                'outcomes' => json_encode(['']),
                 'status' => 'published',
                 'is_featured' => true,
-                'total_duration_seconds' => 42000,
+                
                 'published_at' => $now->copy()->subDay(),
                 'admin_reject_reason' => null,
-                'deleted_at' => null,
+                
             ],
             [
                 'instructor_id' => $instructor02Id,
@@ -88,17 +88,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-free-ui-design.jpg',
                 'intro_video_url' => 'https://example.com/videos/cat-free-ui-design.mp4',
                 'price' => 0,
-                'sale_price' => null,
-                'level' => 'all_levels',
+                
+                'course_level' => 'all_levels',
                 'language' => 'vi',
-                'requirements' => 'Không yêu cầu',
-                'outcomes' => 'Biết thiết kế giao diện cơ bản',
+                'requirements' => json_encode(['']),
+                'outcomes' => json_encode(['']),
                 'status' => 'published',
                 'is_featured' => false,
-                'total_duration_seconds' => 12000,
+                
                 'published_at' => $now->copy()->subDays(3),
                 'admin_reject_reason' => null,
-                'deleted_at' => null,
+                
             ],
             [
                 'instructor_id' => $instructor01Id,
@@ -109,17 +109,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-draft.jpg',
                 'intro_video_url' => null,
                 'price' => 100000,
-                'sale_price' => null,
-                'level' => 'beginner',
+                
+                'course_level' => 'beginner',
                 'language' => 'vi',
                 'requirements' => null,
                 'outcomes' => null,
                 'status' => 'draft',
                 'is_featured' => false,
-                'total_duration_seconds' => 1000,
+                
                 'published_at' => null,
                 'admin_reject_reason' => null,
-                'deleted_at' => null,
+                
             ],
             [
                 'instructor_id' => $instructor01Id,
@@ -130,17 +130,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-hidden.jpg',
                 'intro_video_url' => null,
                 'price' => 100000,
-                'sale_price' => null,
-                'level' => 'beginner',
+                
+                'course_level' => 'beginner',
                 'language' => 'vi',
                 'requirements' => null,
                 'outcomes' => null,
                 'status' => 'hidden',
                 'is_featured' => true,
-                'total_duration_seconds' => 1000,
+                
                 'published_at' => $now->copy()->subDays(2),
                 'admin_reject_reason' => null,
-                'deleted_at' => null,
+                
             ],
             [
                 'instructor_id' => $instructor01Id,
@@ -151,17 +151,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-pending.jpg',
                 'intro_video_url' => null,
                 'price' => 200000,
-                'sale_price' => null,
-                'level' => 'intermediate',
+                
+                'course_level' => 'intermediate',
                 'language' => 'vi',
                 'requirements' => null,
                 'outcomes' => null,
                 'status' => 'pending_review',
                 'is_featured' => false,
-                'total_duration_seconds' => 1000,
+                
                 'published_at' => null,
                 'admin_reject_reason' => null,
-                'deleted_at' => null,
+                
             ],
             [
                 'instructor_id' => $instructor01Id,
@@ -172,17 +172,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-rejected.jpg',
                 'intro_video_url' => null,
                 'price' => 300000,
-                'sale_price' => null,
-                'level' => 'advanced',
+                
+                'course_level' => 'advanced',
                 'language' => 'vi',
                 'requirements' => null,
                 'outcomes' => null,
                 'status' => 'rejected',
                 'is_featured' => false,
-                'total_duration_seconds' => 1000,
+                
                 'published_at' => null,
                 'admin_reject_reason' => 'Nội dung chưa đạt yêu cầu.',
-                'deleted_at' => null,
+                
             ],
             [
                 'instructor_id' => $instructor01Id,
@@ -193,17 +193,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-approved.jpg',
                 'intro_video_url' => null,
                 'price' => 400000,
-                'sale_price' => null,
-                'level' => 'beginner',
+                
+                'course_level' => 'beginner',
                 'language' => 'vi',
                 'requirements' => null,
                 'outcomes' => null,
                 'status' => 'approved',
                 'is_featured' => false,
-                'total_duration_seconds' => 1000,
+                
                 'published_at' => null,
                 'admin_reject_reason' => null,
-                'deleted_at' => null,
+                
             ],
             [
                 'instructor_id' => $instructor01Id,
@@ -214,17 +214,17 @@ class CatalogCoursesSeeder extends Seeder
                 'thumbnail_url' => 'https://example.com/images/cat-soft-deleted.jpg',
                 'intro_video_url' => null,
                 'price' => 500000,
-                'sale_price' => null,
-                'level' => 'beginner',
+                
+                'course_level' => 'beginner',
                 'language' => 'vi',
                 'requirements' => null,
                 'outcomes' => null,
                 'status' => 'published',
                 'is_featured' => true,
-                'total_duration_seconds' => 1000,
+                
                 'published_at' => $now->copy()->subDays(5),
                 'admin_reject_reason' => null,
-                'deleted_at' => $now,
+                
             ],
         ];
 

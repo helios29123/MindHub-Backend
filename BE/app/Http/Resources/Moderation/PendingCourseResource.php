@@ -39,7 +39,7 @@ class PendingCourseResource extends JsonResource
             'is_featured' => $this->is_featured,
             'total_duration_seconds' => (int) ($this->total_duration_seconds ?: \Illuminate\Support\Facades\DB::table('lessons')
                 ->where('course_id', $this->id)
-                ->whereNull('deleted_at')
+                
                 ->sum('video_duration_seconds')),
             'published_at' => $this->published_at?->toDateTimeString(),
             'admin_reject_reason' => $this->admin_reject_reason,

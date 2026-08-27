@@ -336,7 +336,7 @@ final class ReportController extends Controller
 
         $courses = \Illuminate\Support\Facades\DB::table('courses')
             ->where('instructor_id', $instructorId)
-            ->whereNull('deleted_at')
+            
             ->whereNotIn('status', ['published', 'approved', 'active', 'pending_review', 'pending'])
             ->orderBy('updated_at', 'desc')
             ->get();

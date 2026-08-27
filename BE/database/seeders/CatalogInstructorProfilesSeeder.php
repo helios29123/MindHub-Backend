@@ -17,25 +17,21 @@ class CatalogInstructorProfilesSeeder extends Seeder
                 'bio' => 'Giảng viên Laravel/PHP có kinh nghiệm xây dựng REST API thực tế.',
                 'expertise' => 'Laravel, PHP, MySQL, REST API',
                 'experience_years' => 6,
-                'level' => 'senior',
             ],
             'cat.instructor02@example.com' => [
                 'bio' => 'Giảng viên Frontend chuyên React và UI Design.',
                 'expertise' => 'React, JavaScript, UI/UX',
                 'experience_years' => 5,
-                'level' => 'middle',
             ],
             'cat.instructor.inactive@example.com' => [
                 'bio' => 'Profile test instructor inactive.',
                 'expertise' => 'Testing',
                 'experience_years' => 2,
-                'level' => 'junior',
             ],
             'cat.instructor.locked@example.com' => [
                 'bio' => 'Profile test instructor locked.',
                 'expertise' => 'Testing',
                 'experience_years' => 3,
-                'level' => 'middle',
             ],
         ];
 
