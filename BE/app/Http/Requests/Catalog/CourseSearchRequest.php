@@ -20,7 +20,7 @@ class CourseSearchRequest extends FormRequest
             'category_id' => ['nullable', 'integer', 'min:1'],
             'category_slug' => ['nullable', 'string', 'max:100'],
             'instructor_id' => ['nullable', 'integer', 'min:1'],
-            'level' => ['nullable', 'string', 'in:beginner,intermediate,advanced,all_levels'],
+            'course_level' => ['nullable', 'string', 'in:beginner,intermediate,advanced,all_levels'],
             'language' => ['nullable', 'string', 'max:20'],
             'min_price' => ['nullable', 'numeric', 'min:0'],
             'max_price' => ['nullable', 'numeric', 'min:0', 'gte:min_price'],

@@ -4,7 +4,7 @@ namespace App\Services\Auth;
 
 use App\Exceptions\BusinessException;
 use App\Mail\VerifyEmailMail;
-use App\Models\AuthSession;
+use App\Models\Session;
 use App\Models\User;
 use App\Repositories\Instructor\InstructorProfileRepository;
 use App\Repositories\Instructor\PayoutAccountRepository;
@@ -390,7 +390,7 @@ class AuthService
         });
     }
 
-    public function logout(?AuthSession $session, Request $request): void
+    public function logout(?Session $session, Request $request): void
     {
         if ($session) {
             $this->userSessionRepository->revoke($session);
@@ -423,29 +423,43 @@ class AuthService
             throw new BusinessException('Tài khoản đang bị khóa bởi quản trị viên.', 403);
         }
 
+        if ($user->status === User::STATUS_SUSPENDED) {
+            throw new BusinessException('Tài khoản đang bị đình chỉ.', 403);
+        }
+
+        if ($user->status === User::STATUS_INACTIVE) {
+            $message = $user->email_verified_at === null
+                ? 'Tài khoản chưa xác thực email.'
+                : 'Tài khoản đang ngừng hoạt động.';
+
+            throw new BusinessException($message, 403);
+        }
+
         if (! $user->isActive()) {
-            $this->userRepository->update($user, [
-                'status' => User::STATUS_ACTIVE,
-                'email_verified_at' => $user->email_verified_at ?? now(),
-            ]);
+            throw new BusinessException('Tài khoản không ở trạng thái cho phép đăng nhập.', 403);
         }
     }
 
     private function ensureUserCanLoginForGoogle(User $user): void
     {
         if ($user->isLocked()) {
-            throw new BusinessException('Tài khoản đang bị khóa, vô hiệu hóa hoặc không có quyền truy cập.', 403);
+            throw new BusinessException('Tài khoản đang bị khóa bởi quản trị viên.', 403);
         }
 
-        if ($user->role === User::ROLE_INSTRUCTOR && ! $user->isActive()) {
-            throw new BusinessException('Tài khoản giảng viên đang chờ admin duyệt.', 403);
+        if ($user->status === User::STATUS_SUSPENDED) {
+            throw new BusinessException('Tài khoản đang bị đình chỉ.', 403);
         }
 
-        if ($user->role !== User::ROLE_INSTRUCTOR && ! $user->isActive()) {
-            $this->userRepository->update($user, [
-                'status' => User::STATUS_ACTIVE,
-                'email_verified_at' => $user->email_verified_at ?? now(),
-            ]);
+        if ($user->status === User::STATUS_INACTIVE) {
+            $message = $user->role === User::ROLE_INSTRUCTOR
+                ? 'Tài khoản giảng viên chưa được phép hoạt động.'
+                : 'Tài khoản đang ngừng hoạt động.';
+
+            throw new BusinessException($message, 403);
+        }
+
+        if (! $user->isActive()) {
+            throw new BusinessException('Tài khoản không ở trạng thái cho phép đăng nhập.', 403);
         }
     }
 

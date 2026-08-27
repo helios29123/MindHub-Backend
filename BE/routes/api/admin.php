@@ -3,9 +3,6 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminCategoryController;
 use App\Http\Controllers\AdminFaqController;
-use App\Http\Controllers\AdminCourseApprovalController;
-use App\Http\Controllers\AdminCreditPackageController;
-use App\Http\Controllers\AdminInstructorCreditController;
 use App\Http\Controllers\AdminModerationController;
 use App\Http\Controllers\InstructorUpgradeController;
 use App\Http\Controllers\MarketingController;
@@ -46,14 +43,16 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         Route::get('/course-reviews', [AdminModerationController::class, 'courseReviews']);
 
         /*
-         * Rule mới:
-         * Admin approve/publish thành công thì mới trừ 1 lượt tạo khóa học.
-         * Vì vậy route approve/reject chuyển sang AdminCourseApprovalController.
+         * Course state machine:
+         * pending_review -> approved | rejected
+         * approved -> published
+         * published -> hidden
+         * hidden -> published
          */
-        Route::patch('/courses/{courseId}/approve', [AdminCourseApprovalController::class, 'approve'])
+        Route::patch('/courses/{courseId}/approve', [AdminModerationController::class, 'approveCourse'])
             ->whereNumber('courseId');
 
-        Route::patch('/courses/{courseId}/reject', [AdminCourseApprovalController::class, 'reject'])
+        Route::patch('/courses/{courseId}/reject', [AdminModerationController::class, 'rejectCourse'])
             ->whereNumber('courseId');
 
         Route::get('/moderation/items', [AdminModerationController::class, 'moderationItems']);
@@ -63,36 +62,6 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
 
         Route::patch('/moderation/items/{id}', [AdminModerationController::class, 'moderateItem'])
             ->whereNumber('id');
-
-        /*
-        |--------------------------------------------------------------------------
-        | Credit packages - Admin tạo/sửa/xóa mềm gói lượt
-        |--------------------------------------------------------------------------
-        */
-        Route::get('/credit-packages', [AdminCreditPackageController::class, 'index']);
-
-        Route::post('/credit-packages', [AdminCreditPackageController::class, 'store']);
-
-        Route::patch('/credit-packages/{packageId}', [AdminCreditPackageController::class, 'update'])
-            ->whereNumber('packageId');
-
-        Route::delete('/credit-packages/{packageId}', [AdminCreditPackageController::class, 'destroy'])
-            ->whereNumber('packageId');
-
-        /*
-        |--------------------------------------------------------------------------
-        | Instructor credits - Admin xem/cộng/trừ lượt thủ công
-        |--------------------------------------------------------------------------
-        */
-        Route::get('/instructors/{instructorId}/credits', [AdminInstructorCreditController::class, 'show'])
-            ->whereNumber('instructorId');
-
-        Route::get('/instructors/{instructorId}/credit-transactions', [AdminInstructorCreditController::class, 'transactions'])
-            ->whereNumber('instructorId');
-
-        Route::post('/instructors/{instructorId}/credits/adjust', [AdminInstructorCreditController::class, 'adjust'])
-            ->whereNumber('instructorId');
-
         /*
         |--------------------------------------------------------------------------
         | Marketing / Campaigns / Banners
@@ -128,11 +97,7 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
 
         Route::patch('/categories/{id}', [AdminCategoryController::class, 'update'])
             ->whereNumber('id');
-
-        Route::delete('/categories/{id}', [AdminCategoryController::class, 'destroy'])
-            ->whereNumber('id');
-
-        /*
+/*
         |--------------------------------------------------------------------------
         | Courses
         |--------------------------------------------------------------------------

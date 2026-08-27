@@ -18,7 +18,7 @@ final class WishlistResource extends JsonResource
                     'thumbnail_url' => $this->course->thumbnail_url,
                     'price' => $this->course->price,
                     'sale_price' => $this->course->sale_price,
-                    'level' => $this->course->level,
+                    'course_level' => $this->course->course_level,
                     'language' => $this->course->language,
                     'status' => $this->course->status,
                 ];

@@ -200,7 +200,7 @@ final class InstructorCourseController extends Controller
         return ApiResponse::success(
             new InstructorCourseResource($course),
             "Thao tác thành công.",
-            201,
+            200,
         );
     }
 
@@ -775,14 +775,6 @@ final class InstructorCourseController extends Controller
         );
     }
 
-    public function destroy(Request $request, int $id): JsonResponse
-    {
-        $this->instructorCourseService->deleteCourse($request->user(), $id);
-
-        return ApiResponse::success([
-            'id' => $id,
-        ], 'Đã xóa khóa học.');
-    }
 
     public function hide(Request $request, int $id): JsonResponse
     {

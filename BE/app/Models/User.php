@@ -63,6 +63,24 @@ class User extends Authenticatable
         return null;
     }
 
+    /**
+     * Tài khoản có đang bị admin khóa thủ công hay không.
+     *
+     * DB FINAL dùng cột users.locked riêng; status không có giá trị "locked".
+     */
+    public function isLocked(): bool
+    {
+        return (bool) $this->locked;
+    }
+
+    /**
+     * Trạng thái tài khoản có đang active hay không.
+     */
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
     public function instructorProfile(): HasOne
     {
         return $this->hasOne(InstructorProfile::class);

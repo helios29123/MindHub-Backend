@@ -23,7 +23,7 @@ final class InstructorCourseDetailResource extends JsonResource
             'sale_price' => $this->sale_price !== null ? (float) $this->sale_price : null,
             'discount_percent' => $this->discount_percent !== null ? (int) $this->discount_percent : null,
             'has_discount' => $this->discount_percent !== null && (int) $this->discount_percent > 0,
-            'level' => $this->level,
+            'course_level' => $this->course_level,
             'language' => $this->language,
             'requirements' => $this->requirements,
             'outcomes' => $this->outcomes,

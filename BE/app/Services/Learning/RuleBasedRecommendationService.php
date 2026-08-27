@@ -102,7 +102,7 @@ class RuleBasedRecommendationService
             }
 
             // 2. Same level or next (+25)
-            if ($candidate->level && in_array($candidate->level, $targetLevels)) {
+            if ($candidate->course_level && in_array($candidate->course_level, $targetLevels)) {
                 $score += 25;
                 $reasons[] = 'Phù hợp cấp độ học của bạn';
             }

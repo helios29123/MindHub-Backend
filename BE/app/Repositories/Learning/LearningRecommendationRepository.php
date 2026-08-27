@@ -43,9 +43,9 @@ class LearningRecommendationRepository
         }
 
         return Course::whereIn('id', $courseIds)
-            ->whereNotNull('level')
+            ->whereNotNull('course_level')
             ->distinct()
-            ->pluck('level')
+            ->pluck('course_level')
             ->toArray();
     }
 

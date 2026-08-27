@@ -2,24 +2,24 @@
 
 namespace App\Repositories\User;
 
-use App\Models\AuthSession;
+use App\Models\Session;
 
 class UserSessionRepository
 {
-    public function create(array $data): AuthSession
+    public function create(array $data): Session
     {
-        return AuthSession::create($data);
+        return Session::create($data);
     }
 
-    public function findActiveById(int $sessionId): ?AuthSession
+    public function findActiveById(int $sessionId): ?Session
     {
-        return AuthSession::where('id', $sessionId)
+        return Session::where('id', $sessionId)
             ->whereNull('revoked_at')
             ->where('expires_at', '>', now())
             ->first();
     }
 
-    public function revoke(AuthSession $session): AuthSession
+    public function revoke(Session $session): Session
     {
         $session->forceFill([
             'revoked_at' => now(),
@@ -30,7 +30,7 @@ class UserSessionRepository
 
     public function revokeAllByUserId(int $userId): int
     {
-        return AuthSession::where('user_id', $userId)
+        return Session::where('user_id', $userId)
             ->whereNull('revoked_at')
             ->update([
                 'revoked_at' => now(),

@@ -242,7 +242,7 @@ class InstructorQuestionService
                         'message' => 'Giảng viên đã trả lời câu hỏi trong bài học: ' . ($lesson->title ?? 'Bài học'),
                         'data' => json_encode(['question_id' => $comment->id, 'reply_id' => $reply->id]),
                         'action_url' => '/learn/' . $courseId . '?question_id=' . $comment->id,
-                        'channel' => 'database',
+                        'channel' => 'web',
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);

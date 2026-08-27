@@ -1,18 +1,18 @@
 <?php
 namespace App\Repositories\Auth;
-use App\Models\AuthSession;
+use App\Models\Session;
 
 
 class SessionRepository
 {
     public function create(array $sessionData)
     {
-        return AuthSession::create($sessionData);
+        return Session::create($sessionData);
     }
 
     public function findActiveById(int $sessionId)
     {
-        return AuthSession::query()
+        return Session::query()
             ->where('id', $sessionId)
             ->whereNull('revoked_at')
             ->where(function ($query) {
@@ -22,7 +22,7 @@ class SessionRepository
             ->first();
     }
 
-    public function update(AuthSession $session, array $sessionData)
+    public function update(Session $session, array $sessionData)
     {
         $session->fill($sessionData);
         $session->save();
@@ -30,7 +30,7 @@ class SessionRepository
         return $session->refresh();
     }
 
-    public function revoke(AuthSession $session)
+    public function revoke(Session $session)
     {
         return $this->update($session, [
             'revoked_at' => now(),
@@ -39,7 +39,7 @@ class SessionRepository
 
     public function revokeAllByUserId(int $userId)
     {
-        return AuthSession::query()
+        return Session::query()
             ->where('user_id', $userId)
             ->whereNull('revoked_at')
             ->update([
@@ -49,7 +49,7 @@ class SessionRepository
 
     public function findByRefreshTokenHash(string $refreshTokenHash)
     {
-        return AuthSession::query()
+        return Session::query()
             ->where('refresh_token_hash', $refreshTokenHash)
             ->whereNull('revoked_at')
             ->where(function ($query) {

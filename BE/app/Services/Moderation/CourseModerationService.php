@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 class CourseModerationService
 {
-    private const APPROVED_STATUS = 'approved';
     public function __construct(
         private readonly CourseModerationRepository $courseModerationRepository
     ) {
@@ -17,56 +16,72 @@ class CourseModerationService
     {
         return $this->courseModerationRepository->paginateCourseReviews($filters);
     }
-    public function approveCourse(int $courseId): Course
+    public function approveCourse(int $courseId, int $adminId): Course
     {
-        return DB::transaction(function () use ($courseId): Course {
+        return DB::transaction(function () use ($courseId, $adminId): Course {
             $course = Course::query()
                 ->with('instructor')
                 ->whereKey($courseId)
                 ->lockForUpdate()
                 ->first();
+
             if (! $course) {
                 throw new ModelNotFoundException();
             }
+
             if ($course->status !== 'pending_review') {
-                throw new DomainException('Trạng thái khóa học không hợp lệ để xử lý.');
+                throw new DomainException('Chỉ khóa học pending_review mới được chuyển sang approved.');
             }
-            $approvedStatus = self::APPROVED_STATUS;
+
             $course->forceFill([
-                'status' => $approvedStatus,
+                'status' => 'approved',
+                'reviewed_by' => $adminId,
                 'admin_reject_reason' => null,
-                'published_at' => $approvedStatus === 'published' ? now() : null,
+                'published_at' => null,
             ])->save();
-            $freshCourse = $course->fresh(['instructor']);
+
+            $freshCourse = $course->fresh(['instructor', 'categories']);
+
             if (! $freshCourse) {
                 throw new ModelNotFoundException();
             }
+
             return $freshCourse;
         });
     }
-    public function rejectCourse(int $courseId, string $reason): Course
+
+    public function rejectCourse(int $courseId, string $reason, int $adminId): Course
     {
-        return DB::transaction(function () use ($courseId, $reason): Course {
+        return DB::transaction(function () use ($courseId, $reason, $adminId): Course {
             $course = Course::query()
                 ->with('instructor')
                 ->whereKey($courseId)
                 ->lockForUpdate()
                 ->first();
+
             if (! $course) {
                 throw new ModelNotFoundException();
             }
+
             if ($course->status !== 'pending_review') {
-                throw new DomainException('Trạng thái khóa học không hợp lệ để xử lý.');
+                throw new DomainException('Chỉ khóa học pending_review mới được chuyển sang rejected.');
             }
+
             $course->forceFill([
                 'status' => 'rejected',
-                'admin_reject_reason' => $reason,
+                'reviewed_by' => $adminId,
+                'admin_reject_reason' => trim($reason),
+                'published_at' => null,
             ])->save();
-            $freshCourse = $course->fresh(['instructor']);
+
+            $freshCourse = $course->fresh(['instructor', 'categories']);
+
             if (! $freshCourse) {
                 throw new ModelNotFoundException();
             }
+
             return $freshCourse;
         });
     }
+
 }

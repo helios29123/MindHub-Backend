@@ -24,7 +24,6 @@ final class InstructorCourseDraftRequest extends FormRequest
             'total_duration_seconds' => ['prohibited'],
             'published_at' => ['prohibited'],
             'admin_reject_reason' => ['prohibited'],
-            'deleted_at' => ['prohibited'],
 
             'title' => ['nullable', 'string', 'max:255'],
             'slug' => [
@@ -32,7 +31,7 @@ final class InstructorCourseDraftRequest extends FormRequest
                 'string',
                 'max:255',
                 'alpha_dash',
-                Rule::unique('courses', 'slug')->ignore($courseId)->whereNull('deleted_at'),
+                Rule::unique('courses', 'slug')->ignore($courseId),
             ],
             'short_description' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string'],
@@ -43,7 +42,7 @@ final class InstructorCourseDraftRequest extends FormRequest
             'has_discount' => ['nullable', 'boolean'],
             'discount_percent' => ['nullable', 'integer', 'min:1', 'max:99', 'required_if:has_discount,true', 'required_if:has_discount,1'],
             'sale_price' => ['nullable', 'numeric', 'min:0'],
-            'level' => ['nullable', Rule::in(['beginner', 'intermediate', 'advanced', 'all_levels'])],
+            'course_level' => ['nullable', Rule::in(['beginner', 'intermediate', 'advanced', 'all_levels'])],
             'language' => ['nullable', 'string', 'max:20'],
             'requirements' => ['nullable', 'string'],
             'outcomes' => ['nullable', 'string'],
@@ -51,7 +50,7 @@ final class InstructorCourseDraftRequest extends FormRequest
             'category_ids.*' => [
                 'integer',
                 'distinct',
-                Rule::exists('categories', 'id')->where('status', 'active')->whereNull('deleted_at'),
+                Rule::exists('categories', 'id')->where('status', 'active'),
             ],
         ];
     }
@@ -66,7 +65,6 @@ final class InstructorCourseDraftRequest extends FormRequest
             'total_duration_seconds.prohibited' => 'Không được tự set tổng thời lượng.',
             'published_at.prohibited' => 'Không được tự set thời gian published.',
             'admin_reject_reason.prohibited' => 'Không được tự set lý do từ chối.',
-            'deleted_at.prohibited' => 'Không được truyền deleted_at.',
 
             'slug.unique' => 'Slug khóa học đã tồn tại.',
             'slug.alpha_dash' => 'Slug chỉ được chứa chữ, số, dấu gạch ngang và gạch dưới.',

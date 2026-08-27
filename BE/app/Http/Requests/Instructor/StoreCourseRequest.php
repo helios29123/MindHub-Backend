@@ -22,7 +22,6 @@ final class StoreCourseRequest extends FormRequest
             'total_duration_seconds' => ['prohibited'],
             'published_at' => ['prohibited'],
             'admin_reject_reason' => ['prohibited'],
-            'deleted_at' => ['prohibited'],
 
             'title' => ['required', 'string', 'max:255'],
             'slug' => [
@@ -30,7 +29,7 @@ final class StoreCourseRequest extends FormRequest
                 'string',
                 'max:255',
                 'alpha_dash',
-                Rule::unique('courses', 'slug')->whereNull('deleted_at'),
+                Rule::unique('courses', 'slug'),
             ],
             'short_description' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string'],
@@ -41,7 +40,7 @@ final class StoreCourseRequest extends FormRequest
             'has_discount' => ['nullable', 'boolean'],
             'discount_percent' => ['nullable', 'integer', 'min:1', 'max:99', 'required_if:has_discount,true', 'required_if:has_discount,1'],
             'sale_price' => ['nullable', 'numeric', 'min:0'],
-            'level' => ['nullable', Rule::in(['beginner', 'intermediate', 'advanced', 'all_levels'])],
+            'course_level' => ['nullable', Rule::in(['beginner', 'intermediate', 'advanced', 'all_levels'])],
             'language' => ['nullable', 'string', 'max:20'],
             'requirements' => ['nullable', 'string'],
             'outcomes' => ['nullable', 'string'],
@@ -49,7 +48,7 @@ final class StoreCourseRequest extends FormRequest
             'category_ids.*' => [
                 'integer',
                 'distinct',
-                Rule::exists('categories', 'id')->where('status', 'active')->whereNull('deleted_at'),
+                Rule::exists('categories', 'id')->where('status', 'active'),
             ],
         ];
     }

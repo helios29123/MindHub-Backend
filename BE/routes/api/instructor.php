@@ -1,5 +1,4 @@
 <?php
-use App\Http\Controllers\InstructorCreditController;
 use App\Http\Controllers\InstructorCourseController;
 use App\Http\Controllers\InstructorUpgradeController;
 use App\Http\Controllers\ReportController;
@@ -26,10 +25,6 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
 |--------------------------------------------------------------------------
 | Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
 */
-        Route::get('/credit-packages', [InstructorCreditController::class, 'packages']);
-        Route::get('/course-credits', [InstructorCreditController::class, 'balance']);
-        Route::get('/credit-transactions', [InstructorCreditController::class, 'transactions']);
-        Route::post('/credit-orders', [InstructorCreditController::class, 'createOrder']);
         /*
 |--------------------------------------------------------------------------
 | Ghi chú
@@ -305,8 +300,7 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         Route::get('/courses', [InstructorCourseController::class, 'index'])
             ->name('instructor.courses.index');
 
-        Route::delete('/courses/{id}', [InstructorCourseController::class, 'destroy'])
-            ->whereNumber('id');
+
         Route::patch('/courses/{id}/hide', [InstructorCourseController::class, 'hide'])
             ->whereNumber('id');
         Route::patch('/courses/{id}/unhide', [InstructorCourseController::class, 'unhide'])

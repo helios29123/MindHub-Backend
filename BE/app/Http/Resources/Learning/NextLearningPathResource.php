@@ -13,7 +13,7 @@ class NextLearningPathResource extends JsonResource
             'course_id' => $this->id,
             'title' => $this->title,
             'slug' => $this->slug,
-            'level' => $this->level,
+            'course_level' => $this->course_level,
             'price' => (float) $this->price,
             'sale_price' => $this->sale_price !== null ? (float) $this->sale_price : null,
             'path_reason' => $this->when(isset($this->path_reason), $this->path_reason),

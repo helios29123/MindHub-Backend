@@ -20,7 +20,7 @@ class CatalogCourseResource extends JsonResource
             'intro_video_url' => $this->intro_video_url,
             'price' => (float) $this->price,
             'sale_price' => $this->sale_price !== null ? (float) $this->sale_price : null,
-            'level' => $this->level,
+            'course_level' => $this->course_level,
             'language' => $this->language,
             'is_featured' => (bool) $this->is_featured,
             'total_duration_seconds' => (int) $this->total_duration_seconds,

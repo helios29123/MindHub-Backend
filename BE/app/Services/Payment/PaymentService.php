@@ -499,7 +499,7 @@ class PaymentService
                 \App\Models\Notification::create([
                     'user_id' => $user->id,
                     'type' => 'payment',
-                    'channel' => 'course',
+                    'channel' => 'web',
                     'title' => '🎉 Thanh toán thành công',
                     'message' => "Chào mừng bạn đến với khóa học \"{$course->title}\". Chúng tôi đã mở khóa toàn bộ bài học và gửi email hướng dẫn học tập cho bạn.",
                     'action_url' => "/courses",

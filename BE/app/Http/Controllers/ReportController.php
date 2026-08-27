@@ -438,7 +438,7 @@ final class ReportController extends Controller
             $coursesQuery->where('courses.id', (int) $request->query('course_id'));
         }
 
-        $courses = $coursesQuery->get(['id', 'title', 'status', 'thumbnail_url', 'level', 'price']);
+        $courses = $coursesQuery->get(['id', 'title', 'status', 'thumbnail_url', 'course_level', 'price']);
         $courseIds = $courses->pluck('id')->toArray();
 
         if (empty($courseIds)) {

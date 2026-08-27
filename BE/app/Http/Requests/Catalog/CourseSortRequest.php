@@ -34,7 +34,7 @@ class CourseSortRequest extends FormRequest
                 'min:1',
             ],
 
-            'level' => [
+            'course_level' => [
                 'nullable',
                 'string',
                 'in:beginner,intermediate,advanced,all_levels',

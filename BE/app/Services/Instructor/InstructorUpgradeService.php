@@ -84,7 +84,7 @@ class InstructorUpgradeService
                     'title' => 'Yêu cầu đăng ký Giảng viên mới',
                     'message' => "Học viên {$user->full_name} ({$user->email}) đã gửi yêu cầu đăng ký làm Giảng viên.",
                     'action_url' => '/admin/instructors/upgrade-requests',
-                    'channel' => 'database',
+                    'channel' => 'web',
                 ]);
             }
         } catch (\Throwable $e) {}
