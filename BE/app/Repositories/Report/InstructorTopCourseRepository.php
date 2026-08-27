@@ -27,7 +27,7 @@ class InstructorTopCourseRepository
             }
         }
 
-        $courses = $coursesQuery->get(['id', 'title', 'status', 'thumbnail_url', 'level', 'price']);
+        $courses = $coursesQuery->get(['id', 'title', 'status', 'thumbnail_url', 'course_level', 'price']);
         $courseIds = $courses->pluck('id')->toArray();
 
         if (empty($courseIds)) {
@@ -109,7 +109,7 @@ class InstructorTopCourseRepository
                 'status' => $c->status,
                 'thumbnail_url' => $thumbnail,
                 'image' => $thumbnail,
-                'level' => $c->level ?? 'beginner',
+                'course_level' => $c->course_level ?? 'beginner',
                 'enrollment_count' => $eCount,
                 'enrollments_count' => $eCount,
                 'studentCount' => $uCount,

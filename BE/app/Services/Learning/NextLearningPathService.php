@@ -78,16 +78,16 @@ class NextLearningPathService
 
         foreach ($enrollments as $enrollment) {
             $course = $enrollment->course;
-            if (!$course || !$course->level) continue;
+            if (!$course || !$course->course_level) continue;
             
             // If we have a target category, we might want to only look at levels in that category
             // But getting highest overall is also fine. Let's look at courses in target category if possible.
             $hasCat = $course->categories->contains('id', $targetCategoryId);
             if ($hasCat) {
-                $lvlVal = $levelValues[$course->level] ?? 1;
+                $lvlVal = $levelValues[$course->course_level] ?? 1;
                 if ($lvlVal >= $highestLevelValue) {
                     $highestLevelValue = $lvlVal;
-                    $highestLevelStr = $course->level;
+                    $highestLevelStr = $course->course_level;
                 }
             }
         }
@@ -104,7 +104,7 @@ class NextLearningPathService
         });
 
         // Try to find the exact next level first
-        $candidates = $query->clone()->where('level', $nextLevel)->get();
+        $candidates = $query->clone()->where('course_level', $nextLevel)->get();
 
         $pathReason = '';
 
@@ -117,7 +117,7 @@ class NextLearningPathService
         } else {
             // If no courses at exact next level, fallback to higher level or any level in the same category
             // except beginner if they are already advanced
-            $fallbackCandidates = $query->clone()->where('level', '!=', 'beginner')->get();
+            $fallbackCandidates = $query->clone()->where('course_level', '!=', 'beginner')->get();
             if ($fallbackCandidates->isNotEmpty()) {
                 $candidates = $fallbackCandidates;
                 $pathReason = 'Khóa học chuyên sâu trong cùng danh mục';

@@ -62,8 +62,8 @@ class CatalogCourseRepository
             }
         }
 
-        if (! empty($filters['level'])) {
-            $query->where('courses.course_level', $filters['level']);
+        if (! empty($filters['course_level'])) {
+            $query->where('courses.course_level', $filters['course_level']);
         }
 
         if (! empty($filters['instructor_id'])) {

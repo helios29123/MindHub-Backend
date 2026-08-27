@@ -15,7 +15,7 @@ class RelatedCourseResource extends JsonResource
             'slug' => $this->slug,
             'short_description' => $this->short_description,
             'thumbnail_url' => $this->thumbnail_url,
-            'level' => $this->level,
+            'course_level' => $this->course_level,
             'price' => (float) $this->price,
             'sale_price' => $this->sale_price !== null ? (float) $this->sale_price : null,
             'is_featured' => (bool) $this->is_featured,

@@ -34,7 +34,7 @@ final class UpdateCategoryRequest extends FormRequest
                 Rule::exists('categories', 'id'),
             ],
             'description' => ['sometimes', 'nullable', 'string'],
-            'sort_order' => ['sometimes', 'string', 'max:100'],
+            'sort_order' => ['sometimes', 'integer', 'min:0'],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
         ];
     }
@@ -54,8 +54,8 @@ final class UpdateCategoryRequest extends FormRequest
     {
         return [
             'slug.regex' => 'Slug chỉ được chứa chữ thường, số và dấu gạch ngang.',
-            'slug.unique' => 'Slug danh mục đã tồn tại, kể cả trong danh mục đã xóa.',
-            'parent_id.exists' => 'Danh mục cha không tồn tại hoặc đã bị xóa.',
+            'slug.unique' => 'Slug danh mục đã tồn tại.',
+            'parent_id.exists' => 'Danh mục cha không tồn tại.',
         ];
     }
 }

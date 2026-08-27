@@ -32,7 +32,7 @@ final class AdminRevenueResource extends JsonResource
                 'id' => $this->course->id,
                 'title' => $this->course->title,
                 'thumbnail_url' => $this->course->thumbnail_url,
-                'level' => $this->course->level,
+                'course_level' => $this->course->course_level,
                 'status' => $this->course->status,
             ] : null,
             'instructor' => $this->instructor ? [

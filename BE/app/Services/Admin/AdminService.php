@@ -246,23 +246,13 @@ class AdminService
 
     public function deleteCategory(int $id): void
     {
-        \Illuminate\Support\Facades\DB::transaction(function () use ($id): void {
-            $category = \App\Models\Category::with('children', 'courses')->find($id);
+        $category = \App\Models\Category::find($id);
 
-            if (!$category) {
-                throw new BusinessException('Không tìm thấy dữ liệu.', 404);
-            }
+        if (!$category) {
+            throw new BusinessException('Không tìm thấy dữ liệu.', 404);
+        }
 
-            if ($category->children->count() > 0) {
-                throw new BusinessException('Không thể xóa danh mục đang có danh mục con.', 400);
-            }
-
-            if ($category->courses->count() > 0) {
-                throw new BusinessException('Không thể xóa danh mục đang có khóa học liên kết.', 400);
-            }
-
-            $category->delete();
-        });
+        $category->update(['status' => 'inactive']);
     }
 
     public function getCourses(array $queryParams): LengthAwarePaginator
@@ -305,8 +295,8 @@ class AdminService
             });
         }
 
-        if (!empty($queryParams['level'])) {
-            $query->where('course_level', $queryParams['level']);
+        if (!empty($queryParams['course_level'])) {
+            $query->where('course_level', $queryParams['course_level']);
         }
 
         $sortBy = $queryParams['sort_by'] ?? 'created_at';
@@ -428,10 +418,6 @@ class AdminService
                 'outcomes'
             ];
 
-            if (isset($data['level']) && !isset($data['course_level'])) {
-                $data['course_level'] = $data['level'];
-            }
-
             $updateData = [];
             foreach ($allowedFields as $field) {
                 if (array_key_exists($field, $data)) {
@@ -439,7 +425,26 @@ class AdminService
                 }
             }
 
-            $oldStatus = $course->status;
+            $oldStatus = (string) $course->status;
+
+            if (array_key_exists('status', $updateData)) {
+                $targetStatus = (string) $updateData['status'];
+
+                if ($targetStatus !== $oldStatus) {
+                    $allowedTransitions = [
+                        'approved' => ['published'],
+                        'published' => ['hidden'],
+                        'hidden' => ['published'],
+                    ];
+
+                    if (! in_array($targetStatus, $allowedTransitions[$oldStatus] ?? [], true)) {
+                        throw new BusinessException(
+                            "Chuyển trạng thái khóa học không hợp lệ: {$oldStatus} -> {$targetStatus}.",
+                            409,
+                        );
+                    }
+                }
+            }
 
             if (isset($updateData['status']) && $updateData['status'] === 'published' && $course->published_at === null) {
                 $updateData['published_at'] = now();
@@ -462,7 +467,7 @@ class AdminService
                             'title' => '🎉 Khóa học của bạn đã được duyệt',
                             'message' => "Khóa học \"{$refreshedCourse->title}\" đã được phê duyệt và xuất bản công khai.",
                             'action_url' => "/courses/" . ($refreshedCourse->slug ?: $refreshedCourse->id),
-                            'channel' => 'database',
+                            'channel' => 'web',
                         ]);
                     }
                 } catch (\Throwable $e) {

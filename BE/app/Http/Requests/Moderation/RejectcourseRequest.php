@@ -17,7 +17,7 @@ class RejectcourseRequest extends FormRequest
             $reason = $this->input('reason');
         }
         $this->merge([
-            'id' => $this->route('id'),
+            'id' => $this->route('courseId'),
             'admin_reject_reason' => $reason,
         ]);
     }

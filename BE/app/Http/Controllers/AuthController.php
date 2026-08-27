@@ -11,7 +11,7 @@ use App\Http\Requests\Auth\ResendVerifyEmailRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\Auth\AuthResource;
 use App\Http\Resources\User\UserResource;
-use App\Models\AuthSession;
+use App\Models\Session;
 use App\Services\Auth\AuthService;
 use App\Services\Auth\GoogleTokenVerifier;
 use App\Support\ApiResponse;
@@ -236,7 +236,7 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         $session = $request->attributes->get('auth_session');
-        $this->authService->logout($session instanceof AuthSession ? $session : null, $request);
+        $this->authService->logout($session instanceof Session ? $session : null, $request);
 
         return ApiResponse::success(
             null,

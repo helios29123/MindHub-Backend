@@ -17,9 +17,9 @@ final class CategoryQueryRequest extends FormRequest
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'search' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', 'in:active,inactive,deleted,all,all_with_deleted'],
+            'status' => ['nullable', 'in:active,inactive,all'],
             'type' => ['nullable', 'in:root,child'],
-            'parent_id' => ['nullable', 'integer', 'exists:categories,id,deleted_at,NULL'],
+            'parent_id' => ['nullable', 'integer', 'exists:categories,id'],
             'empty' => ['nullable', 'in:true,false,1,0'],
             'sort_by' => [
                 'nullable',

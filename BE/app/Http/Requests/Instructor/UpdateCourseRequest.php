@@ -25,7 +25,6 @@ final class UpdateCourseRequest extends FormRequest
             'total_duration_seconds' => ['prohibited'],
             'published_at' => ['prohibited'],
             'admin_reject_reason' => ['prohibited'],
-            'deleted_at' => ['prohibited'],
 
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'slug' => [
@@ -45,7 +44,7 @@ final class UpdateCourseRequest extends FormRequest
             'has_discount' => ['sometimes', 'nullable', 'boolean'],
             'discount_percent' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:99', 'required_if:has_discount,true', 'required_if:has_discount,1'],
             'sale_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
-            'level' => ['sometimes', Rule::in(['beginner', 'intermediate', 'advanced', 'all_levels'])],
+            'course_level' => ['sometimes', Rule::in(['beginner', 'intermediate', 'advanced', 'all_levels'])],
             'language' => ['sometimes', 'nullable', 'string', 'max:20'],
             'requirements' => ['sometimes', 'nullable', 'string'],
             'outcomes' => ['sometimes', 'nullable', 'string'],
@@ -73,7 +72,7 @@ final class UpdateCourseRequest extends FormRequest
                 'has_discount',
                 'discount_percent',
                 'sale_price',
-                'level',
+                'course_level',
                 'language',
                 'requirements',
                 'outcomes',

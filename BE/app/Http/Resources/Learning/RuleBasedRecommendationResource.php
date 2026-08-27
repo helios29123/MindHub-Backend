@@ -15,7 +15,7 @@ class RuleBasedRecommendationResource extends JsonResource
             'slug' => $this->slug,
             'short_description' => $this->when(isset($this->short_description), $this->short_description),
             'thumbnail_url' => $this->when(isset($this->thumbnail_url), $this->thumbnail_url),
-            'level' => $this->level,
+            'course_level' => $this->course_level,
             'price' => (float) $this->price,
             'sale_price' => $this->sale_price !== null ? (float) $this->sale_price : null,
             'score' => $this->when(isset($this->score), $this->score),

@@ -53,7 +53,7 @@ class CoursePublicController extends Controller
                 'enrolledCount' => $c->enrolled_count ?? 0,
                 'enrollments_count' => $c->enrolled_count ?? 0,
                 'reviews_count' => $c->rating_count ?? $c->reviews_count ?? 0,
-                'level' => $c->level ?? 'all_levels',
+                'course_level' => $c->course_level ?? 'all_levels',
                 'is_featured' => (bool) ($c->is_featured ?? false),
                 'createdAt' => $c->created_at,
                 'category' => $c->categories->first()->name ?? 'Khác'

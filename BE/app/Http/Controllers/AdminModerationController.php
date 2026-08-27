@@ -54,12 +54,13 @@ class AdminModerationController extends Controller
             meta: \App\Support\PaginationMeta::fromPaginator($courses)
         );
     }
-    public function approveCourse(ApproveCourseRequest $request, mixed $id): JsonResponse
+    public function approveCourse(ApproveCourseRequest $request, int $courseId): JsonResponse
     {
         try {
             $validated = $request->validated();
             $course = $this->courseModerationService->approveCourse(
-                (int) $validated['id']
+                (int) $validated['id'],
+                (int) $request->user()->id,
             );
             return ApiResponse::success(
                 new CourseApprovalResource($course),
@@ -76,13 +77,14 @@ class AdminModerationController extends Controller
             );
         }
     }
-    public function rejectCourse(RejectcourseRequest $request, mixed $id): JsonResponse
+    public function rejectCourse(RejectcourseRequest $request, int $courseId): JsonResponse
     {
         try {
             $validated = $request->validated();
             $course = $this->courseModerationService->rejectCourse(
                 (int) $validated['id'],
-                (string) $validated['admin_reject_reason']
+                (string) $validated['admin_reject_reason'],
+                (int) $request->user()->id,
             );
             return ApiResponse::success(
                 new CourseRejectResource($course),

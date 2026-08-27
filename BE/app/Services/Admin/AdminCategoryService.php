@@ -61,23 +61,6 @@ final class AdminCategoryService
         });
     }
 
-    public function delete(int $id): void
-    {
-        DB::transaction(function () use ($id): void {
-            $category = $this->findOrFail($id);
-
-            if ($this->categoryRepository->hasChildren($category)) {
-                throw new BusinessException('Không thể xóa danh mục vì vẫn còn danh mục con.', 409);
-            }
-
-            if ($this->categoryRepository->hasCourses($category)) {
-                throw new BusinessException('Không thể xóa danh mục vì vẫn còn khóa học liên kết.', 409);
-            }
-
-            $category->delete();
-        });
-    }
-
 
     public function reorder(array $items): void
     {

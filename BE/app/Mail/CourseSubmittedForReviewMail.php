@@ -30,7 +30,7 @@ class CourseSubmittedForReviewMail extends Mailable
         } else {
             $categoryName = e($this->course->category?->name ?? 'Chưa phân loại');
         }
-        $level = e($this->course->level ?? 'Mọi trình độ');
+        $level = e($this->course->course_level ?? 'Mọi trình độ');
         $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
         $adminReviewUrl = "{$frontendUrl}/admin/courses";
 

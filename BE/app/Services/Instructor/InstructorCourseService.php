@@ -51,7 +51,7 @@ final class InstructorCourseService
                 'published_at' => null,
                 'admin_reject_reason' => null,
                 'language' => $validatedData['language'] ?? 'vi',
-                'course_level' => $validatedData['course_level'] ?? $validatedData['level'] ?? 'beginner',
+                'course_level' => $validatedData['course_level'] ?? 'beginner',
             ]);
 
             $course = $this->instructorCourseRepository->create($courseData);
@@ -329,7 +329,7 @@ final class InstructorCourseService
                         'title' => 'Yêu cầu duyệt khóa học mới',
                         'message' => "Giảng viên {$instructor->full_name} đã gửi yêu cầu duyệt khóa học: {$updatedCourse->title}",
                         'action_url' => '/admin/courses',
-                        'channel' => 'database',
+                        'channel' => 'web',
                     ]);
                 }
             } catch (\Throwable $e) {
@@ -999,7 +999,7 @@ final class InstructorCourseService
                 'published_at' => null,
                 'admin_reject_reason' => null,
                 'language' => $data['language'] ?? 'vi',
-                'course_level' => $data['course_level'] ?? $data['level'] ?? 'beginner',
+                'course_level' => $data['course_level'] ?? 'beginner',
             ]);
 
             $course = $this->instructorCourseRepository->create($courseData);
@@ -1117,34 +1117,6 @@ final class InstructorCourseService
         return $slug;
     }
 
-    public function deleteCourse(User $instructor, int $courseId): void
-    {
-        $course = Course::query()
-            ->where('id', $courseId)
-            ->where('instructor_id', $instructor->id)
-            ->first();
-
-        if (! $course) {
-            throw new BusinessException('Khóa học không tồn tại hoặc bạn không có quyền thao tác.', 404);
-        }
-
-        $hasEnrollments = \App\Models\Enrollment::where('course_id', $course->id)->exists();
-        $hasOrders = \App\Models\Order::where('course_id', $course->id)->exists();
-        $hasRevenues = DB::table('revenues')->where('course_id', $course->id)->exists();
-
-        if ($hasEnrollments || $hasOrders || $hasRevenues) {
-            throw new BusinessException(
-                'Khóa học đã phát sinh học viên hoặc giao dịch nên không thể xóa. Bạn có thể ẩn khóa học thay thế.',
-                409,
-                ['code' => 'COURSE_HAS_DEPENDENCIES']
-            );
-        }
-
-        DB::transaction(function () use ($course): void {
-            $course->delete();
-        });
-    }
-
     public function hideCourse(User $instructor, int $courseId): Course
     {
         $course = Course::query()
@@ -1154,6 +1126,10 @@ final class InstructorCourseService
 
         if (! $course) {
             throw new BusinessException('Khóa học không tồn tại hoặc bạn không có quyền thao tác.', 404);
+        }
+
+        if ($course->status !== 'published') {
+            throw new BusinessException('Chỉ khóa học published mới được chuyển sang hidden.', 409);
         }
 
         return DB::transaction(function () use ($course): Course {
@@ -1173,13 +1149,17 @@ final class InstructorCourseService
             throw new BusinessException('Khóa học không tồn tại hoặc bạn không có quyền thao tác.', 404);
         }
 
+        if ($course->status !== 'hidden') {
+            throw new BusinessException('Chỉ khóa học hidden mới được chuyển lại published.', 409);
+        }
+
         return DB::transaction(function () use ($course): Course {
-            $newStatus = 'draft';
-            if (empty($course->admin_reject_reason) && $course->published_at !== null) {
-                $newStatus = 'published';
-            }
-            $course->update(['status' => $newStatus]);
+            $course->update([
+                'status' => 'published',
+                'published_at' => $course->published_at ?? now(),
+            ]);
             return $course->fresh();
         });
     }
+
 }

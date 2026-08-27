@@ -64,12 +64,6 @@ final class AdminCategoryController extends Controller
         );
     }
 
-    public function destroy(int $id): JsonResponse
-    {
-        $this->categoryService->delete($id);
-        return ApiResponse::success(null, 'Xóa danh mục thành công.');
-    }
-
 
     public function reorder(ReorderCategoryRequest $request): JsonResponse
     {

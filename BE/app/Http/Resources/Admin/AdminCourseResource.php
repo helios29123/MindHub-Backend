@@ -20,7 +20,7 @@ class AdminCourseResource extends JsonResource
             'intro_video_url' => $this->intro_video_url,
             'price' => $this->price,
             'sale_price' => $this->sale_price,
-            'level' => $this->level,
+            'course_level' => $this->course_level,
             'language' => $this->language,
             'requirements' => $this->requirements,
             'outcomes' => $this->outcomes,

@@ -29,7 +29,7 @@ final class StoreCategoryRequest extends FormRequest
                 Rule::exists('categories', 'id'),
             ],
             'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'string', 'max:100'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
         ];
     }
@@ -38,8 +38,8 @@ final class StoreCategoryRequest extends FormRequest
     {
         return [
             'slug.regex' => 'Slug chỉ được chứa chữ thường, số và dấu gạch ngang.',
-            'slug.unique' => 'Slug danh mục đã tồn tại, kể cả trong danh mục đã xóa.',
-            'parent_id.exists' => 'Danh mục cha không tồn tại hoặc đã bị xóa.',
+            'slug.unique' => 'Slug danh mục đã tồn tại.',
+            'parent_id.exists' => 'Danh mục cha không tồn tại.',
         ];
     }
 }

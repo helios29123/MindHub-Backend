@@ -24,7 +24,7 @@ class MyCourseResource extends JsonResource
                 'thumbnail_url' => $this->course->thumbnail_url,
                 'price' => (float) $this->course->price,
                 'sale_price' => $this->course->sale_price !== null ? (float) $this->course->sale_price : null,
-                'level' => $this->course->level,
+                'course_level' => $this->course->course_level,
                 'language' => $this->course->language,
                 'total_duration_seconds' => (int) $this->course->total_duration_seconds,
                 'instructor' => $this->course->instructor ? [
