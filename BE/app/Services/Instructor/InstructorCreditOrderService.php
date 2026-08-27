@@ -14,8 +14,6 @@ class InstructorCreditOrderService
     {
         return DB::transaction(function () use ($instructorId, $packageId): Order {
             $user = DB::table('users')
-                ->where('id', $instructorId)
-                ->whereNull('deleted_at')
                 ->first();
 
             if (! $user) {

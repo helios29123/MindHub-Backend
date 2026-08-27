@@ -97,7 +97,7 @@ class CourseChecklistService
             [
                 'key' => 'lesson_media',
                 'label' => 'Nội dung/Video bài học',
-                'passed' => $lessons->where('status', 'published')->filter(function ($l) {
+                'passed' => $lessons->where('status', 'published')->filter(function ($l) use ($lessons) {
                     $lType = strtolower((string) ($l->lesson_type ?? 'video'));
                     if ($lType === 'video') {
                         $vUrl = (string) ($l->video_url ?? '');
@@ -305,7 +305,7 @@ class CourseChecklistService
             $missingItems,
             $warnings,
             'course_basic_info',
-            'Thﾃｴng tin cﾆ｡ b蘯｣n c盻ｧa khﾃｳa h盻皇',
+            'Thông tin cơ bản của khóa học',
             $missing,
             $checkWarnings
         );
@@ -398,7 +398,7 @@ class CourseChecklistService
                 $missing[] = 'lesson_content';
             }
 
-            if (! in_array($lessonType, ['video', 'text', 'article', 'document', 'quiz'], true)
+            if (! in_array($lessonType, ['video', 'text', 'article', 'document'], true)
                 && $this->blank($lesson->content)
                 && $this->blank($lesson->video_url)
             ) {
@@ -423,60 +423,7 @@ class CourseChecklistService
             $missingItems,
             $warnings,
             'lesson_content',
-            'Bﾃi h盻皇 vﾃ n盻冓 dung bﾃi h盻皇',
-            $missing,
-            $checkWarnings
-        );
-    }
-
-    private function checkQuizzes(
-        Collection $quizzes,
-        Collection $questionStats,
-        array &$checks,
-        array &$missingItems,
-        array &$warnings
-    ): void {
-        $missing = [];
-        $checkWarnings = [];
-
-        $publishedQuizzes = $quizzes->where('status', 'published');
-
-        if ($publishedQuizzes->isEmpty()) {
-            $missing[] = 'quiz';
-        }
-
-        if ($questionStats->isEmpty()) {
-            $missing[] = 'quiz_question';
-        }
-
-        foreach ($questionStats as $question) {
-            if ($this->blank($question->question_text)) {
-                $missing[] = 'quiz_question_text';
-            }
-
-            $questionType = strtolower((string) $question->question_type);
-
-            if (in_array($questionType, ['single_choice', 'multiple_choice', 'choice'], true)) {
-                if ((int) $question->options_count < 2) {
-                    $missing[] = 'quiz_option';
-                }
-
-                if ((int) $question->correct_options_count < 1) {
-                    $missing[] = 'quiz_correct_option';
-                }
-            }
-        }
-
-        if ($quizzes->where('status', '!=', 'published')->isNotEmpty()) {
-            $checkWarnings[] = 'draft_or_hidden_quiz';
-        }
-
-        $this->pushCheck(
-            $checks,
-            $missingItems,
-            $warnings,
-            'quiz',
-            'Quiz vﾃ cﾃ｢u h盻淑 quiz',
+            'Bài học và nội dung bài học',
             $missing,
             $checkWarnings
         );
@@ -516,3 +463,4 @@ class CourseChecklistService
         return trim((string) $value) === '';
     }
 }
+

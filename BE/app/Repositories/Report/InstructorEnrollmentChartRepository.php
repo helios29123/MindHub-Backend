@@ -16,7 +16,7 @@ class InstructorEnrollmentChartRepository
         $query = DB::table('enrollments')
             ->join('courses', 'courses.id', '=', 'enrollments.course_id')
             ->where('courses.instructor_id', $instructorId)
-            ->whereNull('courses.deleted_at')
+            
             ->whereBetween('enrollments.enrolled_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
             ->selectRaw("
                 DATE_FORMAT(enrollments.enrolled_at, '$format') as period,

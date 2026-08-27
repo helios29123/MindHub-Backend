@@ -27,7 +27,7 @@ final class AdminPayoutAccountService
     }
     public function reject(PayoutAccount $account, ?string $reason, User $admin): PayoutAccount
     {
-        $account->update(['status' => 'rejected', 'rejected_reason' => $reason]);
+        $account->update(['status' => 'rejected', 'rejection_reason' => $reason]);
         $this->notifications->audit($admin, 'payout_account.reject', $account, [], ['reason' => $reason]);
         return $account->fresh('user');
     }

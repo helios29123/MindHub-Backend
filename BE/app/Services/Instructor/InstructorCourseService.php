@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Instructor;
 
 use App\Exceptions\BusinessException;
@@ -14,6 +15,7 @@ use App\Support\FileUpload;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -26,6 +28,7 @@ final class InstructorCourseService
         private readonly InstructorLessonRepository $instructorLessonRepository,
         private readonly FileUpload $fileUpload,
     ) {}
+
     public function createCourse(User $instructor, array $validatedData): Course
     {
         return DB::transaction(function () use ($instructor, $validatedData): Course {
@@ -45,11 +48,10 @@ final class InstructorCourseService
                 'slug' => $this->makeUniqueCourseSlug((string) $slugSource),
                 'status' => 'draft',
                 'is_featured' => false,
-                'total_duration_seconds' => 0,
                 'published_at' => null,
                 'admin_reject_reason' => null,
                 'language' => $validatedData['language'] ?? 'vi',
-                'level' => $validatedData['level'] ?? 'beginner',
+                'course_level' => $validatedData['course_level'] ?? $validatedData['level'] ?? 'beginner',
             ]);
 
             $course = $this->instructorCourseRepository->create($courseData);
@@ -61,6 +63,7 @@ final class InstructorCourseService
             return $this->instructorCourseRepository->findWithCategories((int) $course->id);
         });
     }
+
     public function paginateLessons(
         User $instructor,
         array $filters,
@@ -85,6 +88,7 @@ final class InstructorCourseService
             $filters,
         );
     }
+
     public function createLesson(User $instructor, array $validatedData): Lesson
     {
         return DB::transaction(function () use (
@@ -104,19 +108,15 @@ final class InstructorCourseService
                 "course_id" => $course->id,
                 "course_section_id" => $section->id,
                 "title" => $validatedData["title"],
-                "slug" => $this->makeUniqueLessonSlug(
-                    $course->id,
-                    $validatedData["title"],
-                ),
                 "lesson_type" => $lessonType,
                 "content" => $validatedData["content"] ?? null,
                 "video_url" => $validatedData["video_url"] ?? null,
                 "video_duration_seconds" =>
-                    $validatedData["video_duration_seconds"] ?? 0,
+                $validatedData["video_duration_seconds"] ?? 0,
                 "is_preview" => $validatedData["is_preview"] ?? false,
                 "status" => $validatedData["status"] ?? "draft",
                 "sort_order" =>
-                    $validatedData["sort_order"] ??
+                $validatedData["sort_order"] ??
                     $this->instructorLessonRepository->getNextSortOrder(
                         $section->id,
                     ),
@@ -130,10 +130,12 @@ final class InstructorCourseService
                 ->load(["course", "section", "assets"]);
         });
     }
+
     public function getLesson(User $instructor, int $lessonId): Lesson
     {
         return $this->findOwnedLessonOrFail($instructor, $lessonId);
     }
+
     public function updateLesson(
         User $instructor,
         int $lessonId,
@@ -178,13 +180,6 @@ final class InstructorCourseService
                     $lessonData[$field] = $validatedData[$field];
                 }
             }
-            if (array_key_exists("title", $validatedData)) {
-                $lessonData["slug"] = $this->makeUniqueLessonSlug(
-                    $course->id,
-                    $validatedData["title"],
-                    $lesson->id,
-                );
-            }
             if ($lessonType === "text") {
                 $lessonData["video_url"] = null;
                 $lessonData["video_duration_seconds"] = 0;
@@ -194,6 +189,7 @@ final class InstructorCourseService
                 ->load(["course", "section", "assets"]);
         });
     }
+
     public function deleteLesson(User $instructor, int $lessonId): void
     {
         DB::transaction(function () use ($instructor, $lessonId): void {
@@ -201,6 +197,7 @@ final class InstructorCourseService
             $this->instructorLessonRepository->delete($lesson);
         });
     }
+
     public function toggleLessonPreview(
         User $instructor,
         int $lessonId,
@@ -214,7 +211,7 @@ final class InstructorCourseService
             $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
             if ($isPreview && $lesson->status === "hidden") {
                 throw new BusinessException(
-                    "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                    "Bài học đang ở trạng thái ẩn không thể xem trước.",
                     400,
                 );
             }
@@ -225,6 +222,7 @@ final class InstructorCourseService
                 ->load(["course", "section", "assets"]);
         });
     }
+
     public function uploadLessonVideo(
         User $instructor,
         int $lessonId,
@@ -251,6 +249,7 @@ final class InstructorCourseService
                 ->load(["course", "section", "assets"]);
         });
     }
+
     public function uploadLessonAsset(
         User $instructor,
         int $lessonId,
@@ -333,11 +332,13 @@ final class InstructorCourseService
                         'channel' => 'database',
                     ]);
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
 
             return $updatedCourse;
         });
     }
+
     public function getRejectedReviewNotes(
         User $instructor,
         int $courseId,
@@ -346,16 +347,16 @@ final class InstructorCourseService
             $courseId,
         );
         if (!$course) {
-            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
+            throw new NotFoundHttpException("Không tìm thấy khóa học.");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new BusinessException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Bạn không có quyền xem thông tin khóa học này.",
                 403,
             );
         }
         if ($course->status !== "rejected") {
-            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
+            throw new NotFoundHttpException("Khóa học không ở trạng thái bị từ chối.");
         }
         return $course;
     }
@@ -371,7 +372,7 @@ final class InstructorCourseService
                 "slug",
                 "short_description",
                 "description",
-                "level",
+                "course_level",
                 "language",
             ]
             as $requiredField
@@ -415,70 +416,53 @@ final class InstructorCourseService
             $lessonId,
         );
         if (!$lesson) {
-            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
+            throw new NotFoundHttpException("Không tìm thấy bài học.");
         }
         if (
             !$lesson->course ||
             (int) $lesson->course->instructor_id !== (int) $instructor->id
         ) {
             throw new AccessDeniedHttpException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Bạn không có quyền truy cập bài học này.",
             );
         }
         return $lesson->load(["course", "section", "assets"]);
     }
+
     private function assertCourseOwnedByInstructor(
         int $courseId,
         User $instructor,
     ): Course {
         $course = $this->instructorLessonRepository->findCourseById($courseId);
         if (!$course) {
-            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
+            throw new NotFoundHttpException("Không tìm thấy khóa học.");
         }
         if ((int) $course->instructor_id !== (int) $instructor->id) {
             throw new AccessDeniedHttpException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Bạn không có quyền thao tác trên khóa học này.",
             );
         }
         return $course;
     }
+
     private function findSectionOrFail(int $sectionId): CourseSection
     {
         $section = $this->instructorLessonRepository->findSectionById(
             $sectionId,
         );
         if (!$section) {
-            throw new NotFoundHttpException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
+            throw new NotFoundHttpException("Không tìm thấy chương học.");
         }
         return $section;
     }
+
     private function assertSectionBelongsToCourse(
         CourseSection $section,
         Course $course,
     ): void {
         if ((int) $section->course_id !== (int) $course->id) {
-            throw new HttpException(422, "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・");
+            throw new HttpException(422, "Chương học không thuộc khóa học này.");
         }
-    }
-    private function makeUniqueLessonSlug(
-        int $courseId,
-        string $title,
-        ?int $ignoreLessonId = null,
-    ): string {
-        $baseSlug = Str::slug($title);
-        $slug = $baseSlug;
-        $counter = 1;
-        while (
-            $this->instructorLessonRepository->slugExistsInCourse(
-                $courseId,
-                $slug,
-                $ignoreLessonId,
-            )
-        ) {
-            $counter++;
-            $slug = $baseSlug . "-" . $counter;
-        }
-        return $slug;
     }
 
     public function updateCourse(
@@ -489,12 +473,12 @@ final class InstructorCourseService
         $course = Course::query()->where("id", $courseId)->first();
 
         if (!$course) {
-            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 404);
+            throw new BusinessException("Không tìm thấy khóa học.", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Bạn không có quyền cập nhật khóa học này.",
                 403,
             );
         }
@@ -604,11 +588,10 @@ final class InstructorCourseService
         $validCategoryCount = Category::query()
             ->whereIn("id", $categoryIds)
             ->where("status", "active")
-            ->whereNull("deleted_at")
             ->count();
 
         if ($validCategoryCount !== count(array_unique($categoryIds))) {
-            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 422);
+            throw new BusinessException("Danh mục đã chọn không hợp lệ.", 422);
         }
     }
 
@@ -618,10 +601,10 @@ final class InstructorCourseService
             $data["id"],
             $data["instructor_id"],
             $data["is_featured"],
-            $data["total_duration_seconds"],
+            
             $data["published_at"],
             $data["admin_reject_reason"],
-            $data["deleted_at"],
+            
             $data["created_at"],
             $data["updated_at"],
         );
@@ -740,12 +723,12 @@ final class InstructorCourseService
         $course = Course::query()->find($courseId);
 
         if (!$course) {
-            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 404);
+            throw new BusinessException("Không tìm thấy khóa học.", 404);
         }
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Bạn không có quyền thao tác trên khóa học này.",
                 403,
             );
         }
@@ -762,16 +745,16 @@ final class InstructorCourseService
             ->find($sectionId);
 
         if (!$section) {
-            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 404);
+            throw new BusinessException("Không tìm thấy chương học.", 404);
         }
 
         if (!$section->course) {
-            throw new BusinessException("D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・", 404);
+            throw new BusinessException("Không tìm thấy thông tin khóa học.", 404);
         }
 
         if ((int) $section->course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
-                "D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・",
+                "Bạn không có quyền thao tác trên chương học này.",
                 403,
             );
         }
@@ -793,11 +776,12 @@ final class InstructorCourseService
         unset(
             $data["id"],
             $data["course_id"],
-            $data["deleted_at"],
+            
             $data["created_at"],
             $data["updated_at"],
         );
     }
+
 
     public function getInstructorProfile(int $userId): \App\Models\InstructorProfile
     {
@@ -850,182 +834,6 @@ final class InstructorCourseService
         return $repository->getRevenueReport((int) $instructor->id, $filters);
     }
 
-    public function paginateInstructorQuizzes(User $instructor, array $filters): \Illuminate\Contracts\Pagination\LengthAwarePaginator
-    {
-        $repository = app(\App\Repositories\Instructor\InstructorQuizRepository::class);
-
-        if (!empty($filters['course_id'])) {
-            $this->ensureCourseBelongsToInstructor((int) $filters['course_id'], (int) $instructor->id);
-        }
-
-        if (!empty($filters['lesson_id'])) {
-            $lesson = $repository->findLessonWithCourse((int) $filters['lesson_id']);
-
-            if (!$lesson || !$lesson->course) {
-                throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 404);
-            }
-
-            if ((int) $lesson->course->instructor_id !== (int) $instructor->id) {
-                throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 403);
-            }
-        }
-
-        return $repository->paginateOwnedQuizzes((int) $instructor->id, $filters);
-    }
-
-    public function getInstructorQuiz(User $instructor, int $quizId): \App\Models\Quiz
-    {
-        $repository = app(\App\Repositories\Instructor\InstructorQuizRepository::class);
-
-        $quiz = $repository->findOwnedQuiz((int) $instructor->id, $quizId);
-
-        if (!$quiz) {
-            throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 404);
-        }
-
-        return $quiz;
-    }
-
-    public function createInstructorQuiz(User $instructor, array $data): \App\Models\Quiz
-    {
-        return DB::transaction(function () use ($instructor, $data): \App\Models\Quiz {
-            $lesson = $this->getQuizLessonOwnedByInstructor((int) $data['lesson_id'], (int) $instructor->id);
-
-            foreach ($data['questions'] as $question) {
-                $this->assertQuizQuestionHasCorrectOption($question);
-            }
-
-            $quiz = \App\Models\Quiz::query()->create([
-                'course_id' => (int) $lesson->course_id,
-                'lesson_id' => (int) $lesson->id,
-                'title' => $data['title'],
-                'description' => $data['description'] ?? null,
-                'passing_score' => $data['passing_score'] ?? 0,
-                'status' => $data['status'] ?? 'draft',
-            ]);
-
-            $this->syncInstructorQuizQuestions($quiz, $data['questions']);
-
-            return $quiz->refresh()->load([
-                'course:id,instructor_id,title,status',
-                'lesson:id,course_id,title,status',
-                'questions.options',
-            ]);
-        });
-    }
-
-    public function updateInstructorQuiz(User $instructor, int $quizId, array $data): \App\Models\Quiz
-    {
-        return DB::transaction(function () use ($instructor, $quizId, $data): \App\Models\Quiz {
-            $quiz = $this->getInstructorQuiz($instructor, $quizId);
-
-            $updateData = [];
-
-            if (array_key_exists('lesson_id', $data)) {
-                $lesson = $this->getQuizLessonOwnedByInstructor((int) $data['lesson_id'], (int) $instructor->id);
-                $updateData['lesson_id'] = (int) $lesson->id;
-                $updateData['course_id'] = (int) $lesson->course_id;
-            }
-
-            foreach (['title', 'description', 'passing_score', 'status'] as $field) {
-                if (array_key_exists($field, $data)) {
-                    $updateData[$field] = $data[$field];
-                }
-            }
-
-            if ($updateData !== []) {
-                $quiz->update($updateData);
-            }
-
-            if (array_key_exists('questions', $data)) {
-                foreach ($data['questions'] as $question) {
-                    $this->assertQuizQuestionHasCorrectOption($question);
-                }
-
-                $this->syncInstructorQuizQuestions($quiz, $data['questions']);
-            }
-
-            return $quiz->refresh()->load([
-                'course:id,instructor_id,title,status',
-                'lesson:id,course_id,title,status',
-                'questions.options',
-            ]);
-        });
-    }
-
-    public function deleteInstructorQuiz(User $instructor, int $quizId): void
-    {
-        DB::transaction(function () use ($instructor, $quizId): void {
-            $quiz = $this->getInstructorQuiz($instructor, $quizId);
-            $quiz->delete();
-        });
-    }
-
-    private function getQuizLessonOwnedByInstructor(int $lessonId, int $instructorId): \App\Models\Lesson
-    {
-        $repository = app(\App\Repositories\Instructor\InstructorQuizRepository::class);
-
-        $lesson = $repository->findLessonWithCourse($lessonId);
-
-        if (!$lesson || !$lesson->course) {
-            throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 404);
-        }
-
-        if ((int) $lesson->course->instructor_id !== $instructorId) {
-            throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 403);
-        }
-
-        return $lesson;
-    }
-
-    private function assertQuizQuestionHasCorrectOption(array $question): void
-    {
-        $hasCorrectOption = collect($question['options'] ?? [])
-            ->contains(fn (array $option): bool => (bool) ($option['is_correct'] ?? false));
-
-        if (!$hasCorrectOption) {
-            throw new BusinessException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・', 422);
-        }
-    }
-
-    private function syncInstructorQuizQuestions(\App\Models\Quiz $quiz, array $questions): void
-    {
-        $oldQuestionIds = \App\Models\QuizQuestion::query()
-            ->where('quiz_id', $quiz->id)
-            ->pluck('id')
-            ->all();
-
-        if ($oldQuestionIds !== []) {
-            \App\Models\QuizOption::query()
-                ->whereIn('question_id', $oldQuestionIds)
-                ->delete();
-
-            \App\Models\QuizQuestion::query()
-                ->whereIn('id', $oldQuestionIds)
-                ->delete();
-        }
-
-        foreach (array_values($questions) as $questionIndex => $questionData) {
-            $question = \App\Models\QuizQuestion::query()->create([
-                'quiz_id' => (int) $quiz->id,
-                'question_text' => $questionData['question_text'],
-                'question_type' => $questionData['question_type'],
-                'score' => $questionData['score'],
-                'sort_order' => $questionIndex + 1,
-                'explanation' => $questionData['explanation'] ?? null,
-            ]);
-
-            foreach (array_values($questionData['options']) as $optionIndex => $optionData) {
-                \App\Models\QuizOption::query()->create([
-                    'question_id' => (int) $question->id,
-                    'option_text' => $optionData['option_text'],
-                    'is_correct' => (bool) $optionData['is_correct'],
-                    'sort_order' => $optionIndex + 1,
-                ]);
-            }
-        }
-    }
-
     public function createWithdrawRequest(User $instructor, array $data): \App\Models\WithdrawRequest
     {
         return DB::transaction(function () use ($instructor, $data): \App\Models\WithdrawRequest {
@@ -1057,9 +865,9 @@ final class InstructorCourseService
                 'amount' => $amount,
                 'status' => 'pending',
                 'requested_at' => now(),
-                'approved_at' => null,
+                'reviewed_by' => null,
                 'paid_at' => null,
-                'rejected_reason' => null,
+                'admin_reject_reason' => null,
                 'provider_payout_id' => null,
                 'account_number_snapshot' => $payoutAccount->account_number,
                 'account_name_snapshot' => $payoutAccount->account_name,
@@ -1081,17 +889,17 @@ final class InstructorCourseService
 
     public function getCourseLearners(int $courseId, int $instructorId, array $filters)
     {
-        $course = \DB::table('courses')->where('id', $courseId)->whereNull('deleted_at')->first();
+        $course = DB::table('courses')->where('id', $courseId)->first();
 
         if (!$course) {
-            throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・');
+            throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Không tìm thấy khóa học.');
         }
 
-        if ($course->instructor_id !== $instructorId) {
-            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('D盻ｯ li盻㎡ khﾃｴng h盻｣p l盻・');
+        if ((int) $course->instructor_id !== (int) $instructorId) {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Bạn không có quyền xem thông tin khóa học này.');
         }
 
-        $query = \DB::table('enrollments')
+        $query = DB::table('enrollments')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
             ->where('enrollments.course_id', $courseId)
             ->where('users.role', 'learner')
@@ -1106,10 +914,10 @@ final class InstructorCourseService
                 'enrollments.last_accessed_at',
                 'enrollments.completed_at'
             );
-        
-        if (\Schema::hasColumn('enrollments', 'enrolled_at')) {
+
+        if (Schema::hasColumn('enrollments', 'enrolled_at')) {
             $query->addSelect('enrollments.enrolled_at');
-        } elseif (\Schema::hasColumn('enrollments', 'created_at')) {
+        } elseif (Schema::hasColumn('enrollments', 'created_at')) {
             $query->addSelect('enrollments.created_at as enrolled_at');
         }
 
@@ -1118,7 +926,7 @@ final class InstructorCourseService
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('users.full_name', 'like', "%{$search}%")
-                  ->orWhere('users.email', 'like', "%{$search}%");
+                    ->orWhere('users.email', 'like', "%{$search}%");
             });
         }
 
@@ -1127,7 +935,7 @@ final class InstructorCourseService
             $query->where('enrollments.status', $filters['status']);
         }
 
-        if (\Schema::hasColumn('enrollments', 'progress_percent')) {
+        if (Schema::hasColumn('enrollments', 'progress_percent')) {
             $query->addSelect('enrollments.progress_percent');
         } else {
             $query->selectRaw('0 as progress_percent');
@@ -1148,21 +956,20 @@ final class InstructorCourseService
         ];
 
         $orderCol = $sortMap[$sortBy] ?? 'enrollments.last_accessed_at';
-        if ($orderCol === 'enrollments.created_at' && \Schema::hasColumn('enrollments', 'enrolled_at')) {
+        if ($orderCol === 'enrollments.created_at' && Schema::hasColumn('enrollments', 'enrolled_at')) {
             $orderCol = 'enrollments.enrolled_at';
         }
         $query->orderBy($orderCol, $sortDirection);
 
         $perPage = $filters['per_page'] ?? 15;
-        
+
         return $query->paginate($perPage);
     }
 
-public function paginateCourses(int $instructorId, array $filters): LengthAwarePaginator
+    public function paginateCourses(int $instructorId, array $filters): LengthAwarePaginator
     {
         return $this->instructorCourseRepository->paginateCourses($instructorId, $filters);
     }
-
 
     public function createDraftCourse(User $instructor, array $data): Course
     {
@@ -1189,11 +996,10 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
                 'price' => $data['price'] ?? 0,
                 'status' => 'draft',
                 'is_featured' => false,
-                'total_duration_seconds' => 0,
                 'published_at' => null,
                 'admin_reject_reason' => null,
                 'language' => $data['language'] ?? 'vi',
-                'level' => $data['level'] ?? 'beginner',
+                'course_level' => $data['course_level'] ?? $data['level'] ?? 'beginner',
             ]);
 
             $course = $this->instructorCourseRepository->create($courseData);
@@ -1239,7 +1045,6 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
         $course = Course::query()
             ->where('id', $courseId)
             ->where('instructor_id', (int) $instructor->id)
-            ->whereNull('deleted_at')
             ->first();
 
         if (!$course) {
@@ -1301,10 +1106,9 @@ public function paginateCourses(int $instructorId, array $filters): LengthAwareP
 
         while (
             Course::query()
-                ->where('slug', $slug)
-                ->whereNull('deleted_at')
-                ->when($ignoreCourseId !== null, fn ($query) => $query->where('id', '!=', $ignoreCourseId))
-                ->exists()
+            ->where('slug', $slug)
+            ->when($ignoreCourseId !== null, fn($query) => $query->where('id', '!=', $ignoreCourseId))
+            ->exists()
         ) {
             $counter++;
             $slug = $base . '-' . $counter;

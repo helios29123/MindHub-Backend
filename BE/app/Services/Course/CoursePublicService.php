@@ -38,8 +38,6 @@ class CoursePublicService
         // 2. Resolve optional authenticated user from Bearer token
         $user = $this->resolveOptionalUser();
 
-        // 2.1 Record course view asynchronously / safely
-        app(\App\Services\Course\CourseViewService::class)->recordView($course, $user, request());
 
         // 3. Eager load relationships with status and ordering constraints
         $course->load([
@@ -243,7 +241,6 @@ class CoursePublicService
                     ->join('courses', 'courses.id', '=', 'orders.course_id')
                     ->whereColumn('courses.instructor_id', 'users.id')
                     ->where('courses.status', 'published')
-                    ->whereNull('course_reviews.deleted_at')
                     ->select(\Illuminate\Support\Facades\DB::raw('AVG(course_reviews.rating)'));
             }, 'average_rating')
             ->first();
