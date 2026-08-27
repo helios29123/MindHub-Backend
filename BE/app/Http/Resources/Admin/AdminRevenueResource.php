@@ -23,7 +23,6 @@ final class AdminRevenueResource extends JsonResource
             'order' => $this->order ? [
                 'id' => $this->order->id,
                 'order_code' => $this->order->order_code,
-                'status' => $this->order->status,
                 'payment_status' => $this->order->payment_status,
                 'payment_method' => $this->order->payment_method,
                 'amount' => (float)$this->order->amount,
@@ -33,7 +32,6 @@ final class AdminRevenueResource extends JsonResource
                 'title' => $this->course->title,
                 'thumbnail_url' => $this->course->thumbnail_url,
                 'course_level' => $this->course->course_level,
-                'status' => $this->course->status,
             ] : null,
             'instructor' => $this->instructor ? [
                 'id' => $this->instructor->id,
@@ -44,11 +42,8 @@ final class AdminRevenueResource extends JsonResource
             'gross_amount' => $gross,
             'instructor_amount' => $instructorAmt,
             'platform_fee_amount' => $platformAmt,
-            'sale_source' => $this->sale_source,
-            'sale_channel' => $this->sale_source ?? 'unknown',
             'instructor_rate' => $instructorRate,
             'platform_rate' => $platformRate,
-            'status' => $this->status,
             'earned_at' => $this->earned_at ? \Carbon\Carbon::parse($this->earned_at)->toIso8601String() : null,
             'amount_consistent' => $amountConsistent,
         ];

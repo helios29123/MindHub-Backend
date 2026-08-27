@@ -157,7 +157,7 @@ final class AdminWithdrawalController extends Controller
                 'requested_at' => $this->formatDate($item->requested_at),
                 'paid_at' => $this->formatDate($item->paid_at),
                 'approved_at' => $this->formatDate($item->approved_at),
-                'rejected_at' => $this->formatDate($item->rejected_at),
+                'rejected_at' => $item->status === WithdrawRequest::STATUS_REJECTED ? $this->formatDate($item->updated_at) : null,
                 'provider_payout_id' => $item->provider_payout_id,
                 'payout_provider' => $item->payout_provider,
                 'payout_mode' => $item->payout_provider === 'manual' ? 'manual' : ($item->payout_provider ? 'auto' : null),
@@ -166,7 +166,7 @@ final class AdminWithdrawalController extends Controller
                     'account_name' => $item->account_name_snapshot,
                     'account_number' => $item->account_number_snapshot,
                     'account_number_masked' => $this->maskAccountNumber($item->account_number_snapshot),
-                    'provider' => $item->bank_name ?: 'Bank Transfer',
+                    'provider' => $item->bank_name_snapshot ?: 'Bank Transfer',
                     'status' => 'active'
                 ],
                 'user' => [
@@ -215,7 +215,7 @@ final class AdminWithdrawalController extends Controller
         $balanceAfter = $withdrawal->available_balance_after !== null ? (float) $withdrawal->available_balance_after : null;
         
         // For backwards compatibility or displaying holding amount
-        $holdingBalance = in_array($withdrawal->status, ['pending', 'approved', 'queued', 'processing']) ? $amount : 0;
+        $holdingBalance = in_array($withdrawal->status, ['pending', 'approved', 'processing', 'manual_required']) ? $amount : 0;
 
         // Fetch Allocations
         $allocations = [];
@@ -266,14 +266,14 @@ final class AdminWithdrawalController extends Controller
             $timeline[] = [
                 'timestamp' => $this->formatDate($withdrawal->updated_at),
                 'title' => 'Giảng viên đã hủy yêu cầu',
-                'description' => 'Lý do: ' . ($withdrawal->rejection_reason ?? 'Người dùng tự hủy.'),
+                'description' => 'Lý do: ' . ($withdrawal->rejected_reason ?? 'Người dùng tự hủy.'),
                 'status' => 'error',
             ];
-        } elseif ($withdrawal->rejected_at) {
+        } elseif ($withdrawal->status === WithdrawRequest::STATUS_REJECTED) {
             $timeline[] = [
-                'timestamp' => $this->formatDate($withdrawal->rejected_at),
+                'timestamp' => $this->formatDate($withdrawal->updated_at),
                 'title' => 'Từ chối yêu cầu',
-                'description' => 'Lý do: ' . ($withdrawal->rejection_reason ?? $withdrawal->rejected_reason ?? 'Không có lý do cụ thể.'),
+                'description' => 'Lý do: ' . ($withdrawal->rejected_reason ?? 'Không có lý do cụ thể.'),
                 'status' => 'error',
             ];
         }
@@ -294,17 +294,17 @@ final class AdminWithdrawalController extends Controller
             'requested_at' => $this->formatDate($withdrawal->requested_at),
             'paid_at' => $this->formatDate($withdrawal->paid_at),
             'approved_at' => $this->formatDate($withdrawal->approved_at),
-            'rejected_at' => $this->formatDate($withdrawal->rejected_at),
+            'rejected_at' => $withdrawal->status === WithdrawRequest::STATUS_REJECTED ? $this->formatDate($withdrawal->updated_at) : null,
             'provider_payout_id' => $withdrawal->provider_payout_id,
             'payout_provider' => $withdrawal->payout_provider,
             'payout_mode' => $withdrawal->payout_provider === 'manual' ? 'manual' : ($withdrawal->payout_provider ? 'auto' : null),
-            'rejected_reason' => $withdrawal->rejection_reason ?: $withdrawal->rejected_reason,
+            'rejected_reason' => $withdrawal->rejected_reason,
             'payout_snapshot' => [
                 'payout_account_id' => $withdrawal->payout_account_id,
                 'account_name' => $withdrawal->account_name_snapshot,
                 'account_number' => $withdrawal->account_number_snapshot,
                 'account_number_masked' => $this->maskAccountNumber($withdrawal->account_number_snapshot),
-                'provider' => $withdrawal->bank_name ?: 'Bank Transfer',
+                'provider' => $withdrawal->bank_name_snapshot ?: 'Bank Transfer',
                 'status' => 'active'
             ],
             'user' => [
@@ -389,8 +389,6 @@ final class AdminWithdrawalController extends Controller
         }
 
         $withdrawal->status = WithdrawRequest::STATUS_REJECTED;
-        $withdrawal->rejected_at = now();
-        $withdrawal->rejection_reason = $request->input('reason');
         $withdrawal->rejected_reason = $request->input('reason');
         $withdrawal->save();
 
