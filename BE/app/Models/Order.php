@@ -87,4 +87,8 @@ class Order extends Model
     {
         return $this->hasOne(CourseReview::class);
     }
-}
+    public function isPaid(): bool
+    {
+        return $this->status === self::STATUS_PAID
+            && $this->payment_status === self::PAYMENT_PAID;
+    }}

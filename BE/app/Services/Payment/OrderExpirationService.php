@@ -14,7 +14,7 @@ class OrderExpirationService
 
     public function expirePendingOrders(int $hours, bool $dryRun = false): array
     {
-        $expiredBefore = now()->subHours($hours);
+        $expiredBefore = now();
 
         if ($dryRun) {
             return [

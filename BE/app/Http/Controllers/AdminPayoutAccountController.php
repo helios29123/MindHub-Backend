@@ -273,7 +273,7 @@ class AdminPayoutAccountController extends Controller
             ], 422);
         }
 
-        $account->status = 'active';
+        $account->status = PayoutAccount::STATUS_VERIFIED;
         $account->approved_at = now();
         $account->connected_at = now();
         $account->save();
@@ -309,7 +309,7 @@ class AdminPayoutAccountController extends Controller
             ], 422);
         }
 
-        $account->status = 'rejected';
+        $account->status = PayoutAccount::STATUS_DISABLED;
         $account->rejected_at = now();
         if ($request->filled('reason')) {
             $account->reject_reason = $request->input('reason');
@@ -336,14 +336,14 @@ class AdminPayoutAccountController extends Controller
             ], 404);
         }
 
-        if ($account->status !== 'active') {
+        if ($account->status !== PayoutAccount::STATUS_VERIFIED) {
             return response()->json([
                 'success' => false,
                 'message' => 'Chỉ có thể vô hiệu hóa tài khoản đang ở trạng thái Đang hoạt động.',
             ], 422);
         }
 
-        $account->status = 'inactive';
+        $account->status = PayoutAccount::STATUS_DISABLED;
         $account->disabled_at = now();
         $account->save();
 

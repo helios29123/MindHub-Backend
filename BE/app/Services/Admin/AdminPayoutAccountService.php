@@ -21,19 +21,19 @@ final class AdminPayoutAccountService
     }
     public function approve(PayoutAccount $account, User $admin): PayoutAccount
     {
-        $account->update(['status' => 'active', 'verified_at' => now()]);
+        $account->update(['status' => PayoutAccount::STATUS_VERIFIED, 'verified_at' => now(), 'disabled_at' => null]);
         $this->notifications->audit($admin, 'payout_account.approve', $account);
         return $account->fresh('user');
     }
     public function reject(PayoutAccount $account, ?string $reason, User $admin): PayoutAccount
     {
-        $account->update(['status' => 'rejected', 'rejection_reason' => $reason]);
+        $account->update(['status' => PayoutAccount::STATUS_DISABLED, 'disabled_at' => now(), 'is_default' => false]);
         $this->notifications->audit($admin, 'payout_account.reject', $account, [], ['reason' => $reason]);
         return $account->fresh('user');
     }
     public function disable(PayoutAccount $account, ?string $reason, User $admin): PayoutAccount
     {
-        $account->update(['status' => 'inactive', 'disabled_reason' => $reason]);
+        $account->update(['status' => PayoutAccount::STATUS_DISABLED, 'disabled_at' => now(), 'is_default' => false]);
         $this->notifications->audit($admin, 'payout_account.disable', $account, [], ['reason' => $reason]);
         return $account->fresh('user');
     }

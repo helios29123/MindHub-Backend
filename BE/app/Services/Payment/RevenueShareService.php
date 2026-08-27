@@ -35,7 +35,7 @@ final class RevenueShareService
                 throw new CourseInstructorMissingException("Order not found with ID: {$orderId}");
             }
 
-            if (! in_array($orderModel->status, [Order::STATUS_PAID, 'paid', 'completed', 'success', 'paid_out'], true)) {
+            if ($orderModel->status !== Order::STATUS_PAID || $orderModel->payment_status !== Order::PAYMENT_PAID) {
                 Log::warning('Attempted revenue creation on unpaid order', [
                     'order_id' => $orderModel->id,
                     'status' => $orderModel->status,
@@ -61,7 +61,7 @@ final class RevenueShareService
                 throw new CommissionRuleNotFoundException("Commission rule not found for order {$orderModel->id}");
             }
 
-            $grossAmount = (float) ($orderModel->final_amount ?? $orderModel->amount ?? 0.0);
+            $grossAmount = (float) $orderModel->amount;
             $instructorRate = (float) $rule->instructor_rate;
             $instructorAmount = round($grossAmount * $instructorRate, 2);
             $platformFeeAmount = $grossAmount - $instructorAmount;
@@ -105,7 +105,8 @@ final class RevenueShareService
     public function syncMissingPaidOrderRevenues(): int
     {
         $paidOrders = Order::query()
-            ->whereIn('status', [Order::STATUS_PAID, 'paid', 'completed', 'success', 'paid_out'])
+            ->where('status', Order::STATUS_PAID)
+            ->where('payment_status', Order::PAYMENT_PAID)
             ->whereNotNull('course_id')
             ->whereDoesntHave('revenue')
             ->get();
@@ -123,15 +124,4 @@ final class RevenueShareService
         return $count;
     }
 
-    public function releaseAvailableRevenues(): int
-    {
-        // DEFERRED TO NEXT PHASE: Redesign withdrawal logic without revenue status
-        return 0;
-    }
-
-    public function handleRefund(int|Order $order): bool
-    {
-        // DEFERRED TO NEXT PHASE: Redesign refund logic without revenue status
-        return false;
-    }
 }

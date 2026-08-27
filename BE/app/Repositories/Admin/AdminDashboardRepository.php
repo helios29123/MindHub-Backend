@@ -5,7 +5,7 @@ namespace App\Repositories\Admin;
 use App\Models\Course;
 use App\Models\Order;
 use App\Models\PayoutAccount;
-use App\Models\PayoutItem;
+use App\Models\WithdrawRequest;
 use App\Models\Revenue;
 use Illuminate\Support\Facades\DB;
 
@@ -18,8 +18,8 @@ final class AdminDashboardRepository
             'instructor_revenue_month' => (float)Revenue::query()->whereMonth('earned_at', now()->month)->whereYear('earned_at', now()->year)->sum('instructor_amount'),
             'platform_revenue_month' => (float)Revenue::query()->whereMonth('earned_at', now()->month)->whereYear('earned_at', now()->year)->sum('platform_fee_amount'),
             'paid_orders' => Order::query()->where('status', 'paid')->count(),
-            'pending_payout_items' => PayoutItem::query()->where('status', 'pending')->count(),
-            'action_required' => Course::query()->where('status', 'pending_review')->count() + Order::query()->where('status', 'pending')->count() + PayoutAccount::query()->where('status', 'pending_verification')->count(),
+            'pending_payout_items' => WithdrawRequest::query()->whereIn('status', [WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED])->count(),
+            'action_required' => Course::query()->where('status', 'pending_review')->count() + Order::query()->where('status', Order::STATUS_PENDING_PAYMENT)->count() + PayoutAccount::query()->where('status', 'pending_verification')->count(),
         ];
     }
     public function revenueChart(): array

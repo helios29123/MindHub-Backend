@@ -2,8 +2,6 @@
 
 namespace App\Services\Payout;
 
-use App\Exceptions\BusinessException;
-use App\Models\Revenue;
 use App\Models\WithdrawRequest;
 use App\Services\Payout\Contracts\PayoutGatewayInterface;
 use Illuminate\Support\Facades\DB;
@@ -17,112 +15,195 @@ class PayoutService
     ) {
     }
 
-    /**
-     * Process a payout via the configured gateway.
-     */
     public function process(WithdrawRequest $withdrawal): void
     {
-        // Guard against duplicate processing
-        if (!in_array($withdrawal->status, [WithdrawRequest::STATUS_APPROVED, WithdrawRequest::STATUS_PENDING])) {
-            Log::info("PayoutService: Skipped processing withdrawal #{$withdrawal->id} due to invalid status ({$withdrawal->status}).");
+        if ($withdrawal->status !== WithdrawRequest::STATUS_APPROVED) {
+            Log::info(
+                "PayoutService: skipped withdrawal #{$withdrawal->id}; "
+                . "expected approved, got {$withdrawal->status}."
+            );
+
             return;
         }
 
         try {
             $withdrawal->status = WithdrawRequest::STATUS_PROCESSING;
+            $withdrawal->processed_at = now();
             $withdrawal->save();
 
             $response = $this->gateway->processPayout($withdrawal);
-            
-            $status = strtoupper($response['status'] ?? '');
+
+            $status = strtoupper((string) ($response['status'] ?? ''));
             $providerPayoutId = $response['provider_payout_id'] ?? null;
-            $payoutProvider = $response['payout_provider'] ?? 'fake';
-            
-            if ($providerPayoutId) {
+            $payoutProvider = $response['payout_provider'] ?? null;
+
+            if ($providerPayoutId !== null && $providerPayoutId !== '') {
                 $withdrawal->provider_payout_id = $providerPayoutId;
-                $withdrawal->payout_provider = $payoutProvider;
-                $withdrawal->save();
             }
+
+            if ($payoutProvider !== null && $payoutProvider !== '') {
+                $withdrawal->payout_provider = $payoutProvider;
+            }
+
+            $withdrawal->save();
 
             if ($status === 'SUCCESS') {
                 $this->finalizeSuccess($withdrawal, $providerPayoutId);
-            } elseif ($status === 'FAILED') {
-                $this->finalizeFailed($withdrawal, $response['message'] ?? 'Payout failed at provider');
-            } else {
-                // Keep it in PROCESSING state
-                Log::info("PayoutService: Withdrawal #{$withdrawal->id} is now processing at provider.");
+                return;
             }
-        } catch (\Exception $e) {
-            Log::error("PayoutService: Exception processing withdrawal #{$withdrawal->id} - " . $e->getMessage());
-            // Optionally, handle unexpected error (keep processing, or fail it depending on business need).
-            // For now we keep it processing to not accidentally release funds on network timeout.
+
+            if ($status === 'FAILED') {
+                $this->finalizeProviderFailure(
+                    $withdrawal,
+                    (string) ($response['message'] ?? 'Payout failed at provider')
+                );
+                return;
+            }
+
+            Log::info(
+                "PayoutService: withdrawal #{$withdrawal->id} remains processing."
+            );
+        } catch (\Throwable $e) {
+            Log::error(
+                "PayoutService: exception processing withdrawal #{$withdrawal->id}: "
+                . $e->getMessage()
+            );
+
+            try {
+                $fresh = WithdrawRequest::query()->find($withdrawal->id);
+
+                if (
+                    $fresh
+                    && $fresh->status !== WithdrawRequest::STATUS_PAID
+                    && $fresh->status !== WithdrawRequest::STATUS_MANUAL_REQUIRED
+                ) {
+                    $fresh->status = WithdrawRequest::STATUS_MANUAL_REQUIRED;
+                    $fresh->failure_reason = $e->getMessage();
+                    $fresh->processed_at = now();
+                    $fresh->save();
+                }
+            } catch (\Throwable $secondary) {
+                Log::error(
+                    "PayoutService: failed to escalate withdrawal #{$withdrawal->id}: "
+                    . $secondary->getMessage()
+                );
+            }
         }
     }
 
-    /**
-     * Called when a webhook or manual resolve confirms the payout is successful.
-     */
-    public function resolveWebhook(WithdrawRequest $withdrawal, string $status, ?string $message = null): void
-    {
-        if ($withdrawal->status === WithdrawRequest::STATUS_PAID) {
-            return; // Idempotent check
-        }
+    public function resolveWebhook(
+        WithdrawRequest $withdrawal,
+        string $status,
+        ?string $message = null
+    ): void {
+        $withdrawal->refresh();
 
-        if (strtoupper($status) === 'SUCCESS') {
-            $this->finalizeSuccess($withdrawal, $withdrawal->provider_payout_id);
-        } elseif (strtoupper($status) === 'FAILED') {
-            $this->finalizeFailed($withdrawal, $message ?? 'Webhook reported failure');
-        }
-    }
-
-    /**
-     * Finalizes the withdrawal as SUCCESS/PAID.
-     */
-    public function finalizeSuccess(WithdrawRequest $withdrawal, ?string $providerPayoutId = null): void
-    {
         if ($withdrawal->status === WithdrawRequest::STATUS_PAID) {
             return;
         }
 
-        DB::transaction(function () use ($withdrawal, $providerPayoutId) {
-            $withdrawal->status = WithdrawRequest::STATUS_PAID;
-            $withdrawal->paid_at = now();
-            if ($providerPayoutId) {
-                $withdrawal->provider_payout_id = $providerPayoutId;
-            }
-            $withdrawal->save();
+        $normalized = strtoupper($status);
 
-            // Mark associated revenues as paid ONLY IF fully allocated
-            foreach ($withdrawal->allocatedRevenues as $revenue) {
-                $totalAllocated = DB::table('withdrawal_revenues')
-                    ->join('withdraw_requests', 'withdraw_requests.id', '=', 'withdrawal_revenues.withdrawal_id')
-                    ->where('withdrawal_revenues.revenue_id', $revenue->id)
-                    ->whereIn('withdraw_requests.status', [
-                        WithdrawRequest::STATUS_PENDING, WithdrawRequest::STATUS_APPROVED, 
-                        WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_PAID
-                    ])
-                    ->sum('withdrawal_revenues.allocated_amount');
+        if ($normalized === 'SUCCESS') {
+            if (! in_array($withdrawal->status, [
+                WithdrawRequest::STATUS_PROCESSING,
+                WithdrawRequest::STATUS_MANUAL_REQUIRED,
+            ], true)) {
+                Log::warning(
+                    "PayoutService: ignored SUCCESS webhook for withdrawal "
+                    . "#{$withdrawal->id} in status {$withdrawal->status}."
+                );
 
-                // Revenue status is removed in DB final, we no longer need to update it here.
+                return;
             }
 
-            // For auto payout fallback, revenues are tracked via withdrawal_revenues pivot.
-        });
-    }
+            $this->finalizeSuccess(
+                $withdrawal,
+                $withdrawal->provider_payout_id
+            );
 
-    /**
-     * Finalizes the withdrawal as FAILED.
-     */
-    private function finalizeFailed(WithdrawRequest $withdrawal, string $reason): void
-    {
-        if ($withdrawal->status === WithdrawRequest::STATUS_MANUAL_REQUIRED) {
             return;
         }
 
-        DB::transaction(function () use ($withdrawal, $reason) {
-            $withdrawal->status = WithdrawRequest::STATUS_MANUAL_REQUIRED;
-            $withdrawal->failure_reason = $reason;
-            $withdrawal->save();
+        if ($normalized === 'FAILED') {
+            if ($withdrawal->status !== WithdrawRequest::STATUS_PROCESSING) {
+                return;
+            }
+
+            $this->finalizeProviderFailure(
+                $withdrawal,
+                $message ?? 'Webhook reported failure'
+            );
+        }
+    }
+
+    public function finalizeSuccess(
+        WithdrawRequest $withdrawal,
+        ?string $providerPayoutId = null
+    ): void {
+        DB::transaction(function () use ($withdrawal, $providerPayoutId): void {
+            $locked = WithdrawRequest::query()
+                ->whereKey($withdrawal->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->status === WithdrawRequest::STATUS_PAID) {
+                return;
+            }
+
+            if (! in_array($locked->status, [
+                WithdrawRequest::STATUS_PROCESSING,
+                WithdrawRequest::STATUS_MANUAL_REQUIRED,
+            ], true)) {
+                Log::warning(
+                    "PayoutService: refused finalizeSuccess for withdrawal "
+                    . "#{$locked->id} in status {$locked->status}."
+                );
+
+                return;
+            }
+
+            $locked->status = WithdrawRequest::STATUS_PAID;
+            $locked->paid_at = $locked->paid_at ?? now();
+            $locked->processed_at = $locked->processed_at ?? now();
+
+            if ($providerPayoutId !== null && $providerPayoutId !== '') {
+                $locked->provider_payout_id = $providerPayoutId;
+            }
+
+            $locked->save();
         });
+
+        $withdrawal->refresh();
+    }
+
+    private function finalizeProviderFailure(
+        WithdrawRequest $withdrawal,
+        string $reason
+    ): void {
+        DB::transaction(function () use ($withdrawal, $reason): void {
+            $locked = WithdrawRequest::query()
+                ->whereKey($withdrawal->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (
+                $locked->status === WithdrawRequest::STATUS_PAID
+                || $locked->status === WithdrawRequest::STATUS_MANUAL_REQUIRED
+            ) {
+                return;
+            }
+
+            if ($locked->status !== WithdrawRequest::STATUS_PROCESSING) {
+                return;
+            }
+
+            $locked->status = WithdrawRequest::STATUS_MANUAL_REQUIRED;
+            $locked->failure_reason = $reason;
+            $locked->processed_at = now();
+            $locked->save();
+        });
+
+        $withdrawal->refresh();
     }
 }

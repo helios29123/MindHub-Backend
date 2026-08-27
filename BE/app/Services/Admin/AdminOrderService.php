@@ -24,7 +24,7 @@ class AdminOrderService
         if (!empty($filters['payment_status']) && $filters['payment_status'] !== 'all') {
             $query->where('payment_status', $filters['payment_status']);
         }
-        if (!empty($filters['user_id'])) {
+if (!empty($filters['user_id'])) {
             $query->where('user_id', (int) $filters['user_id']);
         }
         if (!empty($filters['course_id'])) {
@@ -61,14 +61,13 @@ class AdminOrderService
     public function getOrdersSummary(): array
     {
         $total = Order::count();
-        $pending = Order::where('status', Order::STATUS_PENDING)->count();
+        $pending = Order::where('status', Order::STATUS_PENDING_PAYMENT)->count();
         $paid = Order::where('status', Order::STATUS_PAID)->count();
         $failed = Order::where('status', Order::STATUS_FAILED)->count();
         $cancelled = Order::where('status', Order::STATUS_CANCELLED)->count();
         $expired = Order::where('status', Order::STATUS_EXPIRED)->count();
 
-        $paidOrdersQuery = Order::where('status', Order::STATUS_PAID)
-            ->where('payment_status', Order::PAYMENT_PAID);
+        $paidOrdersQuery = Order::where('status', Order::STATUS_PAID);
         
         $totalPaidAmount = (float) $paidOrdersQuery->sum('amount');
         $paidCount = $paidOrdersQuery->count();
@@ -78,18 +77,16 @@ class AdminOrderService
 
         // Calculate anomaly count
         $anomalyCount = 0;
-        $allOrders = Order::select('status', 'payment_status')->get();
+        $allOrders = Order::select('status')->get();
         foreach ($allOrders as $o) {
             $allowed = false;
-            if ($o->status === 'pending' && in_array($o->payment_status, ['unpaid', 'processing'])) {
-                $allowed = true;
-            } elseif ($o->status === 'paid' && $o->payment_status === 'paid') {
-                $allowed = true;
-            } elseif ($o->status === 'failed' && $o->payment_status === 'failed') {
-                $allowed = true;
-            } elseif ($o->status === 'cancelled' && in_array($o->payment_status, ['unpaid', 'failed'])) {
-                $allowed = true;
-            } elseif ($o->status === 'expired' && $o->payment_status === 'unpaid') {
+            if (in_array($o->status, [
+                Order::STATUS_PENDING_PAYMENT,
+                Order::STATUS_PAID,
+                Order::STATUS_FAILED,
+                Order::STATUS_CANCELLED,
+                Order::STATUS_EXPIRED,
+            ], true)) {
                 $allowed = true;
             }
             if (!$allowed) {

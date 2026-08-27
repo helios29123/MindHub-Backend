@@ -21,7 +21,10 @@ final class AdminRevenueService
         ->sourceBreakdown($filters)
         ->map(function ($item): array {
             return [
-                'sale_channel' => $item->sale_channel ?? 'unknown',
+                'commission_rule_id' => (int) $item->commission_rule_id,
+                'commission_rule_name' => $item->commission_rule_name,
+                'instructor_rate' => (float) $item->instructor_rate,
+                'platform_rate' => (float) $item->platform_rate,
                 'gross_amount' => (float) ($item->gross_amount ?? 0),
                 'instructor_amount' => (float) ($item->instructor_amount ?? 0),
                 'platform_fee_amount' => (float) ($item->platform_fee_amount ?? 0),

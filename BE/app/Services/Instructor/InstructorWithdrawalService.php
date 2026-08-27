@@ -31,13 +31,17 @@ class InstructorWithdrawalService
     {
         return $this->repository->getWithdrawalDetail($instructorId, $withdrawalId);
     }
-
-    /**
-     * Manual withdrawal creation is DEPRECATED in Udemy periodic payout model.
-     */
     public function store(int $instructorId, array $data): ?WithdrawRequest
     {
-        throw new BusinessException('Hệ thống thanh toán giảng viên theo kỳ và không hỗ trợ rút tiền thủ công.', 422);
+        return app(\App\Services\Payout\EarlyWithdrawalService::class)
+            ->createEarlyWithdrawal(
+                $instructorId,
+                (float) ($data['amount'] ?? 0),
+                isset($data['payout_account_id'])
+                    ? (int) $data['payout_account_id']
+                    : null,
+                $data['otp_code'] ?? null
+            );
     }
 
     public function payoutAccounts(int $instructorId, array $filters): Collection

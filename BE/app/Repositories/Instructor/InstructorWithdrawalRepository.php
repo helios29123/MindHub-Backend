@@ -39,7 +39,7 @@ class InstructorWithdrawalRepository
             ->sum('amount');
 
         $payoutAccount = PayoutAccount::where('user_id', $instructorId)
-            ->where('status', PayoutAccount::STATUS_ACTIVE)
+            ->where('status', PayoutAccount::STATUS_VERIFIED)
             ->orderByDesc('updated_at')
             ->first();
 
@@ -48,7 +48,7 @@ class InstructorWithdrawalRepository
 
         $accountStatus = 'missing';
         if ($hasActivePayoutAccount) {
-            $accountStatus = (! empty($payoutAccount->approved_at) || $payoutAccount->status === PayoutAccount::STATUS_ACTIVE) ? 'verified' : 'unverified';
+            $accountStatus = (! empty($payoutAccount->approved_at) || $payoutAccount->status === PayoutAccount::STATUS_VERIFIED) ? 'verified' : 'unverified';
         }
 
         $blockedReason = null;
@@ -178,7 +178,7 @@ class InstructorWithdrawalRepository
     {
         $query = PayoutAccount::where('user_id', $instructorId);
 
-        $status = $filters['status'] ?? PayoutAccount::STATUS_ACTIVE;
+        $status = $filters['status'] ?? PayoutAccount::STATUS_VERIFIED;
         $query->where('status', $status);
 
         return $query->orderByDesc('updated_at')->get();

@@ -55,12 +55,11 @@ class OrderRepository
         return Order::where('user_id', $userId)
             ->where('course_id', $courseId)
             ->whereIn('status', [
-                Order::STATUS_PENDING,
+                Order::STATUS_PENDING_PAYMENT,
                 Order::STATUS_PAID,
             ])
             ->whereIn('payment_status', [
-                Order::PAYMENT_UNPAID,
-                Order::PAYMENT_PROCESSING,
+                Order::PAYMENT_PENDING,
                 Order::PAYMENT_PAID,
             ])
             ->exists();
@@ -103,26 +102,24 @@ class OrderRepository
 
     public function countPendingExpiredOrders(CarbonInterface $expiredBefore): int
     {
-        return Order::where('status', Order::STATUS_PENDING)
-            ->where('created_at', '<=', $expiredBefore)
-            ->where(function ($query): void {
-                $query->whereNull('payment_status')
-                    ->orWhere('payment_status', '!=', Order::PAYMENT_PAID);
-            })
+        return Order::where('status', Order::STATUS_PENDING_PAYMENT)
+            ->where('payment_status', Order::PAYMENT_PENDING)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', $expiredBefore)
             ->count();
     }
 
     public function expirePendingOrders(CarbonInterface $expiredBefore): int
     {
-        return Order::where('status', Order::STATUS_PENDING)
-            ->where('created_at', '<=', $expiredBefore)
-            ->where(function ($query): void {
-                $query->whereNull('payment_status')
-                    ->orWhere('payment_status', '!=', Order::PAYMENT_PAID);
-            })
+        return Order::where('status', Order::STATUS_PENDING_PAYMENT)
+            ->where('payment_status', Order::PAYMENT_PENDING)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', $expiredBefore)
             ->update([
                 'status' => Order::STATUS_EXPIRED,
+                'payment_status' => Order::PAYMENT_EXPIRED,
                 'updated_at' => now(),
             ]);
     }
+
 }
