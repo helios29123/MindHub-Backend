@@ -463,4 +463,3 @@ class CourseChecklistService
         return trim((string) $value) === '';
     }
 }
-

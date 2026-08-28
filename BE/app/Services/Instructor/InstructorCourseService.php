@@ -833,7 +833,6 @@ final class InstructorCourseService
 
         return $repository->getRevenueReport((int) $instructor->id, $filters);
     }
-
     public function createWithdrawRequest(User $instructor, array $data): \App\Models\WithdrawRequest
     {
         return DB::transaction(function () use ($instructor, $data): \App\Models\WithdrawRequest {

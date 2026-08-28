@@ -14,7 +14,7 @@ class LessonProgress extends Model
     protected $table = 'lesson_progress';
 
     protected $fillable = [
-        'enrollment_id',
+        'user_id',
         'lesson_id',
         'status',
         'started_at',
@@ -26,7 +26,7 @@ class LessonProgress extends Model
     protected function casts(): array
     {
         return [
-            'enrollment_id' => 'integer',
+            'user_id' => 'integer',
             'lesson_id' => 'integer',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -35,9 +35,9 @@ class LessonProgress extends Model
         ];
     }
 
-    public function enrollment(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(Enrollment::class);
+        return $this->belongsTo(User::class);
     }
 
     public function lesson(): BelongsTo

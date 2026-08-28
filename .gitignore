@@ -1,2 +1,3 @@
 .env.deploy
 BE/cookies.txt
+*.sql

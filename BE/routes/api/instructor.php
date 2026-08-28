@@ -229,15 +229,6 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         Route::get('/notifications/{id}', [InstructorNotificationController::class, 'show'])->whereNumber('id');
         Route::patch('/notifications/{id}/read', [InstructorNotificationController::class, 'read'])->whereNumber('id');
         Route::delete('/notifications/{id}', [InstructorNotificationController::class, 'destroy'])->whereNumber('id');
-        /*
-|--------------------------------------------------------------------------
-| Ghi chú
-|--------------------------------------------------------------------------
-| Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
-*/
-        Route::match(['get', 'post'], '/quizzes', [InstructorCourseController::class, 'manageQuizzes']);
-        Route::match(['get', 'put', 'patch', 'delete'], '/quizzes/{id}', [InstructorCourseController::class, 'manageQuizzes'])
-            ->whereNumber('id');
     });
 /*
 |--------------------------------------------------------------------------

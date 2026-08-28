@@ -9,10 +9,18 @@ use RuntimeException;
 
 class CloudinaryService
 {
-    private Cloudinary $cloudinary;
+    private ?Cloudinary $cloudinary = null;
 
     public function __construct()
     {
+    }
+
+    private function getCloudinary(): Cloudinary
+    {
+        if ($this->cloudinary !== null) {
+            return $this->cloudinary;
+        }
+
         $cloudName = config('cloudinary.cloud_name');
         $apiKey = config('cloudinary.api_key');
         $apiSecret = config('cloudinary.api_secret');
@@ -37,6 +45,8 @@ class CloudinaryService
                 'secure' => (bool) config('cloudinary.secure', true),
             ],
         ]);
+
+        return $this->cloudinary;
     }
 
     /**
@@ -102,6 +112,6 @@ class CloudinaryService
 
     private function uploadApi(): UploadApi
     {
-        return $this->cloudinary->uploadApi();
+        return $this->getCloudinary()->uploadApi();
     }
 }

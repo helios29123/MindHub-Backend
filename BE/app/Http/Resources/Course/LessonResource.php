@@ -27,7 +27,9 @@ class LessonResource extends JsonResource
              * Do not expose the raw video path/URL.
              * Frontend must call the signed stream endpoint.
              */
-            'video_url' => null,
+            'video_url' => $hasVideo && $this->video_provider === 'bunny' ? 'https://iframe.mediadelivery.net/embed/' . (config('bunny.stream.library_id') ?: env('BUNNY_STREAM_LIBRARY_ID', '724015')) . '/' . $this->video_id : null,
+            'video_provider' => $this->video_provider,
+            'video_id' => $this->video_id,
             'has_video' => $hasVideo,
             'video_access_type' => $hasVideo ? 'private_stream' : null,
             'video_access_endpoint' => '/api/learn/lessons/' . $this->id . '/video-url',
