@@ -262,7 +262,7 @@ final class InstructorPayoutAccountController extends Controller
         \Illuminate\Support\Facades\Cache::put($cacheKeyPending, true, now()->addSeconds(60));
 
         // Generate 6-digit OTP using UserOtp
-        $otp = \App\Models\UserOtp::generateOtp($instructorId, 'payout_account_change', 300);
+        $otp = app(\App\Services\Auth\OtpService::class)->generate((int) $instructorId, 'payout_account_change', 300);
 
         // Send email notification (Log in dev environment)
         try {
@@ -297,7 +297,7 @@ final class InstructorPayoutAccountController extends Controller
 
         // 1. Verify OTP using UserOtp
         try {
-            \App\Models\UserOtp::verifyOtp($instructorId, $otpCode, 'payout_account_change');
+            app(\App\Services\Auth\OtpService::class)->verify((int) $instructorId, 'payout_account_change', (string) $otpCode);
         } catch (\App\Exceptions\BusinessException $e) {
             return ApiResponse::error($e->getMessage(), [], $e->getCode());
         } catch (\Throwable $e) {

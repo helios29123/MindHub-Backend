@@ -3,94 +3,19 @@
 namespace App\Services\Payment;
 
 use App\Exceptions\BusinessException;
-use App\Models\Coupon;
-use App\Models\Order;
-use App\Repositories\Payment\OrderRepository;
-use App\Repositories\Payment\CouponRepository;
-use Illuminate\Support\Facades\DB;
 
 class CouponApplyService
 {
-    public function __construct(
-        private readonly OrderRepository $orderRepository,
-        private readonly CouponRepository $couponRepository
-    ) {
-    }
-
-    public function applyCoupon(array $couponData, int $userId): Order
+    public function applyCoupon(array $couponData, int $userId): never
     {
-        if (empty($couponData['order_id']) || empty($couponData['coupon_code'])) {
-            throw new BusinessException('Thông tin order_id và coupon_code là bắt buộc.', 422);
-        }
-        return DB::transaction(function () use ($couponData, $userId) {
-            $order = $this->orderRepository->findUserOrderForUpdate(
-                $couponData['order_id'],
-                $userId
-            );
-
-            if (!$order) {
-                throw new BusinessException('Không tìm thấy đơn hàng.', 404);
-            }
-
-            if (
-                $order->status !== Order::STATUS_PENDING_PAYMENT ||
-                $order->payment_status !== Order::PAYMENT_PENDING
-            ) {
-                throw new BusinessException('Chỉ có thể áp coupon cho đơn hàng đang chờ thanh toán.', 400);
-            }
-
-            $coupon = $this->couponRepository->findByCode($couponData['coupon_code']);
-
-            if (!$coupon || !$coupon->isActiveNow()) {
-                throw new BusinessException('Mã giảm giá không hợp lệ.', 400);
-            }
-
-            if (
-                $coupon->course_id !== null &&
-                (int) $coupon->course_id !== (int) $order->course_id
-            ) {
-                throw new BusinessException('Mã giảm giá không áp dụng cho khóa học này.', 400);
-            }
-
-            $discountAmount = $this->calculateDiscountAmount($coupon, (float) $order->price_snapshot);
-            $finalAmount = max(0, (float) $order->price_snapshot - $discountAmount);
-
-            $order->update([
-                'coupon_id' => $coupon->id,
-                'discount_amount' => $discountAmount,
-                'amount' => $finalAmount,
-            ]);
-
-            return $order->fresh(['course', 'coupon']);
-        });
+        throw new BusinessException(
+            'Coupon hiện tại được tự động áp dụng theo khóa học. Learner không nhập mã coupon.',
+            410
+        );
     }
 
-    private function calculateDiscountAmount(Coupon $coupon, float $price): float
+    public function apply(array $data, int $userId): never
     {
-        if ($coupon->discount_type === Coupon::TYPE_PERCENT) {
-            $discountAmount = $price * ((float) $coupon->discount_value / 100);
-
-            return $discountAmount;
-        }
-
-        return min((float) $coupon->discount_value, $price);
+        $this->applyCoupon($data, $userId);
     }
-    public function apply(array $data, int $userId): object|array
-{
-    if (method_exists($this, 'applyCoupon')) {
-        return $this->applyCoupon($data, $userId);
-    }
-
-    if (method_exists($this, 'applyToOrder')) {
-        return $this->applyToOrder($data, $userId);
-    }
-
-    if (method_exists($this, 'handle')) {
-        return $this->handle($data, $userId);
-    }
-
-    throw new \RuntimeException('CouponApplyService chưa có hàm xử lý apply coupon.');
-}
-
-
 }

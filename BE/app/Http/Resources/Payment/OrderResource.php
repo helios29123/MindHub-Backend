@@ -35,7 +35,6 @@ class OrderResource extends JsonResource
                 return $this->coupon ? [
                     'id' => $this->coupon->id,
                     'code' => $this->coupon->code,
-                    'name' => $this->coupon->name,
                 ] : null;
             }),
 

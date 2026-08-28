@@ -73,7 +73,6 @@ final class UserProfileRepository
             ->whereKey($id)
             ->update([
                 'password_hash' => $passwordHash,
-                'password_reset' => null,
             ]);
     }
 }

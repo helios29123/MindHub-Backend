@@ -8,13 +8,16 @@ use App\Models\Course;
 use App\Repositories\Marketing\MarketingCouponRepository;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\QueryException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CouponService
 {
     public function __construct(
-        private readonly MarketingCouponRepository $couponRepository
+        private readonly MarketingCouponRepository $couponRepository,
+        private readonly CouponPricingService $pricing
     ) {
     }
 
@@ -23,109 +26,206 @@ class CouponService
         if (!empty($filters['course_id'])) {
             $this->ensureCourseOwnedByInstructor((int) $filters['course_id'], $instructorId);
         }
-        return $this->couponRepository->paginateForInstructor($instructorId, $filters);
+
+        $paginator = $this->couponRepository->paginateForInstructor($instructorId, $filters);
+
+        foreach ($paginator->items() as $coupon) {
+            if ($coupon->course) {
+                $this->refreshDerivedStatus($coupon);
+                $this->pricing->syncCourseSalePrice($coupon->course);
+            }
+        }
+
+        return $paginator;
+    }
+
+    public function summaryForInstructor(int $instructorId, array $filters = []): array
+    {
+        $query = $this->couponRepository->ownedQuery($instructorId);
+        if (!empty($filters['course_id'])) {
+            $this->ensureCourseOwnedByInstructor((int) $filters['course_id'], $instructorId);
+            $query->where('course_id', (int) $filters['course_id']);
+        }
+
+        $coupons = $query->get();
+        foreach ($coupons as $coupon) {
+            $this->refreshDerivedStatus($coupon);
+        }
+
+        $coupons = $query->get();
+
+        return [
+            'total_coupons' => $coupons->count(),
+            'scheduled_coupons' => $coupons->where('status', Coupon::STATUS_SCHEDULED)->count(),
+            'active_coupons' => $coupons->where('status', Coupon::STATUS_ACTIVE)->count(),
+            'inactive_coupons' => $coupons->where('status', Coupon::STATUS_INACTIVE)->count(),
+            'expired_coupons' => $coupons->where('status', Coupon::STATUS_EXPIRED)->count(),
+            'used_up_coupons' => $coupons->where('status', Coupon::STATUS_USED_UP)->count(),
+            'total_usage_count' => (int) $coupons->sum('used_count'),
+        ];
+    }
+
+    public function courseOptionsForInstructor(int $instructorId, array $filters = []): Collection
+    {
+        $query = Course::query()->where('instructor_id', $instructorId);
+        if (!empty($filters['search'])) {
+            $query->where('title', 'like', '%' . trim((string) $filters['search']) . '%');
+        }
+
+        return $query->orderBy('title')->get(['id', 'title', 'status', 'price', 'sale_price']);
     }
 
     public function getForInstructor(int $instructorId, int $couponId): Coupon
     {
-        return $this->getCouponOwnedByInstructor($couponId, $instructorId);
+        $coupon = $this->getCouponOwnedByInstructor($couponId, $instructorId);
+        $this->refreshDerivedStatus($coupon);
+        if ($coupon->course) {
+            $this->pricing->syncCourseSalePrice($coupon->course);
+        }
+        return $coupon->refresh()->load('course');
     }
 
     public function createForInstructor(int $instructorId, array $data): Coupon
     {
-        $this->ensureCourseOwnedByInstructor((int) $data['course_id'], $instructorId);
-        $this->assertDiscountRule((string) $data['discount_type'], $data['discount_value']);
-        $this->assertDateRange($data['start_at'] ?? null, $data['end_at'] ?? null);
+        return DB::transaction(function () use ($instructorId, $data): Coupon {
+            $course = Course::query()
+                ->whereKey((int) $data['course_id'])
+                ->where('instructor_id', $instructorId)
+                ->lockForUpdate()
+                ->first();
 
-        $payload = $data;
-        $payload['user_id'] = $instructorId;
-        $payload['code'] = strtoupper($data['code']);
-        $payload['status'] = $payload['status'] ?? Coupon::STATUS_ACTIVE;
-        $payload['used_count'] = 0;
-
-        if ($payload['status'] === 'active') {
-            if (isset($payload['end_at']) && Carbon::parse($payload['end_at'])->isPast()) {
-                throw new BusinessException('Không thể kích hoạt coupon đã hết hạn.', 409);
+            if (!$course) {
+                throw new BusinessException('Không tìm thấy khóa học hoặc bạn không có quyền thao tác.', 404);
             }
-            $this->checkActiveCouponConflict((int) $data['course_id']);
-        }
 
-        return DB::transaction(function () use ($payload): Coupon {
-            try {
-                return $this->couponRepository->create($payload);
-            } catch (QueryException $exception) {
-                if ((string) $exception->getCode() === '23000') {
-                    throw new BusinessException('Mã coupon đã tồn tại.', 409);
-                }
-                throw $exception;
+            $campaignType = (string) ($data['campaign_type'] ?? '');
+            $payload = $this->normalizePayload($data, null, $campaignType);
+            $payload['course_id'] = (int) $course->id;
+
+            $this->pricing->validateCampaign($course, $payload);
+            $this->assertDateRange($payload['start_at'] ?? null, $payload['end_at'] ?? null);
+            $this->assertNoOverlap($course->id, $payload['start_at'] ?? null, $payload['end_at'] ?? null);
+
+            if ($campaignType === Coupon::CAMPAIGN_TRIAL) {
+                $this->assertTrialMonthlyQuota($instructorId);
             }
+
+            $payload['status'] = $this->initialStatus($payload['start_at'] ?? null, $payload['end_at'] ?? null);
+            $payload['code'] = $this->generateCode($course, $payload);
+            $payload['used_count'] = 0;
+
+            $coupon = $this->couponRepository->create($payload);
+            $this->pricing->syncCourseSalePrice($course->refresh());
+
+            return $coupon->refresh()->load('course');
         });
     }
 
     public function updateForInstructor(int $instructorId, int $couponId, array $data): Coupon
     {
-        $coupon = $this->getCouponOwnedByInstructor($couponId, $instructorId);
-
-        if (array_key_exists('code', $data) && $coupon->used_count > 0 && strtoupper($data['code']) !== $coupon->code) {
-            throw new BusinessException('Không thể thay đổi mã coupon đã được sử dụng.', 409);
-        }
-
-        if (array_key_exists('course_id', $data)) {
-            $this->ensureCourseOwnedByInstructor((int) $data['course_id'], $instructorId);
-        }
-
-        $nextDiscountType = (string) ($data['discount_type'] ?? $coupon->discount_type);
-        $nextDiscountValue = $data['discount_value'] ?? $coupon->discount_value;
-        $nextStartAt = array_key_exists('start_at', $data) ? $data['start_at'] : $coupon->start_at;
-        $nextEndAt = array_key_exists('end_at', $data) ? $data['end_at'] : $coupon->end_at;
-
-        $this->assertDiscountRule($nextDiscountType, $nextDiscountValue);
-        $this->assertDateRange($nextStartAt, $nextEndAt);
-
-        $payload = $data;
-        if (array_key_exists('code', $payload)) {
-            $payload['code'] = strtoupper($payload['code']);
-        }
-
-        $nextStatus = $payload['status'] ?? $coupon->status;
-        if ($nextStatus === 'active') {
-            if ($nextEndAt && Carbon::parse($nextEndAt)->isPast()) {
-                throw new BusinessException('Không thể kích hoạt coupon đã hết hạn.', 409);
+        return DB::transaction(function () use ($instructorId, $couponId, $data): Coupon {
+            $coupon = Coupon::query()->whereKey($couponId)->lockForUpdate()->first();
+            if (!$coupon) {
+                throw new BusinessException('Không tìm thấy campaign.', 404);
             }
-            if ($coupon->usage_limit !== null && (int)$coupon->used_count >= (int)$coupon->usage_limit) {
-                throw new BusinessException('Không thể kích hoạt coupon đã dùng hết lượt.', 409);
+
+            $course = Course::query()
+                ->whereKey((int) $coupon->course_id)
+                ->where('instructor_id', $instructorId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$course) {
+                throw new BusinessException('Không tìm thấy campaign hoặc bạn không có quyền thao tác.', 404);
             }
-            $this->checkActiveCouponConflict($coupon->course_id, $coupon->id);
-        }
 
-        if (
-            array_key_exists('usage_limit', $payload)
-            && $payload['usage_limit'] !== null
-            && (int) $payload['usage_limit'] < (int) $coupon->used_count
-        ) {
-            throw new BusinessException('Giới hạn lượt dùng không được nhỏ hơn số lượt đã dùng.', 422, [
-                'usage_limit' => ['Giới hạn lượt dùng không được nhỏ hơn số lượt đã dùng.'],
-            ]);
-        }
+            $this->refreshDerivedStatus($coupon);
+            $coupon->refresh();
 
-        return DB::transaction(function () use ($coupon, $payload): Coupon {
-            try {
-                return $this->couponRepository->update($coupon, $payload);
-            } catch (QueryException $exception) {
-                if ((string) $exception->getCode() === '23000') {
-                    throw new BusinessException('Mã coupon đã tồn tại.', 409);
+            if ($coupon->isTerminal()) {
+                throw new BusinessException('Campaign đã kết thúc/đã tắt, không thể mở lại hoặc chỉnh sửa. Hãy tạo campaign mới.', 409);
+            }
+
+            if (array_key_exists('course_id', $data) && (int) $data['course_id'] !== (int) $coupon->course_id) {
+                throw new BusinessException('Không được chuyển campaign sang khóa học khác.', 422);
+            }
+
+            if (array_key_exists('campaign_type', $data) && $data['campaign_type'] !== $coupon->campaign_type) {
+                throw new BusinessException('Không được đổi chế độ của campaign đã tạo. Hãy tạo campaign mới.', 422);
+            }
+
+            if (array_key_exists('usage_limit', $data)
+                && $data['usage_limit'] !== null
+                && (int) $data['usage_limit'] < (int) $coupon->used_count
+            ) {
+                throw new BusinessException('Giới hạn lượt dùng không được nhỏ hơn số lượt đã dùng.', 422);
+            }
+
+            if (array_key_exists('status', $data)) {
+                $requested = (string) $data['status'];
+                if ($requested !== Coupon::STATUS_INACTIVE) {
+                    throw new BusinessException('Instructor chỉ được tắt campaign. Trạng thái active/scheduled/expired/used_up do Backend xác định.', 422);
                 }
-                throw $exception;
+
+                $coupon = $this->couponRepository->update($coupon, ['status' => Coupon::STATUS_INACTIVE]);
+                $this->pricing->syncCourseSalePrice($course->refresh());
+                return $coupon;
             }
+
+            $payload = $this->normalizePayload($data, $coupon, $coupon->campaign_type);
+            $this->pricing->validateCampaign($course, $payload, $coupon);
+            $this->assertDateRange($payload['start_at'] ?? null, $payload['end_at'] ?? null);
+            $this->assertNoOverlap(
+                $course->id,
+                $payload['start_at'] ?? null,
+                $payload['end_at'] ?? null,
+                $coupon->id
+            );
+
+            $payload['status'] = $this->initialStatus($payload['start_at'] ?? null, $payload['end_at'] ?? null);
+
+            $coupon = $this->couponRepository->update($coupon, $payload);
+            $this->pricing->syncCourseSalePrice($course->refresh());
+
+            return $coupon;
         });
     }
 
     public function deleteForInstructor(int $instructorId, int $couponId): Coupon
     {
-        $coupon = $this->getCouponOwnedByInstructor($couponId, $instructorId);
-        return DB::transaction(function () use ($coupon): Coupon {
-            return $this->couponRepository->delete($coupon);
+        return DB::transaction(function () use ($instructorId, $couponId): Coupon {
+            $coupon = Coupon::query()->whereKey($couponId)->lockForUpdate()->first();
+            if (!$coupon) {
+                throw new BusinessException('Không tìm thấy campaign.', 404);
+            }
+
+            $course = Course::query()
+                ->whereKey((int) $coupon->course_id)
+                ->where('instructor_id', $instructorId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$course) {
+                throw new BusinessException('Không tìm thấy campaign hoặc bạn không có quyền thao tác.', 404);
+            }
+
+            if (!$coupon->isTerminal()) {
+                $coupon->forceFill(['status' => Coupon::STATUS_INACTIVE])->save();
+            }
+
+            $this->pricing->syncCourseSalePrice($course->refresh());
+
+            return $coupon->refresh()->load('course');
         });
+    }
+
+    private function getCouponOwnedByInstructor(int $couponId, int $instructorId): Coupon
+    {
+        $coupon = $this->couponRepository->findOwned($couponId, $instructorId);
+        if (!$coupon) {
+            throw new BusinessException('Không tìm thấy campaign hoặc bạn không có quyền thao tác.', 404);
+        }
+        return $coupon;
     }
 
     private function ensureCourseOwnedByInstructor(int $courseId, int $instructorId): Course
@@ -137,64 +237,132 @@ class CouponService
         return $course;
     }
 
-    private function getCouponOwnedByInstructor(int $couponId, int $instructorId): Coupon
+    private function normalizePayload(array $data, ?Coupon $existing, string $campaignType): array
     {
-        $coupon = $this->couponRepository->findById($couponId);
-        if (
-            !$coupon
-            || (int) $coupon->user_id !== $instructorId
-            || $coupon->course_id === null
-            || !$coupon->course
-            || (int) $coupon->course->instructor_id !== $instructorId
-        ) {
-            throw new BusinessException('Không tìm thấy coupon hợp lệ.', 404);
+        $payload = [];
+
+        foreach (['campaign_type', 'discount_type', 'discount_value', 'max_discount_amount', 'usage_limit', 'start_at', 'end_at'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $payload[$key] = $data[$key];
+            } elseif ($existing !== null) {
+                $payload[$key] = $existing->{$key};
+            }
         }
-        return $coupon;
+
+        $payload['campaign_type'] = $campaignType;
+
+        if ($campaignType === Coupon::CAMPAIGN_TRIAL) {
+            $payload['discount_type'] = null;
+            $payload['discount_value'] = null;
+            $payload['max_discount_amount'] = null;
+        } elseif (($payload['discount_type'] ?? null) === Coupon::TYPE_FIXED) {
+            $payload['max_discount_amount'] = null;
+        }
+
+        return $payload;
     }
 
-    private function assertDiscountRule(string $discountType, mixed $discountValue): void
+    private function initialStatus(mixed $startAt, mixed $endAt): string
     {
-        if ($discountType === Coupon::TYPE_PERCENT && (float) $discountValue > 100) {
-            throw new BusinessException('Thông tin coupon không hợp lệ.', 422, [
-                'discount_value' => ['Giảm giá phần trăm không được vượt quá 100.'],
-            ]);
+        $now = now();
+
+        if ($endAt !== null && Carbon::parse($endAt)->lt($now)) {
+            return Coupon::STATUS_EXPIRED;
+        }
+        if ($startAt !== null && Carbon::parse($startAt)->gt($now)) {
+            return Coupon::STATUS_SCHEDULED;
+        }
+
+        return Coupon::STATUS_ACTIVE;
+    }
+
+    private function refreshDerivedStatus(Coupon $coupon): void
+    {
+        if ($coupon->status === Coupon::STATUS_INACTIVE) {
+            return;
+        }
+
+        $next = $this->pricing->effectiveStatus($coupon);
+        if ($next !== $coupon->status) {
+            $coupon->forceFill(['status' => $next])->save();
         }
     }
 
     private function assertDateRange(mixed $startAt, mixed $endAt): void
     {
-        if ($startAt === null || $endAt === null) {
-            return;
-        }
-        if (Carbon::parse($endAt)->lte(Carbon::parse($startAt))) {
-            throw new BusinessException('Thông tin coupon không hợp lệ.', 422, [
-                'end_at' => ['Thời gian kết thúc phải sau thời gian bắt đầu.'],
-            ]);
+        if ($startAt !== null && $endAt !== null && Carbon::parse($endAt)->lte(Carbon::parse($startAt))) {
+            throw new BusinessException('Thời gian kết thúc phải sau thời gian bắt đầu.', 422);
         }
     }
 
-    private function checkActiveCouponConflict(int $courseId, ?int $excludeCouponId = null): void
+    private function assertNoOverlap(int $courseId, mixed $startAt, mixed $endAt, ?int $excludeId = null): void
     {
-        if (app()->runningUnitTests()) {
-            return;
+        $newStart = $startAt !== null ? Carbon::parse($startAt) : null;
+        $newEnd = $endAt !== null ? Carbon::parse($endAt) : null;
+
+        $query = Coupon::query()
+            ->where('course_id', $courseId)
+            ->whereIn('status', [Coupon::STATUS_SCHEDULED, Coupon::STATUS_ACTIVE])
+            ->lockForUpdate();
+
+        if ($excludeId !== null) {
+            $query->whereKeyNot($excludeId);
         }
 
-        $now = now();
-        $query = Coupon::where('course_id', $courseId)
-            ->where('status', 'active')
-            ->where(function ($q) use ($now) {
-                $q->whereNull('end_at')->orWhere('end_at', '>=', $now);
-            })
-            ->where(function ($q) {
-                $q->whereNull('usage_limit')->orWhereRaw('used_count < usage_limit');
-            });
+        foreach ($query->get() as $existing) {
+            $existingStart = $existing->start_at ? Carbon::parse($existing->start_at) : null;
+            $existingEnd = $existing->end_at ? Carbon::parse($existing->end_at) : null;
 
-        if ($excludeCouponId) {
-            $query->where('id', '!=', $excludeCouponId);
+            $startsBeforeOtherEnds = $newStart === null || $existingEnd === null || $newStart->lte($existingEnd);
+            $otherStartsBeforeNewEnds = $existingStart === null || $newEnd === null || $existingStart->lte($newEnd);
+
+            if ($startsBeforeOtherEnds && $otherStartsBeforeNewEnds) {
+                throw new BusinessException('Thời gian campaign bị trùng với campaign khác của khóa học.', 409);
+            }
+        }
+    }
+
+    private function assertTrialMonthlyQuota(int $instructorId): void
+    {
+        $start = now()->copy()->startOfMonth();
+        $end = now()->copy()->endOfMonth();
+
+        $count = Coupon::query()
+            ->where('campaign_type', Coupon::CAMPAIGN_TRIAL)
+            ->whereBetween('created_at', [$start, $end])
+            ->whereHas('course', fn (Builder $q) => $q->where('instructor_id', $instructorId))
+            ->lockForUpdate()
+            ->count();
+
+        if ($count >= (int) config('coupon.trial_campaigns_per_month', 2)) {
+            throw new BusinessException('Bạn đã đạt giới hạn 2 campaign học thử mới trong tháng này.', 422);
+        }
+    }
+
+    private function generateCode(Course $course, array $payload): string
+    {
+        $coursePart = Str::upper(Str::slug((string) $course->title, ''));
+        $coursePart = substr($coursePart !== '' ? $coursePart : 'COURSE', 0, 12);
+        $date = now()->format('dmy');
+
+        if ($payload['campaign_type'] === Coupon::CAMPAIGN_TRIAL) {
+            $offer = 'FREE';
+        } elseif (($payload['discount_type'] ?? null) === Coupon::TYPE_PERCENT) {
+            $offer = 'P' . (int) round((float) $payload['discount_value']);
+        } else {
+            $value = (int) round((float) $payload['discount_value']);
+            $offer = $value >= 1000 && $value % 1000 === 0
+                ? 'F' . ((int) ($value / 1000)) . 'K'
+                : 'F' . $value;
         }
 
-        if ($query->exists()) {
-            throw new BusinessException('Khóa học đã có coupon đang hoạt động.', 409);
+        for ($i = 0; $i < 20; $i++) {
+            $candidate = "MH-{$coursePart}-{$offer}-{$date}-" . Str::upper(Str::random(4));
+            if (!Coupon::query()->where('code', $candidate)->exists()) {
+                return $candidate;
+            }
         }
+
+        throw new BusinessException('Không thể sinh mã campaign duy nhất, vui lòng thử lại.', 500);
     }
 }

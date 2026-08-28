@@ -8,14 +8,10 @@ class CouponResource extends JsonResource
     {
         return [
             'coupon_id' => $this->id,
-            'user_id' => $this->user_id,
             'course_id' => $this->course_id,
             'code' => $this->code,
-            'name' => $this->name,
-            'description' => $this->description,
             'discount_type' => $this->discount_type,
             'discount_value' => $this->discount_value,
-            'max_order_amount' => $this->max_order_amount,
             'usage_limit' => $this->usage_limit,
             'used_count' => $this->used_count,
             'start_at' => $this->start_at?->format('Y-m-d H:i:s'),

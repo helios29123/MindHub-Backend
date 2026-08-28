@@ -37,7 +37,7 @@ class Course extends Model
         'intro_video_url',
         'intro_video_id',
         'price',
-        'discount_percent',
+        'sale_price',
         'course_level',
         'language',
         'requirements',
@@ -54,7 +54,6 @@ class Course extends Model
         return [
             'instructor_id' => 'integer',
             'price' => 'decimal:2',
-            'discount_percent' => 'decimal:2',
             'sale_price' => 'decimal:2',
             'requirements' => 'array',
             'outcomes' => 'array',
@@ -81,7 +80,12 @@ class Course extends Model
 
     public function coupon(): HasOne
     {
-        return $this->hasOne(Coupon::class);
+        return $this->hasOne(Coupon::class)->latestOfMany();
+    }
+
+    public function campaigns(): HasMany
+    {
+        return $this->hasMany(Coupon::class);
     }
 
     public function sections(): HasMany

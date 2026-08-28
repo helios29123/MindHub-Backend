@@ -2,6 +2,7 @@
 
 namespace App\Services\Payment;
 
+use App\Models\Coupon;
 use App\Exceptions\BusinessException;
 use App\Models\Order;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
@@ -292,7 +293,10 @@ $order = $query->first();
             throw new BusinessException('Order chưa đủ điều kiện xử lý sau thanh toán.', 409);
         }
         app(EnrollmentAfterPaymentService::class)->createEnrollmentAfterPayment($orderModel);
-        app(RevenueShareService::class)->createRevenueForPaidOrder($orderModel);
+
+        if ((float) $orderModel->amount > 0) {
+            app(RevenueShareService::class)->createRevenueForPaidOrder($orderModel);
+        }
 
         $this->finalizeCouponUsage($orderModel);
 
@@ -304,36 +308,42 @@ $order = $query->first();
 
     private function finalizeCouponUsage(Order $order): void
     {
-        if ($order->coupon_id === null) {
+        if (!$order->coupon_id) {
             return;
         }
 
-        $coupon = DB::table('coupons')
-            ->where('id', $order->coupon_id)
-            ->lockForUpdate()
-            ->first();
+        DB::transaction(function () use ($order): void {
+            $coupon = Coupon::query()
+                ->whereKey($order->coupon_id)
+                ->lockForUpdate()
+                ->first();
 
-        if (! $coupon) {
-            throw new BusinessException('Coupon của đơn hàng không còn tồn tại.', 409);
-        }
+            if (!$coupon || $coupon->campaign_type !== 'discount') {
+                return;
+            }
 
-        $nextUsedCount = (int) $coupon->used_count + 1;
-        $nextStatus = $coupon->status;
+            $usageLimit = $coupon->usage_limit !== null
+                ? (int) $coupon->usage_limit
+                : null;
 
-        if (
-            $coupon->usage_limit !== null
-            && $nextUsedCount >= (int) $coupon->usage_limit
-        ) {
-            $nextStatus = 'used_up';
-        }
+            if ($usageLimit !== null && (int) $coupon->used_count >= $usageLimit) {
+                if ($coupon->status !== 'used_up') {
+                    $coupon->status = 'used_up';
+                    $coupon->save();
+                }
 
-        DB::table('coupons')
-            ->where('id', $coupon->id)
-            ->update([
-                'used_count' => $nextUsedCount,
-                'status' => $nextStatus,
-                'updated_at' => now(),
-            ]);
+                return;
+            }
+
+            $coupon->used_count = (int) $coupon->used_count + 1;
+
+            if ($usageLimit !== null && (int) $coupon->used_count >= $usageLimit) {
+                $coupon->used_count = $usageLimit;
+                $coupon->status = 'used_up';
+            }
+
+            $coupon->save();
+        });
     }
 
     private function assertSepayWebhookSignature(): void

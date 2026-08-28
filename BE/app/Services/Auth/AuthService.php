@@ -10,7 +10,6 @@ use App\Repositories\Instructor\InstructorProfileRepository;
 use App\Repositories\Instructor\PayoutAccountRepository;
 use App\Repositories\User\UserRepository;
 use App\Repositories\User\UserSessionRepository;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +29,8 @@ class AuthService
         private readonly AccessTokenService $accessTokenService,
         private readonly GoogleTokenVerifier $googleTokenVerifier,
         private readonly InstructorProfileRepository $instructorProfileRepository,
-        private readonly PayoutAccountRepository $payoutAccountRepository
+        private readonly PayoutAccountRepository $payoutAccountRepository,
+        private readonly OtpService $otpService
     ) {}
 
     public function register(array $registerData): array
@@ -51,7 +51,6 @@ class AuthService
                 'email' => $registerData['email'],
                 'phone' => $registerData['phone'] ?? null,
                 'password_hash' => Hash::make($registerData['password']),
-                'oauth_account_login' => null,
                 'role' => User::ROLE_LEARNER,
                 'status' => User::STATUS_INACTIVE,
                 'locked' => false,
@@ -81,7 +80,6 @@ class AuthService
                 'email' => $registerData['email'],
                 'phone' => $registerData['phone'] ?? null,
                 'password_hash' => Hash::make($registerData['password']),
-                'oauth_account_login' => null,
                 'role' => User::ROLE_INSTRUCTOR,
                 'status' => User::STATUS_INACTIVE,
                 'locked' => false,
@@ -97,7 +95,7 @@ class AuthService
                 'level' => $registerData['level'] ?? null,
             ]);
 
-            $otpCode = (string) rand(100000, 999999);
+            $otpCode = $this->otpService->generate((int) $user->id, 'email_verification', 3600);
             $verifyUrl = $this->sendVerifyEmail($user, $otpCode);
 
             return [
@@ -126,7 +124,11 @@ class AuthService
         $verifyUrl = $this->createEmailVerificationUrl($user);
 
         if (! $otpCode) {
-            $otpCode = (string) rand(100000, 999999);
+            $otpCode = $this->otpService->generate(
+                (int) $user->id,
+                'email_verification',
+                self::VERIFY_EMAIL_EXPIRES_MINUTES * 60
+            );
         }
 
         try {
@@ -134,7 +136,9 @@ class AuthService
                 new VerifyEmailMail($user, $verifyUrl, $otpCode)
             );
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to send verification email to ' . $user->email . ': ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error(
+                'Failed to send verification email to ' . $user->email . ': ' . $e->getMessage()
+            );
         }
 
         return $verifyUrl;
@@ -167,6 +171,12 @@ class AuthService
         if (! $user) {
             throw new BusinessException('Không tìm thấy người dùng với email này.', 404);
         }
+
+        $this->otpService->verify(
+            (int) $user->id,
+            'email_verification',
+            $otp
+        );
 
         return $this->userRepository->update($user, [
             'email_verified_at' => now(),
@@ -250,28 +260,12 @@ class AuthService
     public function handleGoogleUser(array $googleUser, Request $request): User
     {
         return DB::transaction(function () use ($googleUser, $request) {
-            $provider = $googleUser['provider'] ?? 'google';
-            $providerId = $googleUser['provider_id'];
-
-            $user = $this->userRepository->findByOAuthProviderId(
-                $provider,
-                $providerId
-            );
-
-            if (! $user) {
-                $user = $this->userRepository->findByEmail(
-                    $googleUser['email']
-                );
-            }
+            $user = $this->userRepository->findByEmail($googleUser['email']);
 
             if ($user) {
                 $this->ensureUserCanLoginForGoogle($user);
 
                 $updateData = [
-                    'oauth_account_login' => json_encode([
-                        'provider' => $provider,
-                        'provider_id' => $providerId,
-                    ], JSON_THROW_ON_ERROR),
                     'email_verified_at' => $user->email_verified_at ?? now(),
                     'last_login_at' => now(),
                 ];
@@ -286,12 +280,8 @@ class AuthService
                     'full_name' => $googleUser['full_name'],
                     'email' => $googleUser['email'],
                     'avatar_url' => $googleUser['avatar'] ?? null,
-                    'password_hash' => null,
+                    'password_hash' => Hash::make(Str::random(64)),
                     'phone' => null,
-                    'oauth_account_login' => json_encode([
-                        'provider' => $provider,
-                        'provider_id' => $providerId,
-                    ], JSON_THROW_ON_ERROR),
                     'role' => User::ROLE_LEARNER,
                     'status' => User::STATUS_ACTIVE,
                     'locked' => false,
@@ -322,22 +312,22 @@ class AuthService
             ];
         }
 
-        $plainResetToken = str_pad((string) random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = now()->addMinutes(self::PASSWORD_RESET_EXPIRES_MINUTES);
-
-        $this->userRepository->update($user, [
-            'password_reset' => json_encode([
-                'token_hash' => hash('sha256', $plainResetToken),
-                'expires_at' => $expiresAt->toISOString(),
-            ], JSON_THROW_ON_ERROR),
-        ]);
+        $ttlSeconds = self::PASSWORD_RESET_EXPIRES_MINUTES * 60;
+        $plainResetToken = $this->otpService->generate(
+            (int) $user->id,
+            'password_reset',
+            $ttlSeconds
+        );
+        $expiresAt = now()->addSeconds($ttlSeconds);
 
         try {
             Mail::to($user->email)->send(
                 new \App\Mail\ResetPasswordMail($user, $plainResetToken)
             );
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to send reset password email to ' . $user->email . ': ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error(
+                'Failed to send reset password email to ' . $user->email . ': ' . $e->getMessage()
+            );
         }
 
         return [
@@ -350,40 +340,27 @@ class AuthService
     {
         $user = $this->userRepository->findByEmail($resetPasswordData['email']);
 
-        if (! $user || ! $user->password_reset) {
+        if (! $user) {
             throw new BusinessException('Token hoặc thông tin đặt lại mật khẩu không hợp lệ.', 400, [
                 'token' => ['Token hoặc thông tin đặt lại mật khẩu không hợp lệ.'],
             ]);
         }
 
-        $passwordResetData = json_decode($user->password_reset, true);
-
-        if (! is_array($passwordResetData)) {
+        try {
+            $this->otpService->verify(
+                (int) $user->id,
+                'password_reset',
+                (string) ($resetPasswordData['token'] ?? '')
+            );
+        } catch (BusinessException $e) {
             throw new BusinessException('Token đặt lại mật khẩu không hợp lệ.', 400, [
                 'token' => ['Token đặt lại mật khẩu không hợp lệ.'],
             ]);
         }
 
-        $tokenHash = $passwordResetData['token_hash'] ?? null;
-        $expiresAt = isset($passwordResetData['expires_at'])
-            ? Carbon::parse($passwordResetData['expires_at'])
-            : null;
-
-        if (
-            ! is_string($tokenHash) ||
-            ! hash_equals($tokenHash, hash('sha256', $resetPasswordData['token'] ?? '')) ||
-            ! $expiresAt ||
-            now()->greaterThan($expiresAt)
-        ) {
-            throw new BusinessException('Token đặt lại mật khẩu không hợp lệ.', 400, [
-                'token' => ['Token đặt lại mật khẩu không hợp lệ.'],
-            ]);
-        }
-
-        DB::transaction(function () use ($user, $resetPasswordData) {
+        DB::transaction(function () use ($user, $resetPasswordData): void {
             $this->userRepository->update($user, [
                 'password_hash' => Hash::make($resetPasswordData['password']),
-                'password_reset' => null,
             ]);
 
             $this->userSessionRepository->revokeAllByUserId((int) $user->id);

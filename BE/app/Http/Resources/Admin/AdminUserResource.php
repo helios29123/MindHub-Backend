@@ -16,7 +16,6 @@ class AdminUserResource extends JsonResource
             'phone' => $this->phone,
             'role' => $this->role,
             'status' => $this->status,
-            'oauth_account_login' => $this->oauth_account_login,
             'email_verified_at' => $this->email_verified_at,
             'last_login_at' => $this->last_login_at,
             'locked' => (bool) $this->locked,

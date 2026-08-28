@@ -15,8 +15,6 @@ class InstructorCouponResource extends JsonResource
         return [
             'id' => (int) $this->id,
             'code' => $this->code,
-            'name' => $this->name,
-            'description' => $this->description,
             'course' => [
                 'id' => $this->course ? (int) $this->course->id : null,
                 'title' => $this->course?->title,
@@ -26,7 +24,6 @@ class InstructorCouponResource extends JsonResource
             'discount_type' => $this->discount_type,
             'discount_type_label' => $this->discountTypeLabel($this->discount_type),
             'discount_value' => $this->moneyValue($this->discount_value),
-            'max_order_amount' => $this->moneyValue($this->max_order_amount),
             'usage_limit' => $usageLimit,
             'used_count' => $usedCount,
             'remaining_usage' => $remainingUsage,
@@ -44,10 +41,7 @@ class InstructorCouponResource extends JsonResource
     }
     protected function effectiveStatus(): string
     {
-        if ($this->deleted_at !== null) {
-            return 'deleted';
-        }
-        if ($this->status === Coupon::STATUS_INACTIVE) {
+if ($this->status === Coupon::STATUS_INACTIVE) {
             return Coupon::STATUS_INACTIVE;
         }
         if ($this->end_at !== null && Carbon::parse($this->end_at)->lt(now())) {
