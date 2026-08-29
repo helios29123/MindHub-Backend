@@ -514,68 +514,56 @@ final class InstructorCourseService
 
     private function processCoursePriceData(array &$data, ?Course $existingCourse = null): void
     {
-        $hasPriceKey = array_key_exists('original_price', $data) || array_key_exists('price', $data);
-        if ($hasPriceKey || !$existingCourse) {
-            $originalPrice = array_key_exists('original_price', $data)
-                ? (float) $data['original_price']
-                : (array_key_exists('price', $data) ? (float) $data['price'] : ($existingCourse ? (float) $existingCourse->price : 0.0));
+        $hasPriceInput = array_key_exists('original_price', $data) || array_key_exists('price', $data);
 
-            if ($originalPrice < 0) {
-                $originalPrice = 0.0;
-            }
-            $data['price'] = $originalPrice;
-        } else {
-            $originalPrice = (float) $existingCourse->price;
+        $price = array_key_exists('original_price', $data)
+            ? (float) $data['original_price']
+            : (array_key_exists('price', $data)
+                ? (float) $data['price']
+                : (float) ($existingCourse?->price ?? 0));
+
+        if ($price < 0) {
+            throw new BusinessException('Giá khóa học không được âm.', 422);
         }
 
-        unset($data['original_price']);
+        unset(
+            $data['original_price'],
+            $data['has_discount'],
+            $data['sale_price']
+        );
 
-        $hasDiscount = false;
-        if (array_key_exists('has_discount', $data)) {
-            $hasDiscount = filter_var($data['has_discount'], FILTER_VALIDATE_BOOLEAN);
-        } elseif (array_key_exists('discount_percent', $data)) {
-            $hasDiscount = $data['discount_percent'] !== null && (int) $data['discount_percent'] > 0;
-        } elseif ($existingCourse) {
-            $hasDiscount = $existingCourse->discount_percent !== null && (int) $existingCourse->discount_percent > 0;
+        if ($hasPriceInput || $existingCourse === null) {
+            $data['price'] = $price;
         }
 
-        unset($data['has_discount']);
-
-        if ($hasDiscount) {
-            $discountPercent = array_key_exists('discount_percent', $data)
-                ? ($data['discount_percent'] !== null ? (int) $data['discount_percent'] : ($existingCourse ? (int) $existingCourse->discount_percent : 0))
-                : ($existingCourse ? (int) $existingCourse->discount_percent : 0);
-
-            if ($discountPercent < 1 || $discountPercent > 99) {
-                throw new BusinessException('Phần trăm giảm giá phải từ 1% đến 99%.', 422);
-            }
-
-            $data['discount_percent'] = $discountPercent;
-            $data['sale_price'] = (float) round($originalPrice * (100 - $discountPercent) / 100);
-        } else {
-            $data['discount_percent'] = null;
-            $data['sale_price'] = $originalPrice;
+        if ($existingCourse === null) {
+            // Course mới chưa thể có campaign.
+            $data['sale_price'] = $price;
+            return;
         }
+
+        // sale_price là field do Backend/campaign quản lý, không nhận trực tiếp từ request.
+        $shadowCourse = clone $existingCourse;
+        $shadowCourse->setAttribute('price', $price);
+
+        $quote = app(\App\Services\Marketing\CouponPricingService::class)
+            ->quoteCurrentCourse($shadowCourse);
+
+        $data['sale_price'] = (float) $quote['sale_price'];
     }
 
     private function validateSalePrice(Course $course, array $data): void
     {
-        $effectivePrice = array_key_exists("price", $data)
-            ? $data["price"]
-            : $course->price;
+        $price = array_key_exists('price', $data)
+            ? (float) $data['price']
+            : (float) $course->price;
 
-        $effectiveSalePrice = array_key_exists("sale_price", $data)
-            ? $data["sale_price"]
-            : $course->sale_price;
+        $salePrice = array_key_exists('sale_price', $data)
+            ? (float) $data['sale_price']
+            : (float) ($course->sale_price ?? $price);
 
-        if (
-            $effectiveSalePrice !== null &&
-            (float) $effectiveSalePrice > (float) $effectivePrice
-        ) {
-            throw new BusinessException(
-                "Giá khuyến mãi không được lớn hơn giá gốc.",
-                422,
-            );
+        if ($salePrice < 0 || $salePrice > $price) {
+            throw new BusinessException('Giá sau campaign không hợp lệ.', 422);
         }
     }
 

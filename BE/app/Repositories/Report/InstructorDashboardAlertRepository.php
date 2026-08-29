@@ -18,9 +18,6 @@ class InstructorDashboardAlertRepository
                 ->orderByDesc('created_at')
                 ->limit($limit);
 
-            if (Schema::hasColumn('notifications', 'deleted_at')) {
-                $query;
-            }
 
             $alerts = $query->get()
                 ->map(fn ($row, $idx) => [

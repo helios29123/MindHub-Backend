@@ -58,7 +58,6 @@ class AdminOrderResource extends JsonResource
                 return [
                     'id' => (int) $this->coupon->id,
                     'code' => $this->coupon->code,
-                    'name' => $this->coupon->name,
                     'discount_type' => $this->coupon->discount_type,
                     'discount_value' => $this->coupon->discount_value !== null ? (string) $this->coupon->discount_value : null,
                     'status' => $this->coupon->status,

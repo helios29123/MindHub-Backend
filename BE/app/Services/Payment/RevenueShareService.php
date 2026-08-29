@@ -21,7 +21,7 @@ use Throwable;
 
 final class RevenueShareService
 {
-    public function createRevenueForPaidOrder(int|Order $order): Revenue
+    public function createRevenueForPaidOrder(int|Order $order): ?Revenue
     {
         $orderId = $order instanceof Order ? $order->id : (int) $order;
 
@@ -41,6 +41,10 @@ final class RevenueShareService
                     'status' => $orderModel->status,
                 ]);
                 throw new OrderNotPaidException("Revenue can only be generated for paid orders. Order {$orderModel->id} status is '{$orderModel->status}'.");
+            }
+
+            if ((float) $orderModel->amount <= 0) {
+                return null;
             }
 
             $existingRevenue = Revenue::query()
@@ -97,7 +101,7 @@ final class RevenueShareService
         });
     }
 
-    public function calculateForPaidOrder(int|Order $order): Revenue
+    public function calculateForPaidOrder(int|Order $order): ?Revenue
     {
         return $this->createRevenueForPaidOrder($order);
     }
@@ -107,6 +111,7 @@ final class RevenueShareService
         $paidOrders = Order::query()
             ->where('status', Order::STATUS_PAID)
             ->where('payment_status', Order::PAYMENT_PAID)
+            ->where('amount', '>', 0)
             ->whereNotNull('course_id')
             ->whereDoesntHave('revenue')
             ->get();

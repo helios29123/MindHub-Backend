@@ -23,7 +23,6 @@ return new class extends Migration
             $table->string('intro_video_url', 2048)->nullable();
             $table->string('intro_video_id', 255)->nullable()->unique('uq_courses_intro_video_id');
             $table->decimal('price', 15, 2)->default(0);
-            $table->decimal('discount_percent', 5, 2)->default(0);
             $table->enum('course_level', ['beginner', 'intermediate', 'advanced', 'all_levels'])->default('beginner');
             $table->string('language', 20)->default('vi');
             $table->json('requirements')->nullable();
@@ -35,7 +34,7 @@ return new class extends Migration
             $table->string('admin_reject_reason', 1000)->nullable();
             $table->dateTime('created_at')->useCurrent();
             $table->dateTime('updated_at')->useCurrent()->useCurrentOnUpdate();
-            $table->decimal('sale_price', 15, 2)->storedAs('ROUND((price * (1 - (discount_percent / 100))), 2)');
+            $table->decimal('sale_price', 15, 2)->nullable();
             
             $table->index(['instructor_id', 'status'], 'idx_courses_instructor_status');
             $table->index(['is_featured', 'status'], 'idx_courses_featured');

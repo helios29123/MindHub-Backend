@@ -13,7 +13,7 @@ class AdminOrderService
             ->with([
                 'user:id,full_name,email,role,status',
                 'course:id,title,slug,status,price,sale_price',
-                'coupon:id,code,name,discount_type,discount_value,status',
+                'coupon:id,code,campaign_type,discount_type,discount_value,max_discount_amount,status',
                 'revenue',
                 'enrollment',
             ]);

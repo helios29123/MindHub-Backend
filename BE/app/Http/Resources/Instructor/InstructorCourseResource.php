@@ -20,8 +20,6 @@ final class InstructorCourseResource extends JsonResource
             'intro_video_url' => data_get($this->resource, 'intro_video_url'),
             'price' => $this->moneyValue(data_get($this->resource, 'price')),
             'sale_price' => $this->moneyValue(data_get($this->resource, 'sale_price')),
-            'discount_percent' => data_get($this->resource, 'discount_percent') !== null ? (int) data_get($this->resource, 'discount_percent') : null,
-            'has_discount' => data_get($this->resource, 'discount_percent') !== null && (int) data_get($this->resource, 'discount_percent') > 0,
             'course_level' => data_get($this->resource, 'course_level'),
             'language' => data_get($this->resource, 'language'),
             'status' => $status,

@@ -16,23 +16,33 @@ class EnrollmentAfterPaymentService
 
     public function createEnrollmentAfterPayment(Order $order): Enrollment
     {
-        if (!$order->isPaid()) {
+        if (! $order->isPaid()) {
             throw new BusinessException('Order chưa đủ điều kiện ghi danh.', 400);
         }
 
-        $existingEnrollment = $this->enrollmentRepository->findByOrderId($order->id);
-
-        if ($existingEnrollment) {
-            return $existingEnrollment;
+        $sameOrderEnrollment = $this->enrollmentRepository->findByOrderId($order->id);
+        if ($sameOrderEnrollment) {
+            return $sameOrderEnrollment;
         }
 
-        $existingCourseEnrollment = $this->enrollmentRepository->findByUserAndCourse(
-            $order->user_id,
-            $order->course_id
+        $existing = $this->enrollmentRepository->findByUserAndCourse(
+            (int) $order->user_id,
+            (int) $order->course_id
         );
 
-        if ($existingCourseEnrollment) {
-            return $existingCourseEnrollment;
+        if ($existing) {
+            // Upgrade trial -> paid: giữ nguyên enrollment.id + progress/completed state,
+            // đổi order sở hữu hiện tại sang paid order và bỏ expiry.
+            $existing->order_id = $order->id;
+            $existing->expires_at = null;
+
+            if ($existing->status !== Enrollment::STATUS_COMPLETED) {
+                $existing->status = Enrollment::STATUS_ACTIVE;
+            }
+
+            $existing->save();
+
+            return $existing->refresh();
         }
 
         $enrollment = $this->enrollmentRepository->create([
@@ -42,6 +52,7 @@ class EnrollmentAfterPaymentService
             'status' => Enrollment::STATUS_ACTIVE,
             'progress_percent' => 0,
             'enrolled_at' => now(),
+            'expires_at' => null,
         ]);
 
         try {
@@ -53,7 +64,9 @@ class EnrollmentAfterPaymentService
                     ->send(new \App\Mail\CourseWelcomeMail($user, $course, $order));
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to send CourseWelcomeMail in EnrollmentAfterPaymentService: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error(
+                'Failed to send CourseWelcomeMail in EnrollmentAfterPaymentService: ' . $e->getMessage()
+            );
         }
 
         return $enrollment;

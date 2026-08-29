@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Repositories\Instructor\InstructorProfileRepository;
 use Illuminate\Support\Facades\DB;
 use App\Services\Storage\CloudinaryService;
+use App\Services\Auth\OtpService;
 
 final class InstructorProfileService
 {
@@ -21,6 +22,7 @@ final class InstructorProfileService
     public function __construct(
         private readonly InstructorProfileRepository $repository,
         private readonly CloudinaryService $cloudinaryService,
+        private readonly OtpService $otpService,
     ) {
     }
 
@@ -231,7 +233,7 @@ final class InstructorProfileService
         }
 
         // Generate OTP
-        $otpCode = \App\Models\UserOtp::generateOtp((int)$user->id, 'change_password', 300);
+        $otpCode = $this->otpService->generate((int) $user->id, 'change_password', 300);
 
         // Try sending email
         try {
@@ -285,7 +287,7 @@ final class InstructorProfileService
         }
 
         // Verify and consume OTP
-        \App\Models\UserOtp::verifyOtp((int)$user->id, $otp, 'change_password');
+        $this->otpService->verify((int) $user->id, 'change_password', $otp);
 
         // Update Password
         $user->password_hash = \Illuminate\Support\Facades\Hash::make($newPass);
@@ -304,7 +306,8 @@ final class InstructorProfileService
     public function getSessions(User $authUser): array
     {
         $user = $this->getOwnedInstructor($authUser);
-        $currentSessionId = request()->hasSession() ? request()->session()->getId() : null;
+        $currentAuthSession = request()->attributes->get('auth_session');
+        $currentSessionId = $currentAuthSession?->id ? (int) $currentAuthSession->id : null;
 
         try {
             $sessions = \Illuminate\Support\Facades\DB::table('sessions')
@@ -330,7 +333,7 @@ final class InstructorProfileService
                         'device' => $device,
                         'platform' => $platform,
                         'ip_address' => $s->ip_address ?? '127.0.0.1',
-                        'last_activity_at' => \Carbon\Carbon::createFromTimestamp($s->last_activity)->toDateTimeString(),
+                        'last_activity_at' => \Carbon\Carbon::parse($s->updated_at)->toDateTimeString(),
                         'is_current' => $currentSessionId ? ($s->id === $currentSessionId) : true,
                     ];
                 })->values()->toArray();
@@ -355,36 +358,45 @@ final class InstructorProfileService
     public function revokeOtherSessions(User $authUser): void
     {
         $user = $this->getOwnedInstructor($authUser);
-        $currentSessionId = request()->hasSession() ? request()->session()->getId() : null;
+        $currentAuthSession = request()->attributes->get('auth_session');
+        $currentSessionId = $currentAuthSession?->id ? (int) $currentAuthSession->id : null;
 
-        try {
-            $query = \Illuminate\Support\Facades\DB::table('sessions')
-                ->where('user_id', $user->id);
-            if ($currentSessionId) {
-                $query->where('id', '!=', $currentSessionId);
-            }
-            $query->delete();
-        } catch (\Throwable $e) {
-            // Ignore if driver is not database
+        $query = \App\Models\Session::query()
+            ->where('user_id', $user->id)
+            ->whereNull('revoked_at');
+
+        if ($currentSessionId !== null) {
+            $query->whereKeyNot($currentSessionId);
         }
+
+        $query->update([
+            'revoked_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     public function revokeSession(User $authUser, string $sessionId): void
     {
         $user = $this->getOwnedInstructor($authUser);
-        $currentSessionId = request()->hasSession() ? request()->session()->getId() : null;
+        $currentAuthSession = request()->attributes->get('auth_session');
+        $currentSessionId = $currentAuthSession?->id ? (int) $currentAuthSession->id : null;
+        $targetSessionId = (int) $sessionId;
 
-        if ($currentSessionId && $sessionId === $currentSessionId) {
+        if ($currentSessionId !== null && $targetSessionId === $currentSessionId) {
             throw new BusinessException('Không thể thu hồi phiên đăng nhập hiện tại.', 400);
         }
 
-        try {
-            \Illuminate\Support\Facades\DB::table('sessions')
-                ->where('user_id', $user->id)
-                ->where('id', $sessionId)
-                ->delete();
-        } catch (\Throwable $e) {
-            // Ignore
+        $session = \App\Models\Session::query()
+            ->where('user_id', $user->id)
+            ->whereKey($targetSessionId)
+            ->first();
+
+        if (! $session) {
+            throw new BusinessException('Không tìm thấy phiên đăng nhập.', 404);
+        }
+
+        if ($session->revoked_at === null) {
+            $session->forceFill(['revoked_at' => now()])->save();
         }
     }
 

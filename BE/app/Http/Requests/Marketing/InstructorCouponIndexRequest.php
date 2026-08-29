@@ -10,7 +10,7 @@ final class InstructorCouponIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['nullable', 'in:all,active,inactive,expired,used_up'],
+            'status' => ['nullable', 'in:all,scheduled,active'],
             'course_id' => ['nullable', 'integer', 'exists:courses,id'],
             'code' => ['nullable', 'string', 'max:100'],
             'search' => ['nullable', 'string', 'max:255'],

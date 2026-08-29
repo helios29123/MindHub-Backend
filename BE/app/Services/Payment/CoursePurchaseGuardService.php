@@ -3,49 +3,51 @@
 namespace App\Services\Payment;
 
 use App\Exceptions\BusinessException;
-use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 
 class CoursePurchaseGuardService
 {
     public function assertCanBuyCourse(int $userId, int $courseId): object
     {
-        $courseQuery = DB::table('courses')
-            ->where('id', $courseId);
-$course = $courseQuery->first();
+        $course = DB::table('courses')
+            ->where('id', $courseId)
+            ->first();
 
         if (! $course) {
             throw new BusinessException('Không tìm thấy khóa học.', 404);
         }
 
-        if ((string) ($course->status ?? '') !== 'published') {
+        if ((string) $course->status !== 'published') {
             throw new BusinessException('Khóa học chưa được xuất bản.', 403);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Instructor mua khóa học của instructor khác
-        |--------------------------------------------------------------------------
-        | User không được mua khóa học do chính mình tạo.
-        | Rule này áp dụng cho cả instructor để tránh tự mua khóa của mình.
-        */
-        if ((int) ($course->instructor_id ?? 0) === $userId) {
+        if ((int) $course->instructor_id === $userId) {
             throw new BusinessException('Bạn không thể mua khóa học của chính mình.', 409);
         }
 
-        $enrollmentQuery = DB::table('enrollments')
+        $enrollment = DB::table('enrollments')
             ->where('user_id', $userId)
-            ->where('course_id', $courseId);
-if ($enrollmentQuery->exists()) {
+            ->where('course_id', $courseId)
+            ->first();
+
+        // Enrollment chính thức: không được mua lại.
+        // Enrollment có expires_at là trial: được phép mua thật để upgrade và giữ progress.
+        if ($enrollment && $enrollment->expires_at === null) {
             throw new BusinessException('Bạn đã sở hữu khóa học này.', 409);
         }
 
-        $paidOrderQuery = DB::table('orders')
+        $officialPaidOrderExists = DB::table('orders')
             ->where('user_id', $userId)
             ->where('course_id', $courseId)
-            ->where('status', Order::STATUS_PAID)
-            ->where('payment_status', Order::PAYMENT_PAID);
-if ($paidOrderQuery->exists()) {
+            ->where('payment_status', 'paid')
+            ->where(function ($query): void {
+                $query->where('amount', '>', 0)
+                    ->orWhereNull('payment_method')
+                    ->orWhere('payment_method', '!=', 'coupon_trial');
+            })
+            ->exists();
+
+        if ($officialPaidOrderExists) {
             throw new BusinessException('Bạn đã thanh toán khóa học này.', 409);
         }
 

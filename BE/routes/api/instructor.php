@@ -125,7 +125,6 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         */
         Route::get('/coupons/summary', [InstructorCouponController::class, 'summary']);
         Route::get('/coupons/course-options', [InstructorCouponController::class, 'courseOptions']);
-        Route::get('/coupons/check-code', [InstructorCouponController::class, 'checkCode']);
         Route::get('/coupons', [InstructorCouponController::class, 'index']);
         Route::post('/coupons', [InstructorCouponController::class, 'store']);
         Route::get('/coupons/{id}', [InstructorCouponController::class, 'show'])->whereNumber('id');
@@ -138,7 +137,6 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
         // Aliases for /discount-codes
         Route::get('/discount-codes/summary', [InstructorCouponController::class, 'summary']);
         Route::get('/discount-codes/course-options', [InstructorCouponController::class, 'courseOptions']);
-        Route::get('/discount-codes/check-code', [InstructorCouponController::class, 'checkCode']);
         Route::get('/discount-codes', [InstructorCouponController::class, 'index']);
         Route::post('/discount-codes', [InstructorCouponController::class, 'store']);
         Route::get('/discount-codes/{id}', [InstructorCouponController::class, 'show'])->whereNumber('id');
