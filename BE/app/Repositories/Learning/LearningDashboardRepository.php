@@ -20,8 +20,9 @@ class LearningDashboardRepository
             ->count();
 
         $totalLearningSeconds = DB::table('lesson_progress')
-            ->where('user_id', $userId)
-            ->sum('learning_duration_seconds');
+            ->join('enrollments', 'lesson_progress.enrollment_id', '=', 'enrollments.id')
+            ->where('enrollments.user_id', $userId)
+            ->sum('lesson_progress.learning_duration_seconds');
         
         $totalLearningHours = (int) round($totalLearningSeconds / 3600);
 
@@ -65,7 +66,8 @@ class LearningDashboardRepository
 
         $recentLesson = DB::table('lesson_progress as lp')
             ->join('lessons as l', 'l.id', '=', 'lp.lesson_id')
-            ->where('lp.user_id', $userId)
+            ->join('enrollments', 'lp.enrollment_id', '=', 'enrollments.id')
+            ->where('enrollments.user_id', $userId)
             ->where('l.course_id', $enrollment->course_id)
             ->orderByRaw('COALESCE(lp.last_accessed_at, lp.updated_at, lp.created_at) DESC')
             ->select([
@@ -108,14 +110,15 @@ class LearningDashboardRepository
         $startDate = sprintf('%04d-%02d-01', $year, $month);
         $endDate = date('Y-m-t', strtotime($startDate));
 
-        $records = DB::table('lesson_progress')
-            ->where('user_id', $userId)
-            ->whereBetween(DB::raw('DATE(updated_at)'), [$startDate, $endDate])
+        $records = DB::table('learning_daily_activity')
+            ->join('enrollments', 'learning_daily_activity.enrollment_id', '=', 'enrollments.id')
+            ->where('enrollments.user_id', $userId)
+            ->whereBetween('learning_daily_activity.activity_date', [$startDate, $endDate])
             ->select(
-                DB::raw('DATE(updated_at) as date'),
-                DB::raw('SUM(learning_duration_seconds) as total_time_seconds')
+                'learning_daily_activity.activity_date as date',
+                DB::raw('SUM(learning_daily_activity.video_learning_seconds) as total_time_seconds')
             )
-            ->groupBy(DB::raw('DATE(updated_at)'))
+            ->groupBy('learning_daily_activity.activity_date')
             ->get();
 
         $heatmap = [];
@@ -143,10 +146,11 @@ class LearningDashboardRepository
     public function getStreak(int $userId): array
     {
         $dates = DB::table('lesson_progress')
-            ->where('user_id', $userId)
-            ->where('learning_duration_seconds', '>', 0)
-            ->select(DB::raw('DATE(updated_at) as date'))
-            ->groupBy(DB::raw('DATE(updated_at)'))
+            ->join('enrollments', 'lesson_progress.enrollment_id', '=', 'enrollments.id')
+            ->where('enrollments.user_id', $userId)
+            ->where('lesson_progress.learning_duration_seconds', '>', 0)
+            ->select(DB::raw('DATE(lesson_progress.updated_at) as date'))
+            ->groupBy(DB::raw('DATE(lesson_progress.updated_at)'))
             ->orderBy('date', 'desc')
             ->pluck('date')
             ->toArray();
@@ -207,9 +211,10 @@ class LearningDashboardRepository
         $target = 2; // Hardcoded for now based on requirement
         
         $completedCount = DB::table('lesson_progress')
-            ->where('user_id', $userId)
-            ->where('status', 'completed')
-            ->where(DB::raw('DATE(completed_at)'), DB::raw('CURDATE()'))
+            ->join('enrollments', 'lesson_progress.enrollment_id', '=', 'enrollments.id')
+            ->where('enrollments.user_id', $userId)
+            ->where('lesson_progress.status', 'completed')
+            ->where(DB::raw('DATE(lesson_progress.completed_at)'), DB::raw('CURDATE()'))
             ->count();
 
         return [

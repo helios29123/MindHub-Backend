@@ -118,7 +118,27 @@ class LearningService
         $sec=max(0,(int)$data['current_second']);
         if ($lesson->video_duration_seconds>0 && $sec>(int)$lesson->video_duration_seconds) throw new \App\Exceptions\BusinessException('Tiến độ video không hợp lệ.',422);
         $vp=\App\Models\VideoProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['current_second'=>0]);
-        if ($sec !== (int) $vp->current_second) $vp->update(['current_second' => $sec]);
+        $oldSec = (int)$vp->current_second;
+        if ($sec !== $oldSec) {
+            $vp->update(['current_second' => $sec]);
+            $diff = $sec - $oldSec;
+            if ($diff > 0 && $diff <= 30) {
+                \DB::table('learning_daily_activity')->upsert(
+                    [
+                        'enrollment_id' => $enrollment->id,
+                        'activity_date' => now()->format('Y-m-d'),
+                        'video_learning_seconds' => $diff,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ],
+                    ['enrollment_id', 'activity_date'],
+                    ['video_learning_seconds' => \DB::raw('learning_daily_activity.video_learning_seconds + ' . $diff), 'updated_at' => now()]
+                );
+                
+                $progress=\App\Models\LessonProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
+                $progress->increment('learning_duration_seconds', $diff);
+            }
+        }
         $progress=\App\Models\LessonProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
         if ($progress->status==='not_started') $progress->update(['status'=>'in_progress','started_at'=>$progress->started_at??now()]);
         $progress->update(['last_accessed_at'=>now()]); $enrollment->update(['last_accessed_at'=>now()]);
