@@ -70,7 +70,7 @@ class EarlyWithdrawalService
 
         $payoutAccount = PayoutAccount::query()
             ->where('user_id', $instructorId)
-            ->where('status', PayoutAccount::STATUS_VERIFIED)
+            ->whereIn('status', [PayoutAccount::STATUS_VERIFIED, 'active'])
             ->orderByDesc('is_default')
             ->orderByDesc('updated_at')
             ->first();
@@ -256,7 +256,7 @@ class EarlyWithdrawalService
 
             $payoutAccount = PayoutAccount::query()
                 ->where('user_id', $instructorId)
-                ->where('status', PayoutAccount::STATUS_VERIFIED)
+                ->whereIn('status', [PayoutAccount::STATUS_VERIFIED, 'active'])
                 ->when(
                     $payoutAccountId,
                     fn ($query) => $query->where('id', $payoutAccountId)
@@ -486,7 +486,7 @@ class EarlyWithdrawalService
 
         $payoutAccount = PayoutAccount::query()
             ->where('user_id', $instructorId)
-            ->where('status', PayoutAccount::STATUS_VERIFIED)
+            ->whereIn('status', [PayoutAccount::STATUS_VERIFIED, 'active'])
             ->when(
                 $payoutAccountId,
                 fn ($query) => $query->where('id', $payoutAccountId)

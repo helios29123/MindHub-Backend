@@ -268,6 +268,18 @@ class AdminController extends Controller
         );
     }
 
+    public function autoCalculateFeatured(Request $request): JsonResponse
+    {
+        $limit = max(1, min((int) ($request->input('limit', 10)), 50));
+        $res = $this->adminService->autoCalculateFeatured($limit);
+
+        return ApiResponse::success(
+            $res,
+            "Đã tự động tính toán và bật nổi bật cho {$res['total_featured']} khóa học xuất sắc nhất.",
+            200
+        );
+    }
+
     public function users(\App\Http\Requests\Admin\UserQueryRequest $request): JsonResponse
     {
         $result = $this->adminService->getUsersReport($request->validated());

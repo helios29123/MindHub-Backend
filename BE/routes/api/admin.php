@@ -103,6 +103,7 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         |--------------------------------------------------------------------------
         */
         Route::get('/courses', [AdminController::class, 'courses']);
+        Route::post('/courses/auto-calculate-featured', [AdminController::class, 'autoCalculateFeatured']);
 
         Route::get('/courses/{id}', [AdminController::class, 'showCourse'])
             ->whereNumber('id');

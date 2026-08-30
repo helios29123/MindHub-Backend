@@ -67,6 +67,24 @@ final class InstructorCourseController extends Controller
         );
     }
 
+    public function toggleFeatured(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'is_featured' => ['required', 'boolean'],
+        ]);
+
+        $course = $this->instructorCourseService->toggleFeatured(
+            $request->user(),
+            $id,
+            (bool) $request->input('is_featured')
+        );
+
+        return ApiResponse::success(
+            new InstructorCourseResource($course),
+            $course->is_featured ? 'Bật khóa học nổi bật thành công.' : 'Tắt khóa học nổi bật thành công.'
+        );
+    }
+
     public function indexLessons(ManageLessonsRequest $request): JsonResponse
     {
         $lessons = $this->instructorCourseService->paginateLessons(

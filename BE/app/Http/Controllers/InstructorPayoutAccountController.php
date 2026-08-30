@@ -389,7 +389,8 @@ final class InstructorPayoutAccountController extends Controller
             'password.required' => 'Vui lòng nhập mật khẩu xác nhận.',
         ]);
 
-        if (!\Illuminate\Support\Facades\Hash::check($request->input('password'), $user->password)) {
+        $passwordHash = $user->getAuthPassword() ?: ($user->password_hash ?? $user->password);
+        if (!$passwordHash || !\Illuminate\Support\Facades\Hash::check($request->input('password'), $passwordHash)) {
             return ApiResponse::error('Mật khẩu xác nhận không chính xác.', ['password' => ['Mật khẩu xác nhận không chính xác.']], 422);
         }
 

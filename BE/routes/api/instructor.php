@@ -42,6 +42,8 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
 
         Route::patch('/courses/{id}/draft', [InstructorCourseController::class, 'updateDraft'])
             ->whereNumber('id');
+        Route::patch('/courses/{id}/featured', [InstructorCourseController::class, 'toggleFeatured'])
+            ->whereNumber('id');
         Route::patch('/courses/{id}', [InstructorCourseController::class, 'update'])
             ->whereNumber('id');
         Route::post('/courses/{id}/submit', [InstructorCourseController::class, 'submitForReview'])

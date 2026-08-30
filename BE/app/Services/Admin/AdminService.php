@@ -479,6 +479,34 @@ class AdminService
         });
     }
 
+    public function autoCalculateFeatured(int $limit = 10): array
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($limit): array {
+            \App\Models\Course::query()->where('is_featured', true)->update(['is_featured' => false]);
+
+            $topCourses = \App\Models\Course::query()
+                ->whereIn('status', ['published', 'approved'])
+                ->withCount('enrollments')
+                ->withAvg('reviews as avg_rating', 'rating')
+                ->orderByDesc('enrollments_count')
+                ->orderByDesc('avg_rating')
+                ->orderByDesc('sale_price')
+                ->limit($limit)
+                ->get();
+
+            $updatedIds = [];
+            foreach ($topCourses as $c) {
+                $c->update(['is_featured' => true]);
+                $updatedIds[] = (int) $c->id;
+            }
+
+            return [
+                'total_featured' => count($updatedIds),
+                'featured_course_ids' => $updatedIds,
+            ];
+        });
+    }
+
     public function getUsers(array $queryParams): LengthAwarePaginator
     {
         $perPage = min((int) ($queryParams['per_page'] ?? 15), 100);

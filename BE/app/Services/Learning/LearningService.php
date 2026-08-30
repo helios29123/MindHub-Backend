@@ -118,7 +118,7 @@ class LearningService
         $sec=max(0,(int)$data['current_second']);
         if ($lesson->video_duration_seconds>0 && $sec>(int)$lesson->video_duration_seconds) throw new \App\Exceptions\BusinessException('Tiến độ video không hợp lệ.',422);
         $vp=\App\Models\VideoProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['current_second'=>0]);
-        if ($sec>(int)$vp->current_second) $vp->update(['current_second'=>$sec]);
+        if ($sec !== (int) $vp->current_second) $vp->update(['current_second' => $sec]);
         $progress=\App\Models\LessonProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
         if ($progress->status==='not_started') $progress->update(['status'=>'in_progress','started_at'=>$progress->started_at??now()]);
         $progress->update(['last_accessed_at'=>now()]); $enrollment->update(['last_accessed_at'=>now()]);

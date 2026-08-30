@@ -583,12 +583,42 @@ final class InstructorCourseService
         }
     }
 
+    public function toggleFeatured(User $instructor, int $courseId, bool $isFeatured): Course
+    {
+        return DB::transaction(function () use ($instructor, $courseId, $isFeatured): Course {
+            $course = $this->instructorCourseRepository->findByIdWithReviewRelations($courseId);
+
+            if (!$course || (int) $course->instructor_id !== (int) $instructor->id) {
+                throw new BusinessException('Không tìm thấy khóa học hoặc không có quyền thao tác.', 403);
+            }
+
+            if ($isFeatured) {
+                if (!in_array($course->status, ['published', 'approved'], true)) {
+                    throw new BusinessException('Chỉ có thể bật nổi bật cho khóa học đã xuất bản hoặc đã duyệt.', 422);
+                }
+
+                $featuredCount = Course::query()
+                    ->where('instructor_id', $instructor->id)
+                    ->where('is_featured', true)
+                    ->where('id', '!=', $courseId)
+                    ->count();
+
+                if ($featuredCount >= 3) {
+                    throw new BusinessException('Bạn chỉ có thể bật tối đa 3 khóa học nổi bật.', 422);
+                }
+            }
+
+            $course->update(['is_featured' => $isFeatured]);
+
+            return $course->fresh();
+        });
+    }
+
     private function removeForbiddenFields(array &$data): void
     {
         unset(
             $data["id"],
             $data["instructor_id"],
-            $data["is_featured"],
             
             $data["published_at"],
             $data["admin_reject_reason"],

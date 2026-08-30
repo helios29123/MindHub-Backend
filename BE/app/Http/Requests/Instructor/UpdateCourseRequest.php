@@ -21,7 +21,7 @@ final class UpdateCourseRequest extends FormRequest
             'id' => ['prohibited'],
             'instructor_id' => ['prohibited'],
             'status' => ['prohibited'],
-            'is_featured' => ['prohibited'],
+            'is_featured' => ['sometimes', 'boolean'],
             'total_duration_seconds' => ['prohibited'],
             'published_at' => ['prohibited'],
             'admin_reject_reason' => ['prohibited'],
@@ -75,6 +75,7 @@ final class UpdateCourseRequest extends FormRequest
                 'requirements',
                 'outcomes',
                 'category_ids',
+                'is_featured',
             ];
 
             $hasUpdateData = collect($allowedFields)->contains(
