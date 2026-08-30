@@ -20,6 +20,8 @@ class SaveVideoProgressRequest extends FormRequest
             'current_second' => ['required', 'integer', 'min:0'],
             'duration_second' => ['nullable', 'integer', 'min:1'],
             'is_completed' => ['nullable', 'boolean'],
+            'force_date' => ['nullable', 'date_format:Y-m-d'],
+            'timezone' => ['nullable', 'string', 'timezone:all'],
         ];
     }
 

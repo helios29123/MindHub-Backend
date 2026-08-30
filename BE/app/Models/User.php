@@ -35,6 +35,7 @@ class User extends Authenticatable
         'status',
         'locked',
         'locked_reason',
+        'timezone',
         'email_verified_at',
         'last_login_at',
     ];

@@ -117,6 +117,32 @@ class LearningService
         if (! $enrollment) throw new \App\Exceptions\BusinessException('Bạn chưa có quyền học hoặc quyền học đã hết hạn.',403);
         $sec=max(0,(int)$data['current_second']);
         if ($lesson->video_duration_seconds>0 && $sec>(int)$lesson->video_duration_seconds) throw new \App\Exceptions\BusinessException('Tiến độ video không hợp lệ.',422);
+        $userTz = $data['timezone'] ?? $user->timezone ?? 'Asia/Ho_Chi_Minh';
+        if (!empty($data['timezone']) && $user->timezone !== $data['timezone']) {
+            $user->update(['timezone' => $data['timezone']]);
+        }
+
+        $nowInUserTz = now()->setTimezone($userTz);
+        $activityDate = $nowInUserTz->format('Y-m-d');
+
+        if (!empty($data['force_date'])) {
+            try {
+                $forceCarbon = \Carbon\Carbon::createFromFormat('Y-m-d', $data['force_date'], $userTz)->startOfDay();
+                $userTodayCarbon = $nowInUserTz->copy()->startOfDay();
+                $diffDays = $userTodayCarbon->diffInDays($forceCarbon, false);
+
+                // Chỉ chấp nhận: hôm nay (0) hoặc hôm qua (-1) và trong vòng 24h
+                if ($diffDays >= -1 && $diffDays <= 0) {
+                    $forceEnd = $forceCarbon->copy()->endOfDay();
+                    if ($nowInUserTz->diffInHours($forceEnd, false) <= 24) {
+                        $activityDate = $forceCarbon->format('Y-m-d');
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Giữ nguyên $activityDate theo $userToday
+            }
+        }
+
         $vp=\App\Models\VideoProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['current_second'=>0]);
         $oldSec = (int)$vp->current_second;
         if ($sec !== $oldSec) {
@@ -126,7 +152,7 @@ class LearningService
                 \DB::table('learning_daily_activity')->upsert(
                     [
                         'enrollment_id' => $enrollment->id,
-                        'activity_date' => now()->format('Y-m-d'),
+                        'activity_date' => $activityDate,
                         'video_learning_seconds' => $diff,
                         'created_at' => now(),
                         'updated_at' => now()

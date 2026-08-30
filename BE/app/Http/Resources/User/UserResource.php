@@ -21,6 +21,7 @@ final class UserResource extends JsonResource
             'avatar_url' => $this->avatar_url,
             'email_verified_at' => $this->email_verified_at?->toDateTimeString(),
             'phone_verified_at' => !empty($this->phone) ? ($this->updated_at?->toDateTimeString()) : null,
+            'timezone' => $this->timezone ?? 'Asia/Ho_Chi_Minh',
             'last_login_at' => $this->last_login_at?->toDateTimeString(),
         ];
     }
