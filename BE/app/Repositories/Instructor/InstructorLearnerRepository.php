@@ -388,7 +388,7 @@ class InstructorLearnerRepository
 
         // Completed lessons count
         $completedLessons = DB::table('lesson_progress')
-            ->where('user_id', $enrollment->user_id)
+            ->where('enrollment_id', $enrollment->enrollment_id)
             ->whereIn('lesson_id', function ($query) use ($enrollment) {
                 $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id);
             })
@@ -399,7 +399,7 @@ class InstructorLearnerRepository
 
         // Learning duration total
         $learnedDurationSeconds = (int) DB::table('lesson_progress')
-            ->where('user_id', $enrollment->user_id)
+            ->where('enrollment_id', $enrollment->enrollment_id)
             ->whereIn('lesson_id', function ($query) use ($enrollment) {
                 $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id);
             })
@@ -425,7 +425,7 @@ class InstructorLearnerRepository
 
             if ($secTotal > 0) {
                 $progressRows = DB::table('lesson_progress')
-                    ->where('user_id', $enrollment->user_id)
+                    ->where('enrollment_id', $enrollment->enrollment_id)
                     ->whereIn('lesson_id', $secLessonIds)
                     ->get();
 
@@ -463,7 +463,7 @@ class InstructorLearnerRepository
             ->leftJoin('course_sections', 'course_sections.id', '=', 'lessons.course_section_id')
             ->leftJoin('lesson_progress', function ($join) use ($enrollment) {
                 $join->on('lesson_progress.lesson_id', '=', 'lessons.id')
-                     ->where('lesson_progress.user_id', '=', $enrollment->user_id);
+                     ->where('lesson_progress.enrollment_id', '=', $enrollment->enrollment_id);
             })
             ->where('lessons.course_id', $enrollment->course_id)
             
@@ -515,7 +515,7 @@ class InstructorLearnerRepository
 
         $progressActivities = DB::table('lesson_progress')
             ->join('lessons', 'lessons.id', '=', 'lesson_progress.lesson_id')
-            ->where('lesson_progress.user_id', $enrollment->user_id)
+            ->where('lesson_progress.enrollment_id', $enrollment->enrollment_id)
             ->where('lessons.course_id', $enrollment->course_id)
             ->select([
                 'lesson_progress.id',

@@ -10,7 +10,6 @@ class Comment extends Model
 {
     public const STATUS_VISIBLE = 'visible';
     public const STATUS_HIDDEN = 'hidden';
-    public const STATUS_DELETED = 'deleted';
 
     protected $fillable = [
         'parent_id',

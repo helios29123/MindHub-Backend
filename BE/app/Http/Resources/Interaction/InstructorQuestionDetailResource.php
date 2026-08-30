@@ -28,12 +28,7 @@ final class InstructorQuestionDetailResource extends JsonResource
             ],
             'is_answered' => $isAnswered,
             'status_label' => $isAnswered ? 'Đã trả lời' : 'Chưa trả lời',
-            'is_bookmarked' => \Illuminate\Support\Facades\Schema::hasTable('instructor_question_stars')
-                ? \Illuminate\Support\Facades\DB::table('instructor_question_stars')
-                    ->where('instructor_id', $request->user()?->id)
-                    ->where('comment_id', data_get($question, 'comment_id'))
-                    ->exists()
-                : false,
+
             'replies' => CommentReplyResource::collection($replies)->resolve($request),
         ];
     }

@@ -5,6 +5,7 @@ namespace App\Services\Learning;
 use App\Models\Enrollment;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class LearningService
 {
@@ -44,70 +45,27 @@ class LearningService
      */
     public function getLessonDetails(User $user, int $lessonId): array
     {
-        $lesson = \App\Models\Lesson::with('assets')->find($lessonId);
-
-        if (!$lesson) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        $course = $lesson->course;
-        if (!$course) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
-
-        // Upsert lesson progress
-        $progress = \App\Models\LessonProgress::firstOrCreate(
-            [
-                'user_id' => $user->id,
-                'lesson_id' => $lessonId,
-            ],
-            [
-                'status' => 'in_progress',
-                'started_at' => now(),
-                'last_accessed_at' => now(),
-                'learning_duration_seconds' => 0,
-            ]
+        if (! $user->isActive()) throw new \App\Exceptions\BusinessException('Tài khoản hiện không thể học.',403);
+        $lesson=\App\Models\Lesson::with(['assets','course','section'])->find($lessonId);
+        if (! $lesson) throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.',404);
+        if ($lesson->status!=='published' || ! $lesson->course || $lesson->course->status!=='published' || ! $lesson->section || $lesson->section->status!=='published')
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.',403);
+        $enrollment=Enrollment::query()->where('user_id',$user->id)->where('course_id',$lesson->course_id)
+            ->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])
+            ->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
+        if (! $enrollment) throw new \App\Exceptions\BusinessException('Bạn chưa có quyền học hoặc quyền học đã hết hạn.',403);
+        $progress=\App\Models\LessonProgress::firstOrCreate(
+            ['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],
+            ['status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]
         );
-
-        if (!$progress->wasRecentlyCreated) {
-            $updates = ['last_accessed_at' => now()];
-            if ($progress->status === 'not_started') {
-                $updates['status'] = 'in_progress';
-                $updates['started_at'] = now();
-            }
-            $progress->update($updates);
+        if (! $progress->wasRecentlyCreated) {
+            $u=['last_accessed_at'=>now()];
+            if ($progress->status==='not_started') { $u['status']='in_progress'; $u['started_at']=$progress->started_at??now(); }
+            $progress->update($u);
         }
-
-        // Get video progress if lesson type is video
-        $currentSecond = 0;
-        if ($lesson->lesson_type === 'video') {
-            $videoProgress = \App\Models\VideoProgress::where('user_id', $user->id)
-                ->where('lesson_id', $lessonId)
-                ->first();
-            if ($videoProgress) {
-                $currentSecond = (int) $videoProgress->current_second;
-            }
-        }
-
-        return [
-            'course' => $course,
-            'lesson' => $lesson,
-            'progress' => $progress,
-            'current_second' => $currentSecond,
-        ];
+        $enrollment->update(['last_accessed_at'=>now()]);
+        $vp=$lesson->lesson_type==='video' ? \App\Models\VideoProgress::query()->where('enrollment_id',$enrollment->id)->where('lesson_id',$lessonId)->first() : null;
+        return ['course'=>$lesson->course,'lesson'=>$lesson,'progress'=>$progress,'current_second'=>(int)($vp?->current_second??0)];
     }
 
     /**
@@ -120,45 +78,20 @@ class LearningService
      */
     public function getCourseOutline(User $user, int $courseId): array
     {
-        $course = \App\Models\Course::find($courseId);
-
-        if (!$course) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        if ($course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $courseId)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
-
+        if (! $user->isActive()) throw new \App\Exceptions\BusinessException('Tài khoản hiện không thể học.',403);
+        $course=\App\Models\Course::query()->whereKey($courseId)->where('status','published')->first();
+        if (! $course) throw new \App\Exceptions\BusinessException('Không tìm thấy khóa học.',404);
+        $enrollment=Enrollment::query()->where('user_id',$user->id)->where('course_id',$courseId)
+            ->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])
+            ->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
+        if (! $enrollment) throw new \App\Exceptions\BusinessException('Bạn chưa có quyền học hoặc quyền học đã hết hạn.',403);
         $course->load([
-            'sections' => function ($query) {
-                $query->where('status', 'published')->orderBy('sort_order');
-            },
-            'sections.lessons' => function ($query) {
-                $query->where('status', 'published')->orderBy('sort_order');
-            }
+            'sections'=>fn($q)=>$q->where('status','published')->orderBy('sort_order')->orderBy('id'),
+            'sections.lessons'=>fn($q)=>$q->where('status','published')->orderBy('sort_order')->orderBy('id'),
         ]);
-
-        $lessonIds = $course->sections->flatMap->lessons->pluck('id');
-
-        $progresses = \App\Models\LessonProgress::where('user_id', $user->id)
-            ->whereIn('lesson_id', $lessonIds)
-            ->get()
-            ->keyBy('lesson_id');
-
-        return [
-            'sections' => $course->sections,
-            'progresses' => $progresses,
-        ];
+        $ids=$course->sections->flatMap->lessons->pluck('id');
+        $progresses=\App\Models\LessonProgress::query()->where('enrollment_id',$enrollment->id)->whereIn('lesson_id',$ids)->get()->keyBy('lesson_id');
+        return ['sections'=>$course->sections,'progresses'=>$progresses];
     }
 
     /**
@@ -172,103 +105,24 @@ class LearningService
      */
     public function saveVideoProgress(User $user, int $lessonId, array $data): array
     {
-        $lesson = \App\Models\Lesson::find($lessonId);
-
-        if (!$lesson) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        if ($lesson->lesson_type !== 'video') {
-            throw new \App\Exceptions\BusinessException('Bài học không phải dạng video.', 422);
-        }
-
-        $course = $lesson->course;
-        if (!$course) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
-
-        $currentSecond = (int) $data['current_second'];
-        $durationSecond = isset($data['duration_second']) ? (int) $data['duration_second'] : null;
-        $isCompletedInput = !empty($data['is_completed']);
-
-        // Validate current_second
-        if ($lesson->video_duration_seconds !== null && $currentSecond > $lesson->video_duration_seconds) {
-            throw new \App\Exceptions\BusinessException('Tiến độ video không hợp lệ.', 422);
-        }
-
-        if ($durationSecond !== null && $currentSecond > $durationSecond) {
-            throw new \App\Exceptions\BusinessException('Tiến độ video không hợp lệ.', 422);
-        }
-
-        // Upsert video progress
-        \App\Models\VideoProgress::updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'lesson_id' => $lessonId,
-            ],
-            [
-                'current_second' => $currentSecond,
-            ]
-        );
-
-        // Determine if lesson is completed
-        $isCompleted = $isCompletedInput
-            || ($lesson->video_duration_seconds !== null && $currentSecond >= $lesson->video_duration_seconds)
-            || ($durationSecond !== null && $currentSecond >= $durationSecond);
-
-        // Get/Create lesson progress
-        $progress = \App\Models\LessonProgress::firstOrCreate(
-            [
-                'user_id' => $user->id,
-                'lesson_id' => $lessonId,
-            ],
-            [
-                'status' => 'in_progress',
-                'started_at' => now(),
-                'last_accessed_at' => now(),
-                'learning_duration_seconds' => 0,
-            ]
-        );
-
-        $updates = [
-            'last_accessed_at' => now(),
-        ];
-
-        if ($isCompleted) {
-            $updates['status'] = 'completed';
-            if (!$progress->completed_at) {
-                $updates['completed_at'] = now();
-            }
-        } else {
-            if ($progress->status !== 'completed') {
-                $updates['status'] = 'in_progress';
-                if (!$progress->started_at) {
-                    $updates['started_at'] = now();
-                }
-            }
-        }
-
-        $progress->update($updates);
-
-        return [
-            'course' => $course,
-            'lesson' => $lesson,
-            'progress' => $progress,
-            'current_second' => $currentSecond,
-        ];
+        if (! $user->isActive()) throw new \App\Exceptions\BusinessException('Tài khoản hiện không thể học.',403);
+        $lesson=\App\Models\Lesson::with(['course','section'])->find($lessonId);
+        if (! $lesson) throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.',404);
+        if ($lesson->lesson_type!=='video') throw new \App\Exceptions\BusinessException('Bài học không phải video.',422);
+        if ($lesson->status!=='published' || ! $lesson->course || $lesson->course->status!=='published' || ! $lesson->section || $lesson->section->status!=='published')
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.',403);
+        $enrollment=Enrollment::query()->where('user_id',$user->id)->where('course_id',$lesson->course_id)
+            ->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])
+            ->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
+        if (! $enrollment) throw new \App\Exceptions\BusinessException('Bạn chưa có quyền học hoặc quyền học đã hết hạn.',403);
+        $sec=max(0,(int)$data['current_second']);
+        if ($lesson->video_duration_seconds>0 && $sec>(int)$lesson->video_duration_seconds) throw new \App\Exceptions\BusinessException('Tiến độ video không hợp lệ.',422);
+        $vp=\App\Models\VideoProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['current_second'=>0]);
+        if ($sec>(int)$vp->current_second) $vp->update(['current_second'=>$sec]);
+        $progress=\App\Models\LessonProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
+        if ($progress->status==='not_started') $progress->update(['status'=>'in_progress','started_at'=>$progress->started_at??now()]);
+        $progress->update(['last_accessed_at'=>now()]); $enrollment->update(['last_accessed_at'=>now()]);
+        return ['course'=>$lesson->course,'lesson'=>$lesson,'progress'=>$progress->fresh(),'current_second'=>(int)$vp->fresh()->current_second];
     }
 
     /**
@@ -280,93 +134,23 @@ class LearningService
      */
     public function resumeLearning(User $user): array
     {
-        $hasEnrollment = Enrollment::where('user_id', $user->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->exists();
-
-        if (!$hasEnrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
+        if (! $user->isActive()) throw new \App\Exceptions\BusinessException('Tài khoản hiện không thể học.',403);
+        $ens=Enrollment::query()->where('user_id',$user->id)->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])
+            ->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->whereHas('course',fn($q)=>$q->where('status','published'))
+            ->orderByDesc('last_accessed_at')->orderByDesc('enrolled_at')->orderByDesc('id')->get();
+        if($ens->isEmpty()) throw new \App\Exceptions\BusinessException('Bạn chưa có khóa học còn quyền truy cập.',403);
+        foreach($ens as $e){
+            $p=\App\Models\LessonProgress::query()->where('enrollment_id',$e->id)->where('status','in_progress')
+                ->whereHas('lesson',fn($q)=>$q->where('course_id',$e->course_id)->where('status','published')->whereHas('section',fn($s)=>$s->where('status','published')))
+                ->with('lesson.course')->orderByDesc('updated_at')->first();
+            if($p){$vp=\App\Models\VideoProgress::query()->where('enrollment_id',$e->id)->where('lesson_id',$p->lesson_id)->first();return ['course'=>$p->lesson->course,'lesson'=>$p->lesson,'progress'=>$p,'current_second'=>(int)($vp?->current_second??0)];}
+            $done=\App\Models\LessonProgress::query()->where('enrollment_id',$e->id)->where('status','completed')->pluck('lesson_id');
+            $base=\App\Models\Lesson::query()->where('lessons.course_id',$e->course_id)->where('lessons.status','published')->whereHas('section',fn($q)=>$q->where('status','published'))
+                ->join('course_sections','lessons.course_section_id','=','course_sections.id')->orderBy('course_sections.sort_order')->orderBy('course_sections.id')->orderBy('lessons.sort_order')->orderBy('lessons.id')->select('lessons.*');
+            $next=(clone $base)->whereNotIn('lessons.id',$done)->first() ?? (clone $base)->first();
+            if($next){$p=\App\Models\LessonProgress::query()->where('enrollment_id',$e->id)->where('lesson_id',$next->id)->first();$vp=\App\Models\VideoProgress::query()->where('enrollment_id',$e->id)->where('lesson_id',$next->id)->first();return ['course'=>$next->course,'lesson'=>$next,'progress'=>$p,'current_second'=>(int)($vp?->current_second??0)];}
         }
-
-        // Find the most recently accessed lesson progress for a course the user is enrolled in
-        $latestProgress = \App\Models\LessonProgress::where('user_id', $user->id)
-            ->whereHas('lesson', function ($query) use ($user) {
-                $query->where('status', 'published')
-                    ->whereHas('course', function ($q) use ($user) {
-                        $q->where('status', 'published')
-                            
-                            ->whereHas('enrollments', function ($eq) use ($user) {
-                                $eq->where('user_id', $user->id)
-                                    ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED]);
-                            });
-                    });
-            })
-            ->orderByDesc('last_accessed_at')
-            ->first();
-
-        if ($latestProgress) {
-            $lesson = $latestProgress->lesson;
-            $course = $lesson->course;
-
-            $currentSecond = 0;
-            if ($lesson->lesson_type === 'video') {
-                $videoProgress = \App\Models\VideoProgress::where('user_id', $user->id)
-                    ->where('lesson_id', $lesson->id)
-                    ->first();
-                if ($videoProgress) {
-                    $currentSecond = (int) $videoProgress->current_second;
-                }
-            }
-
-            return [
-                'course' => $course,
-                'lesson' => $lesson,
-                'progress' => $latestProgress,
-                'current_second' => $currentSecond,
-            ];
-        }
-
-        // If no progress, find the latest enrolled course
-        $latestEnrollment = Enrollment::where('user_id', $user->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->whereHas('course', function ($q) {
-                $q->where('status', 'published');
-            })
-            ->orderByDesc('enrolled_at')
-            ->orderByDesc('id')
-            ->first();
-
-        if (!$latestEnrollment) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        $course = $latestEnrollment->course;
-
-        // Find the first published lesson in the course (ordered by section and lesson sort_order)
-        $firstSection = $course->sections()
-            ->where('status', 'published')
-            ->orderBy('sort_order')
-            ->first();
-
-        if (!$firstSection) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        $firstLesson = $firstSection->lessons()
-            ->where('status', 'published')
-            ->orderBy('sort_order')
-            ->first();
-
-        if (!$firstLesson) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        return [
-            'course' => $course,
-            'lesson' => $firstLesson,
-            'progress' => null,
-            'current_second' => 0,
-        ];
+        throw new \App\Exceptions\BusinessException('Khóa học hiện chưa có bài học khả dụng.',404);
     }
 
     /**
@@ -380,113 +164,35 @@ class LearningService
      */
     public function completeLesson(User $user, int $lessonId, array $data): array
     {
-        $lesson = \App\Models\Lesson::find($lessonId);
-
-        if (!$lesson) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        $course = $lesson->course;
-        if (!$course) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
-
-        $completed = (bool) $data['completed'];
-
-        $progress = \App\Models\LessonProgress::firstOrCreate(
-            [
-                'user_id' => $user->id,
-                'lesson_id' => $lessonId,
-            ],
-            [
-                'status' => 'in_progress',
-                'started_at' => now(),
-                'last_accessed_at' => now(),
-                'learning_duration_seconds' => 0,
-            ]
-        );
-
-        $updates = [
-            'last_accessed_at' => now(),
-        ];
-
-        if ($completed) {
-            $updates['status'] = 'completed';
-            if (!$progress->completed_at) {
-                $updates['completed_at'] = now();
+        if (! $user->isActive()) throw new \App\Exceptions\BusinessException('Tài khoản hiện không thể học.',403);
+        $lesson=\App\Models\Lesson::with(['course','section'])->find($lessonId);
+        if (! $lesson) throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.',404);
+        if ($lesson->status!=='published' || ! $lesson->course || $lesson->course->status!=='published' || ! $lesson->section || $lesson->section->status!=='published')
+            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.',403);
+        $enrollment=Enrollment::query()->where('user_id',$user->id)->where('course_id',$lesson->course_id)
+            ->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])
+            ->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
+        if (! $enrollment) throw new \App\Exceptions\BusinessException('Bạn chưa có quyền học hoặc quyền học đã hết hạn.',403);
+        return DB::transaction(function() use($lesson,$enrollment,$data){
+            $e=Enrollment::query()->whereKey($enrollment->id)->lockForUpdate()->firstOrFail();
+            $p=\App\Models\LessonProgress::query()->where('enrollment_id',$e->id)->where('lesson_id',$lesson->id)->lockForUpdate()->first();
+            if(!$p) $p=\App\Models\LessonProgress::create(['enrollment_id'=>$e->id,'lesson_id'=>$lesson->id,'status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
+            $completed=(bool)($data['completed']??true);
+            if($completed && $p->status!=='completed'){
+                if(in_array($lesson->lesson_type,['text','document'],true) && (!$p->started_at || $p->started_at->diffInSeconds(now())<5))
+                    throw new \App\Exceptions\BusinessException('Bạn cần mở nội dung ít nhất 5 giây trước khi hoàn thành.',422);
+                $p->update(['status'=>'completed','started_at'=>$p->started_at??now(),'completed_at'=>now(),'last_accessed_at'=>now()]);
+            } elseif(!$completed && $p->status!=='completed') {
+                $p->update(['status'=>'in_progress','started_at'=>$p->started_at??now(),'last_accessed_at'=>now()]);
             }
-            if (!$progress->started_at) {
-                $updates['started_at'] = now();
-            }
-            if ($progress->learning_duration_seconds == 0 && $lesson->video_duration_seconds !== null) {
-                $updates['learning_duration_seconds'] = $lesson->video_duration_seconds;
-            }
-        } else {
-            if ($progress->status === 'completed') {
-                $updates['status'] = 'in_progress';
-                $updates['completed_at'] = null;
-            }
-        }
-
-        $progress->update($updates);
-
-        // Fetch current second from video progress if any
-        $currentSecond = 0;
-        if ($lesson->lesson_type === 'video') {
-            $videoProgress = \App\Models\VideoProgress::where('user_id', $user->id)
-                ->where('lesson_id', $lessonId)
-                ->first();
-            if ($videoProgress) {
-                $currentSecond = (int) $videoProgress->current_second;
-            }
-        }
-
-        // Calculate course completion
-        $publishedLessonIds = \App\Models\Lesson::where('course_id', $course->id)
-            ->where('status', 'published')
-            ->whereHas('section', function ($q) {
-                $q->where('status', 'published');
-            })
-            ->pluck('id');
-
-        $completedLessonsCount = \App\Models\LessonProgress::where('user_id', $user->id)
-            ->whereIn('lesson_id', $publishedLessonIds)
-            ->where('status', 'completed')
-            ->count();
-
-        if ($publishedLessonIds->isNotEmpty() && $completedLessonsCount === $publishedLessonIds->count()) {
-            $enrollment->update([
-                'status' => Enrollment::STATUS_COMPLETED,
-                'completed_at' => now(),
-            ]);
-        } else {
-            if ($enrollment->status === Enrollment::STATUS_COMPLETED) {
-                $enrollment->update([
-                    'status' => Enrollment::STATUS_ACTIVE,
-                    'completed_at' => null,
-                ]);
-            }
-        }
-
-        return [
-            'course' => $course,
-            'lesson' => $lesson,
-            'progress' => $progress,
-            'current_second' => $currentSecond,
-        ];
+            $ids=\App\Models\Lesson::query()->where('course_id',$lesson->course_id)->where('status','published')->whereHas('section',fn($q)=>$q->where('status','published'))->pluck('id');
+            $total=$ids->count(); $done=\App\Models\LessonProgress::query()->where('enrollment_id',$e->id)->whereIn('lesson_id',$ids)->where('status','completed')->count();
+            $percent=$total>0?round(($done/$total)*100,2):0.00; $u=['progress_percent'=>$percent,'last_accessed_at'=>now()];
+            if($total>0 && $done===$total && $e->status!==Enrollment::STATUS_COMPLETED){$u['status']=Enrollment::STATUS_COMPLETED;$u['completed_at']=now();}
+            $e->update($u);
+            $vp=\App\Models\VideoProgress::query()->where('enrollment_id',$e->id)->where('lesson_id',$lesson->id)->first();
+            return ['course'=>$lesson->course,'lesson'=>$lesson,'progress'=>$p->fresh(),'current_second'=>(int)($vp?->current_second??0)];
+        });
     }
 
     /**
@@ -499,70 +205,24 @@ class LearningService
      */
     public function getCourseProgress(User $user, int $courseId): array
     {
-        $course = \App\Models\Course::find($courseId);
-
-        if (!$course) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        if ($course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $courseId)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
-
-        $publishedLessonIds = \App\Models\Lesson::where('course_id', $courseId)
-            ->where('status', 'published')
-            ->whereHas('section', function ($q) {
-                $q->where('status', 'published');
-            })
-            ->pluck('id');
-
-        $totalLessons = $publishedLessonIds->count();
-
-        $completedLessons = \App\Models\LessonProgress::where('user_id', $user->id)
-            ->whereIn('lesson_id', $publishedLessonIds)
-            ->where('status', 'completed')
-            ->count();
-
-        $progressPercent = 0.00;
-        if ($totalLessons > 0) {
-            $progressPercent = round(($completedLessons / $totalLessons) * 100, 2);
-        }
-
-        // Keep enrollment completion status synchronized
-        if ($totalLessons > 0 && $completedLessons === $totalLessons) {
-            $enrollment->update([
-                'status' => Enrollment::STATUS_COMPLETED,
-                'completed_at' => $enrollment->completed_at ?? now(),
-            ]);
-        } else {
-            if ($enrollment->status === Enrollment::STATUS_COMPLETED) {
-                $enrollment->update([
-                    'status' => Enrollment::STATUS_ACTIVE,
-                    'completed_at' => null,
-                ]);
-            }
-        }
-
-        // Update enrollment progress_percent cache column in DB
-        $enrollment->update([
-            'progress_percent' => $progressPercent,
-        ]);
-
-        return [
-            'course_id' => $courseId,
-            'total_lessons' => $totalLessons,
-            'completed_lessons' => $completedLessons,
-            'progress_percent' => (float) $progressPercent,
-        ];
+        if (! $user->isActive()) throw new \App\Exceptions\BusinessException('Tài khoản hiện không thể học.',403);
+        $course=\App\Models\Course::query()->whereKey($courseId)->where('status','published')->first();
+        if (! $course) throw new \App\Exceptions\BusinessException('Không tìm thấy khóa học.',404);
+        $enrollment=Enrollment::query()->where('user_id',$user->id)->where('course_id',$courseId)
+            ->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])
+            ->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
+        if (! $enrollment) throw new \App\Exceptions\BusinessException('Bạn chưa có quyền học hoặc quyền học đã hết hạn.',403);
+        $ids=\App\Models\Lesson::query()->where('course_id',$courseId)->where('status','published')
+            ->whereHas('section',fn($q)=>$q->where('status','published'))->pluck('id');
+        $total=$ids->count();
+        $done=\App\Models\LessonProgress::query()->where('enrollment_id',$enrollment->id)->whereIn('lesson_id',$ids)->where('status','completed')->count();
+        $percent=$total>0?round(($done/$total)*100,2):0.00;
+        $u=['progress_percent'=>$percent];
+        if ($total>0 && $done===$total && $enrollment->status!==Enrollment::STATUS_COMPLETED) { $u['status']=Enrollment::STATUS_COMPLETED; $u['completed_at']=now(); }
+        $enrollment->update($u); $fresh=$enrollment->fresh();
+        return ['course_id'=>$courseId,'total_lessons'=>$total,'completed_lessons'=>$done,'progress_percent'=>(float)$percent,
+            'course_completed'=>$fresh->status===Enrollment::STATUS_COMPLETED,'completed_at'=>$fresh->completed_at,
+            'has_new_content'=>$fresh->status===Enrollment::STATUS_COMPLETED && $percent<100];
     }
 
     /**
@@ -574,6 +234,15 @@ class LearningService
      */
     public function getLearningLogs(User $user, array $params): LengthAwarePaginator
     {
+        $enrollmentIds = \App\Models\Enrollment::query()
+            ->whereIn('enrollment_id', $enrollmentIds)
+            ->whereIn('status', [\App\Models\Enrollment::STATUS_ACTIVE, \App\Models\Enrollment::STATUS_COMPLETED])
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
+            ->pluck('id');
+
         $perPage = min((int) ($params['per_page'] ?? 10), 100);
 
         // Get only course IDs where the user has active or completed enrollments
@@ -582,7 +251,7 @@ class LearningService
             ->pluck('course_id');
 
         $query = \App\Models\LessonProgress::with(['lesson.course'])
-            ->where('user_id', $user->id)
+            ->whereIn('enrollment_id', $enrollmentIds)
             ->whereHas('lesson', function ($q) use ($enrolledCourseIds) {
                 $q->where('status', 'published')
                   ->whereIn('course_id', $enrolledCourseIds)
@@ -667,111 +336,44 @@ class LearningService
      */
     public function nextLesson(User $user, int $lessonId): ?\App\Models\Lesson
     {
-        $lesson = \App\Models\Lesson::find($lessonId);
-
-        if (!$lesson) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        $course = $lesson->course;
-        if (!$course) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.', 404);
-        }
-
-        if ($lesson->status !== 'published' || $course->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $section = $lesson->section;
-        if (!$section || $section->status !== 'published') {
-            throw new \App\Exceptions\BusinessException('Nội dung chưa khả dụng.', 403);
-        }
-
-        $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->whereIn('status', [Enrollment::STATUS_ACTIVE, Enrollment::STATUS_COMPLETED])
-            ->first();
-
-        if (!$enrollment) {
-            throw new \App\Exceptions\BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
-        }
-
-        // Query all published lessons in the course, ordered sequentially
-        $lessons = \App\Models\Lesson::where('lessons.course_id', $course->id)
-            ->where('lessons.status', 'published')
-            ->whereHas('section', function ($q) {
-                $q->where('status', 'published');
-            })
-            ->join('course_sections', 'lessons.course_section_id', '=', 'course_sections.id')
-            ->orderBy('course_sections.sort_order', 'asc')
-            ->orderBy('course_sections.id', 'asc')
-            ->orderBy('lessons.sort_order', 'asc')
-            ->orderBy('lessons.id', 'asc')
-            ->select('lessons.*')
-            ->get();
-
-        $currentIndex = $lessons->search(fn($l) => $l->id === $lessonId);
-
-        if ($currentIndex !== false && $currentIndex < $lessons->count() - 1) {
-            return $lessons[$currentIndex + 1];
-        }
-
-        return null;
+        if (! $user->isActive()) throw new \App\Exceptions\BusinessException('Tài khoản hiện không thể học.',403);
+        $lesson=\App\Models\Lesson::with(['course','section'])->find($lessonId); if(!$lesson) throw new \App\Exceptions\BusinessException('Không tìm thấy dữ liệu.',404);
+        $e=Enrollment::query()->where('user_id',$user->id)->where('course_id',$lesson->course_id)->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])
+            ->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
+        if(!$e) throw new \App\Exceptions\BusinessException('Bạn chưa có quyền học hoặc quyền học đã hết hạn.',403);
+        $p=\App\Models\LessonProgress::query()->where('enrollment_id',$e->id)->where('lesson_id',$lessonId)->first();
+        if(!$p || $p->status!=='completed') throw new \App\Exceptions\BusinessException('Bạn cần hoàn thành bài hiện tại trước khi dùng nút Tiếp theo.',422);
+        $ls=\App\Models\Lesson::query()->where('lessons.course_id',$lesson->course_id)->where('lessons.status','published')->whereHas('section',fn($q)=>$q->where('status','published'))
+            ->join('course_sections','lessons.course_section_id','=','course_sections.id')->orderBy('course_sections.sort_order')->orderBy('course_sections.id')->orderBy('lessons.sort_order')->orderBy('lessons.id')->select('lessons.*')->get();
+        $i=$ls->search(fn($x)=>(int)$x->id===(int)$lessonId); return $i!==false && $i<$ls->count()-1 ? $ls[$i+1] : null;
     }
-
     public function getLessonNotes(int $lessonId, User $user)
     {
-        return \App\Models\LessonNote::where('user_id', $user->id)
-            ->where('lesson_id', $lessonId)
-            ->orderBy('note_time_second', 'asc')
-            ->get();
+        $lesson=\App\Models\Lesson::find($lessonId); if(!$lesson) throw new \App\Exceptions\BusinessException('Không tìm thấy bài học.',404);
+        $e=Enrollment::query()->where('user_id',$user->id)->where('course_id',$lesson->course_id)->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
+        if(!$user->isActive() || !$e) throw new \App\Exceptions\BusinessException('Bạn không có quyền truy cập ghi chú.',403);
+        return \App\Models\LessonNote::query()->where('enrollment_id',$e->id)->where('lesson_id',$lessonId)->orderBy('id')->get();
     }
-
     public function createLessonNote(int $lessonId, array $data, User $user): \App\Models\LessonNote
     {
-        $lesson = \App\Models\Lesson::find($lessonId);
-        if (!$lesson) {
-            throw new BusinessException('Không tìm thấy bài học.', 404);
-        }
-
-        return \App\Models\LessonNote::create([
-            'user_id' => $user->id,
-            'course_id' => $lesson->course_id,
-            'lesson_id' => $lessonId,
-            'content' => $data['content'],
-            'note_time_second' => $data['note_time_second'] ?? 0,
-        ]);
+        $lesson=\App\Models\Lesson::find($lessonId); if(!$lesson) throw new \App\Exceptions\BusinessException('Không tìm thấy bài học.',404);
+        $e=Enrollment::query()->where('user_id',$user->id)->where('course_id',$lesson->course_id)->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
+        if(!$user->isActive() || !$e) throw new \App\Exceptions\BusinessException('Bạn không có quyền tạo ghi chú.',403);
+        $time=$lesson->lesson_type==='video'?($data['note_time_second']??null):null;
+        if($time!==null && $lesson->video_duration_seconds>0 && (int)$time>(int)$lesson->video_duration_seconds) throw new \App\Exceptions\BusinessException('Thời điểm ghi chú vượt quá video.',422);
+        return \App\Models\LessonNote::create(['enrollment_id'=>$e->id,'lesson_id'=>$lessonId,'content'=>$data['content'],'note_time_second'=>$time]);
     }
-
     public function updateLessonNote(int $noteId, array $data, User $user): \App\Models\LessonNote
     {
-        $note = \App\Models\LessonNote::where('id', $noteId)
-            ->where('user_id', $user->id)
-            ->first();
-
-        if (!$note) {
-            throw new BusinessException('Không tìm thấy ghi chú.', 404);
-        }
-
-        $note->update([
-            'content' => $data['content'] ?? $note->content,
-            'note_time_second' => isset($data['note_time_second']) ? $data['note_time_second'] : $note->note_time_second,
-        ]);
-
-        return $note;
+        $n=\App\Models\LessonNote::query()->whereKey($noteId)->whereHas('enrollment',fn($q)=>$q->where('user_id',$user->id)->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])->where(fn($x)=>$x->whereNull('expires_at')->orWhere('expires_at','>',now())))->with('lesson')->first();
+        if(!$user->isActive() || !$n) throw new \App\Exceptions\BusinessException('Không tìm thấy ghi chú hoặc không có quyền sửa.',404);
+        $u=['content'=>$data['content']??$n->content]; if($n->lesson?->lesson_type==='video' && array_key_exists('note_time_second',$data))$u['note_time_second']=$data['note_time_second']; elseif($n->lesson?->lesson_type!=='video')$u['note_time_second']=null;
+        $n->update($u); return $n->fresh();
     }
-
     public function deleteLessonNote(int $noteId, User $user): bool
     {
-        $note = \App\Models\LessonNote::where('id', $noteId)
-            ->where('user_id', $user->id)
-            ->first();
-
-        if (!$note) {
-            throw new BusinessException('Không tìm thấy ghi chú.', 404);
-        }
-
-        return (bool) $note->delete();
+        $n=\App\Models\LessonNote::query()->whereKey($noteId)->whereHas('enrollment',fn($q)=>$q->where('user_id',$user->id)->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])->where(fn($x)=>$x->whereNull('expires_at')->orWhere('expires_at','>',now())))->first();
+        if(!$user->isActive() || !$n) throw new \App\Exceptions\BusinessException('Không tìm thấy ghi chú hoặc không có quyền xóa.',404); return (bool)$n->delete();
     }
 
     public function getLearningStreak(?User $user = null): array
@@ -859,14 +461,7 @@ class LearningService
 
         $loginSessionDates = [];
         try {
-            if (\Schema::hasTable('auth_sessions')) {
-                $loginSessionDates = \DB::table('auth_sessions')
-                    ->where('user_id', $user->id)
-                    ->selectRaw('DISTINCT DATE(created_at) as d')
-                    ->pluck('d')
-                    ->filter()
-                    ->toArray();
-            }
+
         } catch (\Throwable $e) {}
 
         $allDatesSet = array_unique(array_filter(array_merge($loginSessionDates, $progressDates, $videoDates, $enrollmentDates, $loginDates)));

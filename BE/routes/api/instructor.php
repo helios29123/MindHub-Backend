@@ -105,11 +105,7 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
             ->whereNumber('id')->whereNumber('replyId');
         Route::delete('/questions/{id}/replies/{replyId}', [InteractionController::class, 'deleteInstructorQuestionReply'])
             ->whereNumber('id')->whereNumber('replyId');
-        Route::post('/questions/{id}/star', [InteractionController::class, 'starInstructorQuestion'])
-            ->whereNumber('id');
-        Route::delete('/questions/{id}/star', [InteractionController::class, 'unstarInstructorQuestion'])
-            ->whereNumber('id');
-        Route::patch('/questions/{id}/status', [InteractionController::class, 'updateInstructorQuestionStatus'])
+            Route::patch('/questions/{id}/status', [InteractionController::class, 'updateInstructorQuestionStatus'])
             ->whereNumber('id');
         Route::patch('/questions/{id}/hide', [InteractionController::class, 'hideInstructorQuestion'])
             ->whereNumber('id');

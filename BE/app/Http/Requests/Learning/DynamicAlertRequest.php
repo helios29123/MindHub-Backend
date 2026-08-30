@@ -25,7 +25,7 @@ class DynamicAlertRequest extends FormRequest
         return [
             'limit' => ['nullable', 'integer', 'min:1', 'max:20'],
             'types' => ['nullable', 'array'],
-            'types.*' => ['string', 'in:pending_order,failed_quiz,inactive_learning'],
+            'types.*' => ['string', 'in:pending_order,inactive_learning'],
         ];
     }
 }

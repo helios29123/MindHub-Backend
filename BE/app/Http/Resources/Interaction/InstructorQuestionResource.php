@@ -34,14 +34,7 @@ class InstructorQuestionResource extends JsonResource
             'reply_count' => (int) $this->reply_count,
             'instructor_reply_count' => (int) $this->instructor_reply_count,
             'answer_count' => (int) $this->instructor_reply_count,
-            'is_bookmarked' => property_exists($this->resource, 'is_starred') 
-                ? (bool)$this->is_starred 
-                : (\Illuminate\Support\Facades\Schema::hasTable('instructor_question_stars')
-                    ? \Illuminate\Support\Facades\DB::table('instructor_question_stars')
-                        ->where('instructor_id', $request->user()?->id)
-                        ->where('comment_id', $this->id)
-                        ->exists()
-                    : false),
+
         ];
     }
 }

@@ -60,11 +60,7 @@ class CourseAnalyticsService
                 'completion_rate' => $completionRate,
                 'average_progress' => $enrollmentMetrics->avg_progress,
             ],
-            'quiz' => [
-                'quiz_attempt_count' => $quizMetrics->total_attempts,
-                'quiz_pass_count' => $quizMetrics->passed_count,
-                'quiz_pass_rate' => $quizPassRate,
-            ],
+
             'revenue' => [
                 'instructor_amount' => $revenueMetrics->instructor_amount,
             ],

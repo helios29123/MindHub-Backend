@@ -112,19 +112,12 @@ class InstructorQuestionService
             ->where('c.status', 'visible')
             ->whereDate('c.created_at', now()->toDateString())
             ->count();
-
-        // Starred count for instructor
-        $starredCount = SchemaHasTableCheck('instructor_question_stars') 
-            ? DB::table('instructor_question_stars')->where('instructor_id', $instructorId)->count()
-            : 0;
-
-        return [
+return [
             'total_questions' => $total,
             'answered_questions' => $answered,
             'unanswered_questions' => $unanswered,
             'comments_today' => $commentsToday,
-            'starred' => $starredCount,
-        ];
+];
     }
 
     public function getQuestionDetails(int $instructorId, int $commentId): Comment
@@ -146,31 +139,6 @@ class InstructorQuestionService
         return $comment;
     }
 
-    public function starQuestion(int $instructorId, int $commentId): array
-    {
-        $comment = $this->getQuestionDetails($instructorId, $commentId);
-        
-        DB::table('instructor_question_stars')->insertOrIgnore([
-            'instructor_id' => $instructorId,
-            'comment_id' => $commentId,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return ['starred' => true, 'question_id' => $commentId];
-    }
-
-    public function unstarQuestion(int $instructorId, int $commentId): array
-    {
-        $comment = $this->getQuestionDetails($instructorId, $commentId);
-
-        DB::table('instructor_question_stars')
-            ->where('instructor_id', $instructorId)
-            ->where('comment_id', $commentId)
-            ->delete();
-
-        return ['starred' => false, 'question_id' => $commentId];
-    }
 
     public function replyToQuestion(int $instructorId, int $commentId, array $data): array
     {
@@ -309,7 +277,7 @@ class InstructorQuestionService
             throw new HttpException(403, 'Bạn không có quyền xóa câu trả lời này.');
         }
 
-        $reply->status = 'deleted';
+        $reply->status = Comment::STATUS_HIDDEN;
         $reply->save();
 
         $remainingCount = Comment::where('parent_id', $questionId)
@@ -359,7 +327,7 @@ class InstructorQuestionService
     public function deleteQuestion(int $instructorId, int $commentId): Comment
     {
         $comment = $this->getQuestionIncludingHidden($instructorId, $commentId);
-        $comment->status = 'deleted';
+        $comment->status = Comment::STATUS_HIDDEN;
         $comment->save();
         return $comment;
     }
@@ -368,7 +336,7 @@ class InstructorQuestionService
     {
         $comment = Comment::where('id', $commentId)
             ->whereNull('parent_id')
-            ->whereIn('status', ['visible', 'hidden', 'deleted'])
+            ->whereIn('status', ['visible', 'hidden'])
             ->first();
 
         if (!$comment) {
@@ -381,13 +349,5 @@ class InstructorQuestionService
         }
 
         return $comment;
-    }
-}
-
-function SchemaHasTableCheck(string $table): bool {
-    try {
-        return \Illuminate\Support\Facades\Schema::hasTable($table);
-    } catch (\Throwable $e) {
-        return false;
     }
 }

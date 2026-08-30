@@ -335,33 +335,6 @@ class InteractionController extends Controller
         }
     }
 
-    public function starInstructorQuestion(Request $request, mixed $id): JsonResponse
-    {
-        try {
-            $res = app(InstructorQuestionService::class)->starQuestion(
-                (int) $request->user()->id,
-                (int) $id
-            );
-
-            return ApiResponse::success($res, 'Đánh dấu câu hỏi thành công.');
-        } catch (HttpExceptionInterface $exception) {
-            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
-        }
-    }
-
-    public function unstarInstructorQuestion(Request $request, mixed $id): JsonResponse
-    {
-        try {
-            $res = app(InstructorQuestionService::class)->unstarQuestion(
-                (int) $request->user()->id,
-                (int) $id
-            );
-
-            return ApiResponse::success($res, 'Bỏ đánh dấu câu hỏi thành công.');
-        } catch (HttpExceptionInterface $exception) {
-            return ApiResponse::error($exception->getMessage(), [], $exception->getStatusCode());
-        }
-    }
 
     public function updateInstructorQuestionStatus(Request $request, mixed $id): JsonResponse
     {

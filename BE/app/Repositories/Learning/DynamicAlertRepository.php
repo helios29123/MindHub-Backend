@@ -5,7 +5,6 @@ namespace App\Repositories\Learning;
 use App\Models\Order;
 use App\Models\Enrollment;
 use App\Models\LessonProgress;
-use App\Models\QuizAttempt;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
 
@@ -20,14 +19,6 @@ class DynamicAlertRepository
             ->get();
     }
 
-    public function getFailedQuizzes(int $learnerId): Collection
-    {
-        return QuizAttempt::where('user_id', $learnerId)
-            ->where('passed', false)
-            ->whereNotNull('submitted_at')
-            ->orderBy('submitted_at', 'desc')
-            ->get();
-    }
 
     public function getInactiveEnrollments(int $learnerId, int $daysInactive = 14): Collection
     {

@@ -377,9 +377,9 @@ class ReportService
     {
         $lessonProgressQuery = DB::table('lesson_progress')
             ->join('lessons', 'lesson_progress.lesson_id', '=', 'lessons.id')
-            ->select('lesson_progress.user_id', 'lessons.course_id')
+            ->select('enrollments.user_id', 'lessons.course_id')
             ->selectRaw('MAX(lesson_progress.last_accessed_at) as max_lesson_accessed_at')
-            ->groupBy('lesson_progress.user_id', 'lessons.course_id');
+            ->groupBy('enrollments.user_id', 'lessons.course_id');
 
         $query = DB::table('enrollments')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
@@ -813,17 +813,6 @@ class ReportService
             $latestLessonAccessedAt = (clone $lessonProgressQuery)->max('lesson_progress.last_accessed_at');
         }
 
-        // Quizzes
-        $quizAttemptCount = 0;
-        if (Schema::hasTable('quiz_attempts') && Schema::hasTable('quizzes')) {
-            $quizAttemptsQuery = DB::table('quiz_attempts')
-                ->join('quizzes', 'quiz_attempts.quiz_id', '=', 'quizzes.id')
-                ->where('quizzes.course_id', $courseId);
-
-            $applyDateFilter($quizAttemptsQuery, 'quiz_attempts.started_at');
-            $quizAttemptCount = (clone $quizAttemptsQuery)->count();
-        }
-
         // Latest activity overall
         $activities = array_filter([$latestOrderPaidAt, $latestEnrollmentAccessedAt, $latestLessonAccessedAt]);
         $latestActivityAt = empty($activities) ? null : max($activities);
@@ -847,7 +836,6 @@ class ReportService
                 'completion_rate' => (float)$completionRate,
                 'total_lessons' => $totalLessons,
                 'completed_lesson_progress' => $completedLessonProgress,
-                'quiz_attempt_count' => $quizAttemptCount,
                 'latest_activity_at' => $latestActivityAt,
             ],
             'revenue' => [

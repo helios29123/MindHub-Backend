@@ -22,11 +22,7 @@ class CourseAnalyticsResource extends JsonResource
                 'completion_rate' => $this->resource['learning']['completion_rate'],
                 'average_progress' => $this->resource['learning']['average_progress'],
             ],
-            'quiz' => [
-                'quiz_attempt_count' => $this->resource['quiz']['quiz_attempt_count'],
-                'quiz_pass_count' => $this->resource['quiz']['quiz_pass_count'],
-                'quiz_pass_rate' => $this->resource['quiz']['quiz_pass_rate'],
-            ],
+
             'revenue' => [
                 'instructor_amount' => $this->resource['revenue']['instructor_amount'],
             ],

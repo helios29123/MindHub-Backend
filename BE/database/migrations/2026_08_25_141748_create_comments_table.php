@@ -19,7 +19,7 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('lesson_id');
             $table->text('content');
-            $table->enum('status', ['visible', 'hidden', 'deleted'])->default('visible');
+            $table->enum('status', ['visible', 'hidden'])->default('visible');
             $table->boolean('is_official')->default(false);
             $table->dateTime('created_at')->useCurrent();
             $table->dateTime('updated_at')->useCurrent()->useCurrentOnUpdate();

@@ -4,7 +4,6 @@ namespace App\Repositories\Report;
 
 use App\Models\Course;
 use App\Models\Enrollment;
-use App\Models\QuizAttempt;
 use App\Models\Order;
 use App\Models\CourseReview;
 use Illuminate\Support\Facades\DB;
@@ -41,27 +40,6 @@ class CourseAnalyticsRepository
         ];
     }
 
-    public function getQuizMetrics(int $courseId, ?string $fromDate, ?string $toDate): object
-    {
-        $query = QuizAttempt::whereHas('quiz.lesson', function ($q) use ($courseId) {
-            $q->where('course_id', $courseId);
-        });
-
-        if ($fromDate) {
-            $query->where('submitted_at', '>=', $fromDate);
-        }
-        if ($toDate) {
-            $query->where('submitted_at', '<=', $toDate . ' 23:59:59');
-        }
-
-        $totalAttempts = $query->count();
-        $passedCount = (clone $query)->where('passed', true)->count();
-
-        return (object) [
-            'total_attempts' => $totalAttempts,
-            'passed_count' => $passedCount,
-        ];
-    }
 
     public function getRevenueMetrics(int $courseId, ?string $fromDate, ?string $toDate): object
     {

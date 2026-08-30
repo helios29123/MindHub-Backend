@@ -15,7 +15,7 @@ class DynamicAlertService
     public function getDynamicAlerts(int $learnerId, array $filters): array
     {
         $alerts = new Collection();
-        $types = $filters['types'] ?? ['pending_order', 'failed_quiz', 'inactive_learning'];
+        $types = $filters['types'] ?? ['pending_order', 'inactive_learning'];
 
         if (in_array('pending_order', $types)) {
             $pendingOrders = $this->repository->getPendingOrders($learnerId);
@@ -31,19 +31,7 @@ class DynamicAlertService
             }
         }
 
-        if (in_array('failed_quiz', $types)) {
-            $failedQuizzes = $this->repository->getFailedQuizzes($learnerId);
-            foreach ($failedQuizzes as $quizAttempt) {
-                $alerts->push([
-                    'type' => 'failed_quiz',
-                    'title' => 'Bạn có bài quiz chưa đạt',
-                    'message' => 'Bạn chưa đạt điểm yêu cầu trong bài quiz gần nhất. Hãy ôn tập và thử lại nhé!',
-                    'action_url' => '/quizzes/' . $quizAttempt->quiz_id, // Adjust URL to your frontend's route
-                    'severity' => 'danger',
-                    'created_at' => $quizAttempt->submitted_at ? $quizAttempt->submitted_at->toIso8601String() : now()->toIso8601String(),
-                ]);
-            }
-        }
+
 
         if (in_array('inactive_learning', $types)) {
             $inactiveEnrollments = $this->repository->getInactiveEnrollments($learnerId, 14);
@@ -63,7 +51,7 @@ class DynamicAlertService
         $sortedAlerts = $alerts->sortByDesc('created_at')->values();
 
         $limit = (int) ($filters['limit'] ?? 10);
-        
+
         return $sortedAlerts->take($limit)->all();
     }
 }

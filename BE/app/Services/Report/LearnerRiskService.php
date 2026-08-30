@@ -22,15 +22,13 @@ class LearnerRiskService
             throw new \App\Exceptions\BusinessException('Không tìm thấy khóa học.', 404);
         }
 
-        if ((int) $course->instructor_id !== $instructorId) {
-            throw new \App\Exceptions\BusinessException('Bạn không có quyền xem báo cáo của khóa học này.', 403);
-        }
+
 
         $inactiveDaysThreshold = (int) ($filters['inactive_days'] ?? 14);
         $thresholdDate = Carbon::now()->subDays($inactiveDaysThreshold);
 
         $enrollments = $this->repository->getEnrollmentsForCourse($courseId);
-        
+
         $failedQuizzesMap = $this->repository->getFailedQuizzesForCourse($courseId);
         $lessonProgressMap = $this->repository->getLessonProgressCountForCourse($courseId);
 
@@ -103,7 +101,7 @@ class LearnerRiskService
         $page = (int) ($filters['page'] ?? 1);
         $perPage = (int) ($filters['per_page'] ?? 15);
         $offset = ($page - 1) * $perPage;
-        
+
         $paginatedItems = $sortedResults->slice($offset, $perPage)->all();
 
         return new LengthAwarePaginator(
