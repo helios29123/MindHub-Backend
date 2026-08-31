@@ -7,6 +7,7 @@ use App\Repositories\Catalog\CatalogCourseRepository;
 use App\Repositories\Catalog\CategoryRepository;
 use App\Repositories\Catalog\FeaturedInstructorRepository;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class CatalogService
 {
@@ -20,7 +21,8 @@ class CatalogService
 
     public function home(array $filters): array
     {
-        $now = now();
+        return Cache::remember('catalog_home_payload', 60, function (): array {
+            $now = now();
 
         $faqs = \App\Models\Faq::query()
             ->where('status', 'active')
@@ -98,6 +100,7 @@ class CatalogService
 
             'stats' => $stats,
         ];
+        });
     }
 
     public function categories(array $filters)
