@@ -167,7 +167,7 @@ class AuthController extends Controller
             $clientSecret = config('services.google.client_secret');
             $redirectUri = config('services.google.redirect', 'http://localhost:8000/auth/google/callback');
 
-            $tokenResponse = Http::asForm()->timeout(15)->post('https://oauth2.googleapis.com/token', [
+            $tokenResponse = Http::withoutVerifying()->asForm()->timeout(15)->post('https://oauth2.googleapis.com/token', [
                 'client_id' => $clientId,
                 'client_secret' => $clientSecret,
                 'redirect_uri' => $redirectUri,
@@ -176,14 +176,22 @@ class AuthController extends Controller
             ]);
 
             if (! $tokenResponse->successful()) {
-                return redirect("{$frontendUrl}/auth/google/callback?status=error&code=google_token_exchange_failed");
+                \Illuminate\Support\Facades\Log::error('Google OAuth Token Exchange Failed', [
+                    'status' => $tokenResponse->status(),
+                    'response' => $tokenResponse->json() ?? $tokenResponse->body(),
+                    'redirect_uri' => $redirectUri,
+                    'client_id' => $clientId,
+                ]);
+                $errorDetail = $tokenResponse->json()['error_description'] ?? $tokenResponse->json()['error'] ?? 'google_token_exchange_failed';
+                return redirect("{$frontendUrl}/auth/google/callback?status=error&error=" . urlencode($errorDetail));
             }
 
             $tokenData = $tokenResponse->json();
             $idToken = $tokenData['id_token'] ?? null;
 
             if (! $idToken) {
-                return redirect("{$frontendUrl}/auth/google/callback?status=error&code=missing_id_token");
+                \Illuminate\Support\Facades\Log::error('Google OAuth Missing ID Token', ['token_data' => $tokenData]);
+                return redirect("{$frontendUrl}/auth/google/callback?status=error&error=" . urlencode('Thiếu id_token từ Google'));
             }
 
             $googleUser = $this->googleTokenVerifier->verify($idToken);
@@ -193,10 +201,16 @@ class AuthController extends Controller
 
             return redirect("{$frontendUrl}/auth/google/callback?status=success&token={$token}");
         } catch (\App\Exceptions\BusinessException $e) {
-            $errorCode = $e->getStatusCode() === 403 ? 'account_disabled' : 'google_auth_failed';
-            return redirect("{$frontendUrl}/auth/google/callback?status=error&code={$errorCode}");
+            \Illuminate\Support\Facades\Log::error('Google OAuth BusinessException', ['message' => $e->getMessage()]);
+            $errorCode = $e->getStatusCode() === 403 ? 'Tài khoản đã bị vô hiệu hóa.' : $e->getMessage();
+            return redirect("{$frontendUrl}/auth/google/callback?status=error&error=" . urlencode($errorCode));
         } catch (Throwable $e) {
-            return redirect("{$frontendUrl}/auth/google/callback?status=error&code=google_auth_failed");
+            \Illuminate\Support\Facades\Log::error('Google OAuth Exception', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            return redirect("{$frontendUrl}/auth/google/callback?status=error&error=" . urlencode($e->getMessage()));
         }
     }
 

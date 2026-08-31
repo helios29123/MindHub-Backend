@@ -17,11 +17,11 @@ class GoogleTokenVerifier
         }
 
         try {
-            $response = Http::timeout(15)->get('https://oauth2.googleapis.com/tokeninfo', [
+            $response = Http::withoutVerifying()->timeout(15)->get('https://oauth2.googleapis.com/tokeninfo', [
                 'id_token' => $idToken,
             ]);
         } catch (Throwable $e) {
-            throw new BusinessException('Không thể kết nối tới Google để xác thực token.', 500);
+            throw new BusinessException('Không thể kết nối tới Google để xác thực token: ' . $e->getMessage(), 500);
         }
 
         if (!$response->successful()) {
