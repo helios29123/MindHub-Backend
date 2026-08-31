@@ -41,6 +41,7 @@ class CoursePublicService
 
         // 3. Eager load relationships with status and ordering constraints
         $course->load([
+            'instructor:id,full_name,avatar_url',
             'instructor.instructorProfile',
             'sections' => function ($query) {
                 $query->where('status', 'published')->orderBy('sort_order');
@@ -51,7 +52,8 @@ class CoursePublicService
             'reviews' => function ($query) {
                 $query->orderBy('created_at', 'desc');
             },
-            'reviews.order.user',
+            'reviews.order:id,user_id,course_id',
+            'reviews.order.user:id,full_name,avatar_url',
             'faqs' => function ($query) {
                 $query->where('status', 'active')->orderBy('course_faqs.sort_order');
             }
