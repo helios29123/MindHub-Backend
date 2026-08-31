@@ -147,8 +147,8 @@ class LearningService
 
         $vp=\App\Models\VideoProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['current_second'=>0]);
         $oldSec = (int)$vp->current_second;
+        $vp->update(['current_second' => $sec]);
         if ($sec > $oldSec) {
-            $vp->update(['current_second' => $sec]);
             $diff = $sec - $oldSec;
             if ($diff > 0 && $diff <= 30) {
                 DB::table('learning_daily_activity')->upsert(
