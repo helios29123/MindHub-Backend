@@ -157,18 +157,36 @@ class LearningDashboardRepository
             $dailyActivityMap[$lpr->date] = max($current, (int) $lpr->total_time_seconds);
         }
 
+        $qualifyingStreakDates = [];
+        if (Schema::hasTable('lesson_progress') && Schema::hasTable('lessons')) {
+            $qualifyingStreakDates = DB::table('lesson_progress as lp')
+                ->join('lessons as l', 'l.id', '=', 'lp.lesson_id')
+                ->join('enrollments as e', 'e.id', '=', 'lp.enrollment_id')
+                ->where('e.user_id', $userId)
+                ->where('l.lesson_type', 'video')
+                ->where('lp.status', 'completed')
+                ->whereBetween(DB::raw('DATE(COALESCE(lp.completed_at, lp.updated_at))'), [$startDate, $endDate])
+                ->pluck(DB::raw('DISTINCT DATE(COALESCE(lp.completed_at, lp.updated_at)) as date'))
+                ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
+                ->toArray();
+        }
+
         $level1 = (int) config('report.heatmap_level_1_seconds', 900);
         $level2 = (int) config('report.heatmap_level_2_seconds', 2700);
 
         $heatmap = [];
         foreach ($dailyActivityMap as $date => $totalTime) {
             $intensity = 0;
-            if ($totalTime > 0 && $totalTime < $level1) {
-                $intensity = 1;
-            } elseif ($totalTime >= $level1 && $totalTime <= $level2) {
-                $intensity = 2;
-            } elseif ($totalTime > $level2) {
-                $intensity = 3;
+            $hasQualifyingStreak = in_array($date, $qualifyingStreakDates, true);
+
+            if ($hasQualifyingStreak) {
+                if ($totalTime > 0 && $totalTime < $level1) {
+                    $intensity = 1;
+                } elseif ($totalTime >= $level1 && $totalTime <= $level2) {
+                    $intensity = 2;
+                } elseif ($totalTime > $level2) {
+                    $intensity = 3;
+                }
             }
 
             $heatmap[] = [
@@ -187,32 +205,21 @@ class LearningDashboardRepository
     {
         $dates = [];
 
-        if (Schema::hasTable('learning_daily_activity')) {
-            $daDates = DB::table('learning_daily_activity as lda')
-                ->join('enrollments as e', 'e.id', '=', 'lda.enrollment_id')
+        if (Schema::hasTable('lesson_progress') && Schema::hasTable('lessons')) {
+            $dates = DB::table('lesson_progress as lp')
+                ->join('lessons as l', 'l.id', '=', 'lp.lesson_id')
+                ->join('enrollments as e', 'e.id', '=', 'lp.enrollment_id')
                 ->where('e.user_id', $userId)
-                ->where('lda.video_learning_seconds', '>', 0)
-                ->pluck('lda.activity_date')
+                ->where('l.lesson_type', 'video')
+                ->where('lp.status', 'completed')
+                ->select(DB::raw('DISTINCT DATE(COALESCE(lp.completed_at, lp.last_accessed_at, lp.updated_at)) as date'))
+                ->pluck('date')
+                ->filter()
                 ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
                 ->toArray();
-
-            $dates = array_merge($dates, $daDates);
         }
 
-        $lpDates = DB::table('lesson_progress as lp')
-            ->join('enrollments as e', 'e.id', '=', 'lp.enrollment_id')
-            ->where('e.user_id', $userId)
-            ->where(function ($q) {
-                $q->where('lp.status', 'completed')
-                  ->orWhere('lp.learning_duration_seconds', '>', 0);
-            })
-            ->select(DB::raw('DISTINCT DATE(COALESCE(lp.last_accessed_at, lp.completed_at, lp.updated_at)) as date'))
-            ->pluck('date')
-            ->filter()
-            ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
-            ->toArray();
-
-        $dates = array_unique(array_filter(array_merge($dates, $lpDates)));
+        $dates = array_unique(array_filter($dates));
         rsort($dates);
 
         if (empty($dates)) {

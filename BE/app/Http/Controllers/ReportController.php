@@ -329,7 +329,7 @@ final class ReportController extends Controller
     {
         $user = $request->user();
         if (! $user) {
-            return ApiResponse::error('Chưa đăng nhập.', 401);
+            return ApiResponse::error('Chưa đăng nhập.', [], 401);
         }
         $instructorId = (int) $user->id;
         $limit = min(max((int) ($request->query('limit') ?? $request->query('per_page') ?? 5), 1), 20);
@@ -741,7 +741,6 @@ final class ReportController extends Controller
                 'revenues.gross_amount',
                 'revenues.instructor_amount',
                 'revenues.platform_fee_amount',
-                'revenues.status',
                 'courses.title as course_title',
             ])
             ->orderByDesc('revenues.earned_at')
@@ -755,13 +754,9 @@ final class ReportController extends Controller
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF");
 
-            fputcsv($handle, ['ID Giao Dịch', 'Ngày Ghi Nhận', 'Tên Khóa Học', 'Doanh Thu Gộp (VND)', 'Thu Nhập Giảng Viên (VND)', 'Phí Nền Tảng (VND)', 'Trạng Thái']);
+            fputcsv($handle, ['ID Giao Dịch', 'Ngày Ghi Nhận', 'Tên Khóa Học', 'Doanh Thu Gộp (VND)', 'Thu Nhập Giảng Viên (VND)', 'Phí Nền Tảng (VND)']);
 
             foreach ($records as $row) {
-                $statusLabel = 'Hoàn thành';
-                if ($row->status === 'pending') $statusLabel = 'Chờ đối soát';
-                if ($row->status === 'refunded') $statusLabel = 'Đã hoàn tiền';
-
                 fputcsv($handle, [
                     $row->id,
                     $row->earned_at,
@@ -769,7 +764,6 @@ final class ReportController extends Controller
                     number_format((float)$row->gross_amount, 0, ',', '.'),
                     number_format((float)$row->instructor_amount, 0, ',', '.'),
                     number_format((float)$row->platform_fee_amount, 0, ',', '.'),
-                    $statusLabel,
                 ]);
             }
 

@@ -4,8 +4,10 @@ namespace App\Services\Learning;
 
 use App\Models\Enrollment;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class LearningService
 {
@@ -145,11 +147,11 @@ class LearningService
 
         $vp=\App\Models\VideoProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['current_second'=>0]);
         $oldSec = (int)$vp->current_second;
-        if ($sec !== $oldSec) {
+        if ($sec > $oldSec) {
             $vp->update(['current_second' => $sec]);
             $diff = $sec - $oldSec;
             if ($diff > 0 && $diff <= 30) {
-                \DB::table('learning_daily_activity')->upsert(
+                DB::table('learning_daily_activity')->upsert(
                     [
                         'enrollment_id' => $enrollment->id,
                         'activity_date' => $activityDate,
@@ -158,7 +160,7 @@ class LearningService
                         'updated_at' => now()
                     ],
                     ['enrollment_id', 'activity_date'],
-                    ['video_learning_seconds' => \DB::raw('learning_daily_activity.video_learning_seconds + ' . $diff), 'updated_at' => now()]
+                    ['video_learning_seconds' => DB::raw('learning_daily_activity.video_learning_seconds + ' . $diff), 'updated_at' => now()]
                 );
                 
                 $progress=\App\Models\LessonProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
@@ -281,7 +283,7 @@ class LearningService
     public function getLearningLogs(User $user, array $params): LengthAwarePaginator
     {
         $enrollmentIds = \App\Models\Enrollment::query()
-            ->whereIn('enrollment_id', $enrollmentIds)
+            ->where('user_id', $user->id)
             ->whereIn('status', [\App\Models\Enrollment::STATUS_ACTIVE, \App\Models\Enrollment::STATUS_COMPLETED])
             ->where(function ($query) {
                 $query->whereNull('expires_at')
@@ -316,13 +318,14 @@ class LearningService
 
         // Map video progress current_second for video lessons
         $lessonIds = $paginatedLogs->pluck('lesson_id')->unique();
-        $videoProgresses = \App\Models\VideoProgress::where('user_id', $user->id)
+        $videoProgresses = \App\Models\VideoProgress::whereIn('enrollment_id', $enrollmentIds)
             ->whereIn('lesson_id', $lessonIds)
             ->get()
-            ->keyBy('lesson_id');
+            ->keyBy(fn ($vp) => $vp->enrollment_id . '_' . $vp->lesson_id);
 
         $paginatedLogs->getCollection()->transform(function ($progress) use ($videoProgresses) {
-            $vp = $videoProgresses->get($progress->lesson_id);
+            $key = $progress->enrollment_id . '_' . $progress->lesson_id;
+            $vp = $videoProgresses->get($key);
             $progress->current_second = $vp ? (int) $vp->current_second : 0;
             return $progress;
         });
@@ -457,34 +460,22 @@ class LearningService
             ];
         }
 
-        $daDates = [];
-        if (\Schema::hasTable('learning_daily_activity')) {
-            $daDates = \DB::table('learning_daily_activity as lda')
-                ->join('enrollments as e', 'e.id', '=', 'lda.enrollment_id')
-                ->where('e.user_id', $user->id)
-                ->where('lda.video_learning_seconds', '>', 0)
-                ->pluck('lda.activity_date')
-                ->map(fn ($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
-                ->toArray();
-        }
-
         $progressDates = [];
-        if (\Schema::hasTable('lesson_progress')) {
-            $progressDates = \DB::table('lesson_progress as lp')
+        if (Schema::hasTable('lesson_progress') && Schema::hasTable('lessons')) {
+            $progressDates = DB::table('lesson_progress as lp')
+                ->join('lessons as l', 'l.id', '=', 'lp.lesson_id')
                 ->join('enrollments as e', 'e.id', '=', 'lp.enrollment_id')
                 ->where('e.user_id', $user->id)
-                ->where(function ($q) {
-                    $q->where('lp.status', 'completed')
-                      ->orWhere('lp.learning_duration_seconds', '>', 0);
-                })
-                ->select(\DB::raw('DISTINCT DATE(COALESCE(lp.last_accessed_at, lp.completed_at, lp.updated_at)) as d'))
+                ->where('l.lesson_type', 'video')
+                ->where('lp.status', 'completed')
+                ->select(DB::raw('DISTINCT DATE(COALESCE(lp.completed_at, lp.last_accessed_at, lp.updated_at)) as d'))
                 ->pluck('d')
                 ->filter()
-                ->map(fn ($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
+                ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
                 ->toArray();
         }
 
-        $allDatesSet = array_unique(array_filter(array_merge($daDates, $progressDates)));
+        $allDatesSet = array_unique(array_filter($progressDates));
         rsort($allDatesSet);
         $yesterday = now()->subDay()->format('Y-m-d');
 

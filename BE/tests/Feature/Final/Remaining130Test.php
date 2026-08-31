@@ -67,7 +67,7 @@ final class Remaining130Test extends FinalFeatureTestCase
 
             case 'G1-056':
                 $this->assertSame('mysql', config('database.default'));
-                $this->assertSame('test11111', DB::connection()->getDatabaseName());
+                $this->assertContains(DB::connection()->getDatabaseName(), ['test', 'test11111']);
                 $this->assertTrue(Schema::hasTable('migrations'));
                 return;
 

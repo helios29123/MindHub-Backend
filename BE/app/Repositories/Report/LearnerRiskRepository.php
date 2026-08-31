@@ -23,7 +23,6 @@ class LearnerRiskRepository
         return Enrollment::query()
             ->where('course_id', $courseId)
             ->whereIn('status', ['active', 'completed'])
-            ->whereNull('expires_at') // Exclude Trial
             ->where(function ($q) use ($ageCutoff) {
                 $q->where('enrolled_at', '<=', $ageCutoff)
                   ->orWhere('created_at', '<=', $ageCutoff);
