@@ -3,9 +3,9 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Refund Hold Period
+    | Revenue & Commission Configuration
     |--------------------------------------------------------------------------
-    | Number of days before a paid order revenue matures from pending to available.
+    | Revenue distribution and commission rates are dynamically enforced via
+    | commission_rules table and database triggers (1 active rule, immutable rates).
     */
-    'refund_hold_days' => (int) env('REVENUE_REFUND_HOLD_DAYS', 30),
 ];

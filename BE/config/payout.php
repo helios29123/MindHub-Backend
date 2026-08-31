@@ -33,12 +33,6 @@ return [
     'early_withdrawal' => [
         'enabled' => (bool) env('EARLY_WITHDRAWAL_ENABLED', true),
         'minimum_amount' => (float) env('EARLY_WITHDRAWAL_MINIMUM_AMOUNT', 200000),
-        'maximum_per_request' => env('EARLY_WITHDRAWAL_MAXIMUM_PER_REQUEST', null),
-        'maximum_active_requests' => (int) env('EARLY_WITHDRAWAL_MAXIMUM_ACTIVE_REQUESTS', 1),
-        'maximum_requests_per_month' => (int) env('EARLY_WITHDRAWAL_MAXIMUM_REQUESTS_PER_MONTH', 2),
-        'cooldown_days' => (int) env('EARLY_WITHDRAWAL_COOLDOWN_DAYS', 7),
-        'bank_account_change_hold_hours' => (int) env('EARLY_WITHDRAWAL_BANK_CHANGE_HOLD_HOURS', 48),
-        'automatic_payout_lock_days' => (int) env('EARLY_WITHDRAWAL_AUTO_LOCK_DAYS', 3),
         'otp_expires_minutes' => (int) env('EARLY_WITHDRAWAL_OTP_EXPIRES_MINUTES', 5),
         'otp_resend_seconds' => (int) env('EARLY_WITHDRAWAL_OTP_RESEND_SECONDS', 60),
         'otp_max_attempts' => (int) env('EARLY_WITHDRAWAL_OTP_MAX_ATTEMPTS', 5),
