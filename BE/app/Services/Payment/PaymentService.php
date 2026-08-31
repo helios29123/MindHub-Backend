@@ -75,9 +75,10 @@ class PaymentService
                 throw new BusinessException('Số tiền thanh toán không hợp lệ.', 422);
             }
 
-            $bankName = config('sepay.bank_code', 'MBBank');
-            $accountNumber = config('sepay.bank_account', '0987654321');
-            $accountName = config('sepay.account_name', 'MINDHUB E-LEARNING');
+            $bankCode = (string) (config('sepay.bank_code') ?: 'MBBank');
+            $bankName = $bankCode === 'MBBank' ? 'MB Bank (Ngân hàng Quân Đội)' : $bankCode;
+            $accountNumber = (string) (config('sepay.bank_account') ?: '0987654321');
+            $accountName = (string) (config('sepay.account_name') ?: 'MINDHUB E-LEARNING');
             $transferContent = $order->order_code ?? ('MH' . $order->id);
 
             DB::table('orders')
@@ -88,10 +89,10 @@ class PaymentService
                     'updated_at' => now(),
                 ]);
 
-            $qrUrl = "https://qr.sepay.vn/img?bank=" . urlencode($bankName)
-                . "&acc=" . urlencode($accountNumber)
-                . "&template=compact&amount=" . (int) round($amount)
-                . "&des=" . urlencode($transferContent);
+            $bankShortCode = str_ireplace(['MBBank', 'MB Bank'], 'MB', $bankCode);
+            $qrUrl = "https://img.vietqr.io/image/{$bankShortCode}-{$accountNumber}-compact2.png?amount=" . (int) round($amount)
+                . "&addInfo=" . urlencode($transferContent)
+                . "&accountName=" . urlencode($accountName);
 
             return [
                 'order_id' => (int) $order->id,
@@ -103,6 +104,118 @@ class PaymentService
                 'transfer_content' => $transferContent,
                 'qr_url' => $qrUrl,
                 'payment_method' => 'sepay',
+            ];
+        });
+    }
+
+    /**
+     * Create VNPAY payment redirect URL.
+     */
+    public function createVnpayPayment(array $validated, ?int $userId = null): array
+    {
+        $userId = $userId ?: (int) Auth::id();
+        $orderId = (int) ($validated['order_id'] ?? 0);
+
+        if ($orderId <= 0) {
+            throw new BusinessException('Thiếu mã đơn hàng.', 422);
+        }
+
+        return DB::transaction(function () use ($orderId, $userId): array {
+            $order = $this->findUserOrderForUpdate($orderId, $userId);
+
+            $this->assertOrderCanCreatePayment($order);
+
+            $amount = $this->getOrderAmount($order);
+            if ($amount <= 0) {
+                throw new BusinessException('Số tiền thanh toán không hợp lệ.', 422);
+            }
+
+            $txnRef = $this->generateVnpayTxnRef($order);
+
+            DB::table('orders')
+                ->where('id', $order->id)
+                ->update([
+                    'payment_method' => 'vnpay',
+                    'provider_transaction_id' => $txnRef,
+                    'updated_at' => now(),
+                ]);
+
+            $paymentUrl = $this->buildVnpayPaymentUrl($order, $txnRef, $amount);
+
+            return [
+                'order_id' => (int) $order->id,
+                'order_code' => $order->order_code ?? null,
+                'amount' => $amount,
+                'payment_url' => $paymentUrl,
+                'payment_method' => 'vnpay',
+                'txn_ref' => $txnRef,
+            ];
+        });
+    }
+
+    /**
+     * Handle VNPAY Return URL after payment.
+     */
+    public function vnpayReturn(array $payload): array
+    {
+        if (empty($payload)) {
+            throw new BusinessException('Không có dữ liệu phản hồi từ VNPAY.', 400);
+        }
+
+        $isValidSignature = $this->verifyVnpaySignature($payload);
+        if (! $isValidSignature) {
+            throw new BusinessException('Chữ ký xác thực VNPAY không hợp lệ.', 400);
+        }
+
+        $txnRef = (string) ($payload['vnp_TxnRef'] ?? '');
+        $responseCode = (string) ($payload['vnp_ResponseCode'] ?? '');
+        $transactionStatus = (string) ($payload['vnp_TransactionStatus'] ?? '');
+        $transactionNo = (string) ($payload['vnp_TransactionNo'] ?? $txnRef);
+
+        if (empty($txnRef)) {
+            throw new BusinessException('Thiếu thông tin mã giao dịch VNPAY.', 400);
+        }
+
+        return DB::transaction(function () use ($txnRef, $responseCode, $transactionStatus, $transactionNo, $payload): array {
+            $order = DB::table('orders')
+                ->where('provider_transaction_id', $txnRef)
+                ->orWhere('order_code', $txnRef)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $order) {
+                preg_match('/^(\d+)/', $txnRef, $matches);
+                if (! empty($matches[1])) {
+                    $order = DB::table('orders')
+                        ->where('id', (int) $matches[1])
+                        ->lockForUpdate()
+                        ->first();
+                }
+            }
+
+            if (! $order) {
+                throw new BusinessException('Không tìm thấy đơn hàng tương ứng với giao dịch VNPAY.', 404);
+            }
+
+            $isSuccess = ($responseCode === '00' && ($transactionStatus === '' || $transactionStatus === '00'));
+
+            if ($isSuccess && ($order->status ?? null) !== Order::STATUS_PAID) {
+                $this->markOrderAsPaid($order, 'vnpay', $transactionNo);
+
+                $paidOrder = DB::table('orders')
+                    ->where('id', $order->id)
+                    ->first();
+
+                $this->applyPaidSideEffects($paidOrder);
+            }
+
+            return [
+                'success' => $isSuccess,
+                'message' => $isSuccess ? 'Thanh toán VNPAY thành công.' : 'Giao dịch VNPAY không thành công hoặc bị hủy.',
+                'order_id' => (int) $order->id,
+                'order_code' => $order->order_code ?? null,
+                'response_code' => $responseCode,
+                'transaction_no' => $transactionNo,
             ];
         });
     }

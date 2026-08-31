@@ -61,6 +61,20 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function createVnpayPayment(StorePaymentRequest $request): JsonResponse
+    {
+        $result = $this->paymentService->createVnpayPayment(
+            $request->validated(),
+            (int) $request->user()->id
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tạo URL thanh toán VNPAY thành công.',
+            'data' => $result,
+        ]);
+    }
+
     public function sepayWebhook(Request $request): JsonResponse
     {
         $result = $this->paymentService->handleSepayWebhook($request->all());
