@@ -24,7 +24,7 @@ final class LessonVideoAccessService
             throw new BusinessException('Thời hạn link xem video không hợp lệ.', 422);
         }
         $lesson = $this->getAccessibleVideoLesson($learnerId, $lessonId);
-        if ($lesson->video_provider === 'bunny' && !empty($lesson->video_id)) {
+        if (!empty($lesson->video_id)) {
             $libraryId = (string) config('bunny.stream.library_id', '724015');
             $hostname = (string) config('bunny.stream.cdn_hostname', 'vz-725f19ee-511.b-cdn.net');
             $embedUrl = "https://iframe.mediadelivery.net/embed/{$libraryId}/{$lesson->video_id}?autoplay=true&loop=false&muted=false&preload=true&responsive=true";
@@ -94,7 +94,7 @@ final class LessonVideoAccessService
         if (!$this->hasEnrollment($learnerId, (int) $lesson->course_id)) {
             throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
         }
-        if (trim((string) $lesson->video_url) === '') {
+        if (empty($lesson->video_id) && trim((string) $lesson->video_url) === '') {
             throw new BusinessException('Không tìm thấy video.', 404);
         }
         return $lesson;
