@@ -11,8 +11,7 @@ class InstructorTopCourseRepository
         $limit = min(max((int) ($filters['limit'] ?? 5), 1), 20);
 
         $coursesQuery = DB::table('courses')
-            ->where('instructor_id', $instructorId)
-            ;
+            ->where('instructor_id', $instructorId);
 
         if (!empty($filters['status']) && $filters['status'] !== 'all') {
             $statusInput = strtolower(trim((string) $filters['status']));
@@ -52,8 +51,7 @@ class InstructorTopCourseRepository
             ->keyBy('course_id');
 
         $revenuesQuery = DB::table('revenues')
-            ->whereIn('course_id', $courseIds)
-            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
+            ->whereIn('course_id', $courseIds);
 
         if (!empty($filters['date_from'])) {
             $revenuesQuery->whereDate('earned_at', '>=', $filters['date_from']);
@@ -78,25 +76,6 @@ class InstructorTopCourseRepository
             $instRev = $r ? (float) $r->total_instructor_revenue : 0.0;
             $grossRev = $r ? (float) $r->total_gross_revenue : 0.0;
 
-            if (!$r || ($instRev == 0 && $grossRev == 0)) {
-                $paidOrdersQuery = DB::table('orders')
-                    ->where('course_id', $c->id)
-                    ->whereIn('status', ['paid', 'completed']);
-
-                if (!empty($filters['date_from'])) {
-                    $paidOrdersQuery->whereDate('paid_at', '>=', $filters['date_from']);
-                }
-                if (!empty($filters['date_to'])) {
-                    $paidOrdersQuery->whereDate('paid_at', '<=', $filters['date_to']);
-                }
-
-                $orderGross = (float) $paidOrdersQuery->sum('amount');
-                if ($orderGross > 0) {
-                    $grossRev = $orderGross;
-                    $instRev = round($orderGross * 0.7, 2);
-                }
-            }
-
             $thumbnail = $c->thumbnail_url;
             if ($thumbnail && !str_starts_with($thumbnail, 'http://') && !str_starts_with($thumbnail, 'https://')) {
                 $thumbnail = url($thumbnail);
@@ -113,28 +92,27 @@ class InstructorTopCourseRepository
                 'enrollment_count' => $eCount,
                 'enrollments_count' => $eCount,
                 'studentCount' => $uCount,
-                'student_count' => $uCount,
-                'learners_count' => $uCount,
-                'unique_learner_count' => $uCount,
-                'revenue' => $instRev,
-                'instructor_revenue' => $instRev,
-                'gross_revenue' => $grossRev,
-                'price' => (float) ($c->price ?? 0),
+                'students_count' => $uCount,
+                'total_revenue' => $this->money($grossRev),
+                'gross_revenue' => $this->money($grossRev),
+                'total_gross_revenue' => $this->money($grossRev),
+                'instructor_revenue' => $this->money($instRev),
+                'total_instructor_revenue' => $this->money($instRev),
             ];
         }
 
-        usort($items, function ($a, $b) {
-            if ($b['enrollment_count'] !== $a['enrollment_count']) {
-                return $b['enrollment_count'] <=> $a['enrollment_count'];
-            }
-            return $b['revenue'] <=> $a['revenue'];
-        });
-
-        $topItems = array_slice($items, 0, $limit);
-        foreach ($topItems as $idx => &$item) {
-            $item['rank'] = $idx + 1;
+        $sortBy = $filters['sort_by'] ?? 'revenue';
+        if ($sortBy === 'enrollments' || $sortBy === 'enrollment_count') {
+            usort($items, fn ($a, $b) => $b['enrollment_count'] <=> $a['enrollment_count']);
+        } else {
+            usort($items, fn ($a, $b) => (float) $b['instructor_revenue'] <=> (float) $a['instructor_revenue']);
         }
 
-        return $topItems;
+        return array_slice($items, 0, $limit);
+    }
+
+    private function money(float|string|null $val): string
+    {
+        return number_format((float) ($val ?? 0), 2, '.', '');
     }
 }

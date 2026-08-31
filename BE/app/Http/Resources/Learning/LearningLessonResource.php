@@ -31,7 +31,7 @@ class LearningLessonResource extends JsonResource
              * video_url = null
              * The frontend must use the protected playback flow.
              */
-            'video_url' => $hasVideo ? ($this->video_provider === 'bunny' ? 'https://iframe.mediadelivery.net/embed/' . (config('bunny.stream.library_id') ?: env('BUNNY_STREAM_LIBRARY_ID', '724015')) . '/' . $this->video_id : null) : null,
+            'video_url' => $hasVideo ? ($this->video_provider === 'bunny' ? 'https://iframe.mediadelivery.net/embed/' . (config('bunny.stream.library_id', '724015')) . '/' . $this->video_id : null) : null,
             'video_provider' => $hasVideo ? $this->video_provider : null,
             'video_id' => $hasVideo ? $this->video_id : null,
             'has_video' => $hasVideo,

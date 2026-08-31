@@ -25,8 +25,8 @@ final class LessonVideoAccessService
         }
         $lesson = $this->getAccessibleVideoLesson($learnerId, $lessonId);
         if ($lesson->video_provider === 'bunny' && !empty($lesson->video_id)) {
-            $libraryId = config('bunny.stream.library_id') ?: env('BUNNY_STREAM_LIBRARY_ID', '724015');
-            $hostname = config('bunny.stream.cdn_hostname') ?: env('BUNNY_STREAM_CDN_HOSTNAME', 'vz-725f19ee-511.b-cdn.net');
+            $libraryId = (string) config('bunny.stream.library_id', '724015');
+            $hostname = (string) config('bunny.stream.cdn_hostname', 'vz-725f19ee-511.b-cdn.net');
             $embedUrl = "https://iframe.mediadelivery.net/embed/{$libraryId}/{$lesson->video_id}?autoplay=true&loop=false&muted=false&preload=true&responsive=true";
             $hlsUrl = "https://{$hostname}/{$lesson->video_id}/playlist.m3u8";
             $expiresAt = now()->addSeconds($ttlSeconds);

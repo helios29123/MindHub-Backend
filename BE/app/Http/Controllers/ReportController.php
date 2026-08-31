@@ -384,11 +384,9 @@ final class ReportController extends Controller
         $query = \Illuminate\Support\Facades\DB::table('courses')
             ->leftJoin('revenues', function ($join) use ($period) {
                 $join->on('revenues.course_id', '=', 'courses.id')
-                    ->whereIn('revenues.status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn'])
                     ->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
             })
-            ->where('courses.instructor_id', $instructorId)
-            ;
+            ->where('courses.instructor_id', $instructorId);
 
         if ($request->query('course_id') && $request->query('course_id') !== 'all') {
             $query->where('courses.id', (int) $request->query('course_id'));
@@ -431,8 +429,7 @@ final class ReportController extends Controller
         $limit = min(max((int) ($request->query('limit') ?? 10), 1), 20);
 
         $coursesQuery = \Illuminate\Support\Facades\DB::table('courses')
-            ->where('courses.instructor_id', $instructorId)
-            ;
+            ->where('courses.instructor_id', $instructorId);
 
         if ($request->query('course_id') && $request->query('course_id') !== 'all') {
             $coursesQuery->where('courses.id', (int) $request->query('course_id'));
@@ -454,8 +451,7 @@ final class ReportController extends Controller
             ->keyBy('course_id');
 
         $revenuesQuery = \Illuminate\Support\Facades\DB::table('revenues')
-            ->whereIn('course_id', $courseIds)
-            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
+            ->whereIn('course_id', $courseIds);
 
         if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
             $revenuesQuery->whereBetween('earned_at', [$period['current_from'], $period['current_to']]);
@@ -528,9 +524,7 @@ final class ReportController extends Controller
             ->where(function ($q) use ($instructorId): void {
                 $q->where('revenues.instructor_id', $instructorId)
                   ->orWhere('courses.instructor_id', $instructorId);
-            })
-            
-            ->whereIn('revenues.status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
+            });
 
         if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
             $summaryQuery->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
@@ -593,8 +587,7 @@ final class ReportController extends Controller
         // Previous period totals for comparison
         $prevQuery = \Illuminate\Support\Facades\DB::table('revenues')
             ->where('instructor_id', $instructorId)
-            ->whereBetween('earned_at', [$period['previous_from'], $period['previous_to']])
-            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn']);
+            ->whereBetween('earned_at', [$period['previous_from'], $period['previous_to']]);
 
         if ($request->query('course_id') && $request->query('course_id') !== 'all') {
             $prevQuery->where('course_id', (int) $request->query('course_id'));
@@ -665,8 +658,7 @@ final class ReportController extends Controller
             ->where(function ($q) use ($instructorId): void {
                 $q->where('revenues.instructor_id', $instructorId)
                   ->orWhere('courses.instructor_id', $instructorId);
-            })
-            ;
+            });
 
         if ($period['preset'] !== 'all' && $period['preset'] !== 'all_time') {
             $query->whereBetween('revenues.earned_at', [$period['current_from'], $period['current_to']]);
@@ -674,10 +666,6 @@ final class ReportController extends Controller
 
         if ($request->query('course_id') && $request->query('course_id') !== 'all') {
             $query->where('revenues.course_id', (int) $request->query('course_id'));
-        }
-
-        if ($request->query('status') && $request->query('status') !== 'all') {
-            $query->where('revenues.status', $request->query('status'));
         }
 
         if ($request->query('search')) {
@@ -693,7 +681,6 @@ final class ReportController extends Controller
                 'revenues.gross_amount',
                 'revenues.instructor_amount',
                 'revenues.platform_fee_amount',
-                'revenues.status',
                 'courses.id as course_id',
                 'courses.title as course_title',
             ])
@@ -702,10 +689,6 @@ final class ReportController extends Controller
             ->limit($perPage)
             ->get()
             ->map(function ($row) {
-                $statusLabel = 'Hoàn thành';
-                if ($row->status === 'pending') $statusLabel = 'Chờ đối soát';
-                if ($row->status === 'refunded') $statusLabel = 'Đã hoàn tiền';
-
                 return [
                     'id' => (string) $row->id,
                     'date' => \Illuminate\Support\Carbon::parse($row->earned_at)->format('d/m/Y H:i'),
@@ -717,8 +700,8 @@ final class ReportController extends Controller
                     'gross' => (float) $row->gross_amount,
                     'net' => (float) $row->instructor_amount,
                     'platform_fee' => (float) $row->platform_fee_amount,
-                    'status' => $statusLabel,
-                    'raw_status' => $row->status,
+                    'status' => 'Hoàn thành',
+                    'raw_status' => 'completed',
                 ];
             });
 

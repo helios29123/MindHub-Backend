@@ -457,60 +457,34 @@ class LearningService
             ];
         }
 
-        $loginDates = [$today];
-
-        if (!empty($user->last_login_at)) {
-            $loginDates[] = \Carbon\Carbon::parse($user->last_login_at)->format('Y-m-d');
+        $daDates = [];
+        if (\Schema::hasTable('learning_daily_activity')) {
+            $daDates = \DB::table('learning_daily_activity as lda')
+                ->join('enrollments as e', 'e.id', '=', 'lda.enrollment_id')
+                ->where('e.user_id', $user->id)
+                ->where('lda.video_learning_seconds', '>', 0)
+                ->pluck('lda.activity_date')
+                ->map(fn ($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
+                ->toArray();
         }
 
-        try {
-            if (empty($user->last_login_at) || \Carbon\Carbon::parse($user->last_login_at)->format('Y-m-d') !== $today) {
-                \DB::table('users')->where('id', $user->id)->update(['last_login_at' => now()]);
-            }
-        } catch (\Throwable $e) {}
-
         $progressDates = [];
-        try {
-            if (\Schema::hasTable('lesson_progress')) {
-                $progressDates = \DB::table('lesson_progress')
-                    ->where('user_id', $user->id)
-                    ->selectRaw('DISTINCT DATE(updated_at) as d')
-                    ->pluck('d')
-                    ->filter()
-                    ->toArray();
-            }
-        } catch (\Throwable $e) {}
+        if (\Schema::hasTable('lesson_progress')) {
+            $progressDates = \DB::table('lesson_progress as lp')
+                ->join('enrollments as e', 'e.id', '=', 'lp.enrollment_id')
+                ->where('e.user_id', $user->id)
+                ->where(function ($q) {
+                    $q->where('lp.status', 'completed')
+                      ->orWhere('lp.learning_duration_seconds', '>', 0);
+                })
+                ->select(\DB::raw('DISTINCT DATE(COALESCE(lp.last_accessed_at, lp.completed_at, lp.updated_at)) as d'))
+                ->pluck('d')
+                ->filter()
+                ->map(fn ($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
+                ->toArray();
+        }
 
-        $videoDates = [];
-        try {
-            if (\Schema::hasTable('video_progress')) {
-                $videoDates = \DB::table('video_progress')
-                    ->where('user_id', $user->id)
-                    ->selectRaw('DISTINCT DATE(updated_at) as d')
-                    ->pluck('d')
-                    ->filter()
-                    ->toArray();
-            }
-        } catch (\Throwable $e) {}
-
-        $enrollmentDates = [];
-        try {
-            if (\Schema::hasTable('enrollments')) {
-                $enrollmentDates = \DB::table('enrollments')
-                    ->where('user_id', $user->id)
-                    ->selectRaw('DISTINCT DATE(created_at) as d')
-                    ->pluck('d')
-                    ->filter()
-                    ->toArray();
-            }
-        } catch (\Throwable $e) {}
-
-        $loginSessionDates = [];
-        try {
-
-        } catch (\Throwable $e) {}
-
-        $allDatesSet = array_unique(array_filter(array_merge($loginSessionDates, $progressDates, $videoDates, $enrollmentDates, $loginDates)));
+        $allDatesSet = array_unique(array_filter(array_merge($daDates, $progressDates)));
         rsort($allDatesSet);
         $yesterday = now()->subDay()->format('Y-m-d');
 
@@ -537,14 +511,26 @@ class LearningService
             }
         }
 
-        if ($currentStreak === 0 && $isMaintaining) {
-            $currentStreak = 1;
+        $longestStreak = $currentStreak;
+        if (!empty($allDatesSet)) {
+            $tempLongest = 1;
+            $maxStreak = 1;
+            $datesArr = array_values($allDatesSet);
+            for ($i = 0; $i < count($datesArr) - 1; $i++) {
+                $date1 = new \DateTime($datesArr[$i]);
+                $date2 = new \DateTime($datesArr[$i + 1]);
+                $diff = $date1->diff($date2)->days;
+                if ($diff == 1) {
+                    $tempLongest++;
+                    if ($tempLongest > $maxStreak) {
+                        $maxStreak = $tempLongest;
+                    }
+                } else {
+                    $tempLongest = 1;
+                }
+            }
+            $longestStreak = max($currentStreak, $maxStreak);
         }
-        if ($currentStreak === 0 && count($allDatesSet) > 0) {
-            $currentStreak = 1;
-        }
-
-        $longestStreak = max($currentStreak, count($allDatesSet));
         $totalActiveDays = count($allDatesSet);
 
         $startOfWeek = now()->startOfWeek(\Carbon\Carbon::MONDAY);

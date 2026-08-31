@@ -74,7 +74,7 @@ class PaymentController extends Controller
 
     public function vnpayReturn(Request $request)
     {
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
 
         try {
             $result = $this->paymentService->vnpayReturn($request->all());

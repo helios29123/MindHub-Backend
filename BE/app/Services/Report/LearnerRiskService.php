@@ -2,10 +2,11 @@
 
 namespace App\Services\Report;
 
+use App\Exceptions\BusinessException;
 use App\Repositories\Report\LearnerRiskRepository;
+use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
-use Carbon\Carbon;
 
 class LearnerRiskService
 {
@@ -19,63 +20,80 @@ class LearnerRiskService
         $course = $this->repository->getCourseForInstructor($courseId, $instructorId);
 
         if (!$course) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy khóa học.', 404);
+            throw new BusinessException('Không tìm thấy khóa học hoặc bạn không có quyền truy cập.', 404);
         }
 
+        $ageDays = (int) config('report.learner_risk_enrollment_age_days', 14);
+        $progressThreshold = (float) config('report.learner_risk_progress_threshold', 30.0);
+        $inactiveThreshold = (int) ($filters['inactive_days'] ?? config('report.learner_risk_inactive_days', 7));
 
+        $enrollments = $this->repository->getEligibleEnrollmentsForRisk($courseId, $ageDays, $progressThreshold);
+        $enrollmentIds = $enrollments->pluck('id')->all();
+        $activityMap = $this->repository->getLatestActivityMap($enrollmentIds);
 
-        $inactiveDaysThreshold = (int) ($filters['inactive_days'] ?? 14);
-        $thresholdDate = Carbon::now()->subDays($inactiveDaysThreshold);
-
-        $enrollments = $this->repository->getEnrollmentsForCourse($courseId);
-
-        $failedQuizzesMap = $this->repository->getFailedQuizzesForCourse($courseId);
-        $lessonProgressMap = $this->repository->getLessonProgressCountForCourse($courseId);
-
+        $now = Carbon::now();
+        $inactiveCutoff = $now->copy()->subDays($inactiveThreshold);
         $results = new Collection();
 
         foreach ($enrollments as $enrollment) {
             $user = $enrollment->user;
-            if (!$user) continue;
-
-            $score = 0;
-            $reasons = [];
-
-            // Rule 1: Lâu chưa học
-            $lastAccessed = $enrollment->last_accessed_at ? Carbon::parse($enrollment->last_accessed_at) : null;
-            if (!$lastAccessed || $lastAccessed->lt($thresholdDate)) {
-                $score += 40;
-                $reasons[] = 'Lâu chưa học';
+            if (!$user) {
+                continue;
             }
 
-            // Rule 2: Tiến độ thấp
-            if ($enrollment->progress_percent !== null && $enrollment->progress_percent < 30) {
+            $lastActivityStr = $activityMap->get($enrollment->id);
+            $lastActivity = $lastActivityStr ? Carbon::parse($lastActivityStr) : null;
+
+            // Condition 3: No actual learning activity for at least $inactiveThreshold days (default 7 days)
+            // If learner never studied, inactivity age is their enrollment date (which is already >= 14 days >= 7 days)
+            $isInactive = false;
+            $daysSinceLastActivity = 0;
+
+            if ($lastActivity) {
+                $daysSinceLastActivity = (int) $lastActivity->diffInDays($now);
+                $isInactive = $lastActivity->lte($inactiveCutoff);
+            } else {
+                $enrolledDate = Carbon::parse($enrollment->enrolled_at ?? $enrollment->created_at);
+                $daysSinceLastActivity = (int) $enrolledDate->diffInDays($now);
+                $isInactive = $enrolledDate->lte($inactiveCutoff);
+            }
+
+            if (!$isInactive) {
+                continue;
+            }
+
+            // All 4 conditions met:
+            // 1. Enrollment age >= 14 days (Filtered in repository)
+            // 2. Progress < 30% (Filtered in repository)
+            // 3. Inactive >= 7 days (Verified above)
+            // 4. Trial excluded (Filtered in repository)
+
+            $reasons = [
+                "Ghi danh trên {$ageDays} ngày nhưng tiến độ dưới {$progressThreshold}%",
+                "Không có hoạt động học tập trong {$daysSinceLastActivity} ngày gần đây",
+            ];
+
+            // Calculate Risk Score & Level
+            $score = 50;
+            if ($enrollment->progress_percent < 10) {
                 $score += 25;
-                $reasons[] = 'Tiến độ thấp';
-            }
-
-            // Rule 3: Quiz chưa đạt
-            if ($failedQuizzesMap->has($user->id)) {
-                $score += 20;
-                $reasons[] = 'Quiz chưa đạt';
-            }
-
-            // Rule 4: Ít hoạt động (ít lesson progress)
-            $progressCount = $lessonProgressMap->get($user->id)->count ?? 0;
-            if ($progressCount < 3) {
+            } elseif ($enrollment->progress_percent < 20) {
                 $score += 15;
-                $reasons[] = 'Ít hoạt động gần đây';
             }
 
-            // Determine Level
-            $level = 'low';
-            if ($score >= 70) {
+            if ($daysSinceLastActivity >= 14) {
+                $score += 25;
+            } elseif ($daysSinceLastActivity >= 7) {
+                $score += 15;
+            }
+
+            $level = 'medium';
+            if ($score >= 75) {
                 $level = 'high';
-            } elseif ($score >= 40) {
-                $level = 'medium';
+            } elseif ($score < 50) {
+                $level = 'low';
             }
 
-            // Filter by level if provided
             if (!empty($filters['risk_level']) && $filters['risk_level'] !== $level) {
                 continue;
             }
@@ -88,18 +106,17 @@ class LearnerRiskService
                 'enrollment_id' => $enrollment->id,
                 'enrollment_status' => $enrollment->status,
                 'progress_percent' => (float) $enrollment->progress_percent,
-                'last_accessed_at' => $enrollment->last_accessed_at ? $enrollment->last_accessed_at->toIso8601String() : null,
+                'last_accessed_at' => $lastActivity ? $lastActivity->toIso8601String() : ($enrollment->last_accessed_at ? Carbon::parse($enrollment->last_accessed_at)->toIso8601String() : null),
                 'risk_level' => $level,
-                'risk_score' => $score,
+                'risk_score' => min(100, $score),
                 'reasons' => $reasons,
             ]);
         }
 
-        // Sort by risk_score desc
         $sortedResults = $results->sortByDesc('risk_score')->values();
 
-        $page = (int) ($filters['page'] ?? 1);
-        $perPage = (int) ($filters['per_page'] ?? 15);
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $perPage = min(100, max(1, (int) ($filters['per_page'] ?? 15)));
         $offset = ($page - 1) * $perPage;
 
         $paginatedItems = $sortedResults->slice($offset, $perPage)->all();

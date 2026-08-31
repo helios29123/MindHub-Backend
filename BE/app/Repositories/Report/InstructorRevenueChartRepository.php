@@ -16,7 +16,6 @@ class InstructorRevenueChartRepository
         $query = DB::table('revenues')
             ->where('instructor_id', $instructorId)
             ->whereBetween('earned_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
-            ->whereIn('status', ['pending', 'available', 'scheduled', 'included_in_payout', 'paid', 'withdrawn'])
             ->selectRaw("
                 DATE_FORMAT(earned_at, '$format') as period,
                 COALESCE(SUM(gross_amount), 0) as gross_amount,
@@ -64,35 +63,30 @@ class InstructorRevenueChartRepository
         return $result;
     }
 
-    private function resolveDateRange(array &$filters): array
+    private function resolveDateRange(array $filters): array
     {
-        $period = $filters['preset'] ?? $filters['period'] ?? null;
-        if ($period === 'day') {
-            $filters['group_by'] = $filters['group_by'] ?? 'day';
-            return [now()->startOfDay(), now()->endOfDay()];
-        }
-        if ($period === 'week') {
-            $filters['group_by'] = $filters['group_by'] ?? 'day';
-            return [now()->startOfWeek(), now()->endOfWeek()];
-        }
-        if ($period === 'month') {
-            $filters['group_by'] = $filters['group_by'] ?? 'day';
-            return [now()->startOfMonth(), now()->endOfMonth()];
-        }
-        if ($period === 'year') {
-            $filters['group_by'] = $filters['group_by'] ?? 'month';
-            return [now()->startOfYear(), now()->endOfYear()];
-        }
-
         if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
-            return [Carbon::parse($filters['date_from']), Carbon::parse($filters['date_to'])];
+            return [
+                Carbon::parse($filters['date_from'])->startOfDay(),
+                Carbon::parse($filters['date_to'])->endOfDay(),
+            ];
         }
 
-        return [now()->startOfMonth(), now()->endOfMonth()];
+        $period = $filters['period'] ?? 'this_month';
+
+        return match ($period) {
+            'today' => [now()->startOfDay(), now()->endOfDay()],
+            'this_week' => [now()->startOfWeek(), now()->endOfWeek()],
+            'last_week' => [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()],
+            'last_month' => [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()],
+            'this_year' => [now()->startOfYear(), now()->endOfYear()],
+            'last_year' => [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()],
+            default => [now()->startOfMonth(), now()->endOfMonth()],
+        };
     }
 
-    private function money(mixed $amount): string
+    private function money(float|string|null $val): string
     {
-        return number_format((float) $amount, 2, '.', '');
+        return number_format((float) ($val ?? 0), 2, '.', '');
     }
 }

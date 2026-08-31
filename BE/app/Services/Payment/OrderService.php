@@ -91,7 +91,7 @@ class OrderService
             }
 
             $amount = (int) $quote['sale_price'];
-            $minimumPayable = (int) config('coupon.minimum_payable_amount', 10000);
+            $minimumPayable = (int) config('order.minimum_payable_amount', 10000);
 
             if ($amount > 0 && $amount < $minimumPayable) {
                 throw new BusinessException(
@@ -121,7 +121,7 @@ class OrderService
                 'payment_method' => null,
                 'provider_transaction_id' => null,
                 'paid_at' => null,
-                'expires_at' => now()->addHours(max(1, (int) config('mindhub.pending_order_expire_hours', 24))),
+                'expires_at' => now()->addHours(max(1, (int) config('order.pending_expire_hours', 24))),
                 'cancelled_reason' => null,
                 'failed_reason' => null,
                 'created_at' => now(),

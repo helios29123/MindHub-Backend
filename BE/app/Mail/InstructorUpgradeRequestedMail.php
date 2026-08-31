@@ -30,7 +30,7 @@ class InstructorUpgradeRequestedMail extends Mailable
         $accountNumber = e($this->applicationData['bank_account_number'] ?? 'Chưa cập nhật');
         $accountName = e($this->applicationData['bank_account_name'] ?? 'Chưa cập nhật');
 
-        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+        $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
         $adminReviewUrl = "{$frontendUrl}/admin/instructors/upgrade-requests";
 
         $logoFile = base_path('mindhub.jpg');

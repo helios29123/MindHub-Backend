@@ -379,21 +379,10 @@ $order = $query->first();
 
     private function buildVnpayPaymentUrl(object $order, string $txnRef, float $amount): string
     {
-        $vnpUrl = config('vnpay.url')
-            ?: config('services.vnpay.url')
-            ?: env('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
-
-        $tmnCode = config('vnpay.tmn_code')
-            ?: config('services.vnpay.tmn_code')
-            ?: env('VNPAY_TMN_CODE');
-
-        $hashSecret = config('vnpay.hash_secret')
-            ?: config('services.vnpay.hash_secret')
-            ?: env('VNPAY_HASH_SECRET');
-
-        $returnUrl = config('vnpay.return_url')
-            ?: config('services.vnpay.return_url')
-            ?: env('VNPAY_RETURN_URL', url('/api/payments/vnpay-return'));
+        $vnpUrl = (string) (config('services.vnpay.url') ?: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
+        $tmnCode = (string) config('services.vnpay.tmn_code');
+        $hashSecret = (string) config('services.vnpay.hash_secret');
+        $returnUrl = (string) (config('services.vnpay.return_url') ?: url('/api/payments/vnpay-return'));
 
         if (empty($tmnCode) || empty($hashSecret)) {
             throw new BusinessException('Chưa cấu hình VNPAY_TMN_CODE hoặc VNPAY_HASH_SECRET.', 500);
@@ -443,8 +432,7 @@ $order = $query->first();
 
     private function verifyVnpaySignature(array $params): bool
     {
-        $hashSecret = config('services.vnpay.hash_secret')
-            ?: env('VNPAY_HASH_SECRET');
+        $hashSecret = (string) config('services.vnpay.hash_secret');
 
         if (empty($hashSecret)) {
             throw new BusinessException('Chưa cấu hình VNPAY_HASH_SECRET.', 500);

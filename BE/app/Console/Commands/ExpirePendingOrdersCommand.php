@@ -10,7 +10,7 @@ use Throwable;
 class ExpirePendingOrdersCommand extends Command
 {
     protected $signature = 'orders:expire-pending
-        {--hours= : So gio qua han cua don pending, mac dinh lay tu config mindhub.pending_order_expire_hours}
+        {--hours= : So gio qua han cua don pending, mac dinh lay tu config order.pending_expire_hours}
         {--dry-run : Chi dem so don hang se het han, khong update DB}';
 
     protected $description = 'Expire pending orders older than configured hours';
@@ -67,7 +67,7 @@ class ExpirePendingOrdersCommand extends Command
         $hoursOption = $this->option('hours');
 
         if ($hoursOption === null || $hoursOption === '') {
-            $hoursOption = config('mindhub.pending_order_expire_hours', 24);
+            $hoursOption = config('order.pending_expire_hours', 24);
         }
 
         if (! is_numeric($hoursOption) || (string) (int) $hoursOption !== (string) $hoursOption) {

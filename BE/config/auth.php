@@ -114,4 +114,16 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Application API Token & Session Limit Policies
+    |--------------------------------------------------------------------------
+    */
+
+    'access_token_expires_minutes' => (int) env('ACCESS_TOKEN_EXPIRES_MINUTES', 10080),
+
+    'refresh_token_expires_days' => (int) env('REFRESH_TOKEN_EXPIRES_DAYS', 365),
+
+    'max_learner_sessions' => (int) env('MAX_LEARNER_SESSIONS', 2),
+
 ];

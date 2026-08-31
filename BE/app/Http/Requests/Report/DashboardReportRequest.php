@@ -18,7 +18,7 @@ class DashboardReportRequest extends FormRequest
             'date_to' => 'nullable|date|after_or_equal:date_from',
             'month' => 'nullable|integer|min:1|max:12',
             'year' => 'nullable|integer|min:2000|max:2100',
-            'course_id' => 'nullable|integer|exists:courses,id,deleted_at,NULL',
+            'course_id' => 'nullable|integer|exists:courses,id',
         ];
     }
 }
