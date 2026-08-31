@@ -26,13 +26,13 @@ final class WatermarkInfoService
         if (!$user) {
             throw new BusinessException('Không tìm thấy người dùng.', 404);
         }
-        $mode = (string) ($filters['mode'] ?? 'moving');
+        $fullName = trim((string) ($user->full_name ?: $user->name ?: 'Học viên'));
         return [
-            'text' => $this->maskEmail((string) $user->email) . ' - ID ' . $user->id,
-            'mode' => $mode,
-            'opacity' => 0.25,
-            'refresh_seconds' => $mode === 'moving' ? 30 : 0,
-            'position_rule' => $mode === 'moving' ? 'random' : 'bottom-right',
+            'text' => "{$fullName} - {$user->id}",
+            'mode' => 'fixed',
+            'opacity' => 0.3,
+            'refresh_seconds' => 0,
+            'position_rule' => 'top-left',
             'generated_at' => now()->toIso8601String(),
         ];
     }

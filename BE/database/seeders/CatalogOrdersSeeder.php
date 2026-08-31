@@ -108,6 +108,30 @@ class CatalogOrdersSeeder extends Seeder
                 'amount' => 0,
                 'paid_at' => $now->copy()->subDays(2),
             ],
+            [
+                'coupon_id' => null,
+                'course_id' => $courseLaravelId,
+                'user_id' => $this->userId('dangdominh303@gmail.com'),
+                'order_code' => 'CAT-ORDER-DANG-001',
+                'price_snapshot' => 799000,
+                'payment_method' => 'vnpay',
+                'payment_status' => 'paid',
+                'provider_transaction_id' => 'CAT-TXN-DANG-001',
+                'amount' => 799000,
+                'paid_at' => $now,
+            ],
+            [
+                'coupon_id' => null,
+                'course_id' => $courseLaravelId,
+                'user_id' => $this->userId('dominhdang3010@gmail.com'),
+                'order_code' => 'CAT-ORDER-ADMIN-001',
+                'price_snapshot' => 799000,
+                'payment_method' => 'vnpay',
+                'payment_status' => 'paid',
+                'provider_transaction_id' => 'CAT-TXN-ADMIN-001',
+                'amount' => 799000,
+                'paid_at' => $now,
+            ],
         ];
 
         foreach ($orders as $order) {

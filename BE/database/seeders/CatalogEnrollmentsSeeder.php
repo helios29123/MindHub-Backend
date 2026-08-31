@@ -83,6 +83,26 @@ class CatalogEnrollmentsSeeder extends Seeder
                 'completed_at' => $now->copy()->subDay(),
                 'last_accessed_at' => $now->copy()->subDay(),
             ],
+            [
+                'user_email' => 'dangdominh303@gmail.com',
+                'course_slug' => 'cat-course-published-laravel-api-featured',
+                'order_code' => 'CAT-ORDER-DANG-001',
+                'status' => 'active',
+                'progress_percent' => 25.00,
+                'enrolled_at' => $now,
+                'completed_at' => null,
+                'last_accessed_at' => $now,
+            ],
+            [
+                'user_email' => 'dominhdang3010@gmail.com',
+                'course_slug' => 'cat-course-published-laravel-api-featured',
+                'order_code' => 'CAT-ORDER-ADMIN-001',
+                'status' => 'active',
+                'progress_percent' => 25.00,
+                'enrolled_at' => $now,
+                'completed_at' => null,
+                'last_accessed_at' => $now,
+            ],
         ];
 
         foreach ($items as $item) {
