@@ -31,7 +31,7 @@ class CourseSubmittedForReviewMail extends Mailable
             $categoryName = e($this->course->category?->name ?? 'Chưa phân loại');
         }
         $level = e($this->course->course_level ?? 'Mọi trình độ');
-        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+        $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
         $adminReviewUrl = "{$frontendUrl}/admin/courses";
 
         $logoFile = base_path('mindhub.jpg');

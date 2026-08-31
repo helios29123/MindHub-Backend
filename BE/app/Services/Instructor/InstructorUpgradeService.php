@@ -67,7 +67,7 @@ class InstructorUpgradeService
 
         // Send Email & Notification to Admin
         try {
-            $adminEmail = env('ADMIN_EMAIL', config('mail.admin_address', 'dominhdang3010@gmail.com'));
+            $adminEmail = config('mail.admin_address', 'dominhdang3010@gmail.com');
             \Illuminate\Support\Facades\Mail::to($adminEmail)->send(
                 new \App\Mail\InstructorUpgradeRequestedMail($user, $data)
             );

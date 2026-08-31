@@ -34,7 +34,7 @@ class CourseApprovedNotificationMail extends Mailable
         $priceRaw = (float) ($this->course->sale_price ?? $this->course->price ?? 0);
         $priceText = $priceRaw == 0 ? 'Miễn phí' : (number_format($priceRaw, 0, ',', '.') . ' VNĐ');
         
-        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+        $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
         $courseUrl = "{$frontendUrl}/courses/" . ($this->course->slug ?: $this->course->id);
         $instructorDashboardUrl = "{$frontendUrl}/instructor/courses";
 

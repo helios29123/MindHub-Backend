@@ -25,7 +25,7 @@ class CourseWelcomeMail extends Mailable
         $userName = e($this->user->full_name);
         $courseTitle = e($this->course->title);
         $instructorName = e($this->course->instructor?->full_name ?? 'Giảng viên MindHub');
-        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')), '/');
+        $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
         
         $learnUrl = "{$frontendUrl}/learning/{$this->course->id}";
         

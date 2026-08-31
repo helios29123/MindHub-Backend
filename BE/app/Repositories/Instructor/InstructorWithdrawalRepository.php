@@ -43,7 +43,7 @@ class InstructorWithdrawalRepository
             ->orderByDesc('updated_at')
             ->first();
 
-        $minimumPayout = (float) config('revenue.payout.minimum_amount', 200000);
+        $minimumPayout = (float) config('payout.minimum_amount', 200000);
         $hasActivePayoutAccount = ($payoutAccount !== null);
 
         $accountStatus = 'missing';
@@ -65,8 +65,8 @@ class InstructorWithdrawalRepository
             $verificationWarning = 'Số dư khả dụng chưa đạt mức thanh toán tối thiểu (200.000 VNĐ). Số dư sẽ được bảo lưu và cộng dồn sang kỳ sau.';
         }
 
-        $startDay = (int) config('revenue.payout.window_start_day', 5);
-        $endDay = (int) config('revenue.payout.window_end_day', 10);
+        $startDay = (int) config('payout.window_start_day', 5);
+        $endDay = (int) config('payout.window_end_day', 10);
         $nextMonth = now()->addMonth();
 
         $nextWindow = [

@@ -45,7 +45,7 @@ final class DeviceLimitService
         if (! $this->shouldLimitUser($user)) {
             return PHP_INT_MAX;
         }
-        $configuredLimit = (int) config('mindhub.max_learner_sessions', 2);
+        $configuredLimit = (int) config('auth.max_learner_sessions', 2);
         return max(1, $configuredLimit);
     }
 }

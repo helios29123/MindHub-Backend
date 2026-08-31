@@ -4,8 +4,6 @@ namespace App\Repositories\Report;
 
 use App\Models\Course;
 use App\Models\Enrollment;
-use App\Models\Order;
-use App\Models\CourseReview;
 use Illuminate\Support\Facades\DB;
 
 class CourseAnalyticsRepository
@@ -13,7 +11,7 @@ class CourseAnalyticsRepository
     public function getCourseForInstructor(int $courseId, int $instructorId): ?Course
     {
         return Course::where('id', $courseId)
-            
+            ->where('instructor_id', $instructorId)
             ->first();
     }
 
@@ -29,38 +27,36 @@ class CourseAnalyticsRepository
             $query->where('created_at', '<=', $toDate . ' 23:59:59');
         }
 
-        $total = $query->count();
+        $total = (clone $query)->count();
         $completed = (clone $query)->where('status', 'completed')->count();
-        $avgProgress = $query->avg('progress_percent') ?? 0;
+        $started = (clone $query)->whereExists(function ($sq) {
+            $sq->select(DB::raw(1))
+                ->from('lesson_progress')
+                ->whereColumn('lesson_progress.enrollment_id', 'enrollments.id');
+        })->count();
+        $avgProgress = (clone $query)->avg('progress_percent') ?? 0;
 
         return (object) [
             'total' => $total,
             'completed' => $completed,
+            'started' => $started,
             'avg_progress' => round((float) $avgProgress, 2),
         ];
     }
 
-
     public function getRevenueMetrics(int $courseId, ?string $fromDate, ?string $toDate): object
     {
-        // Calculate revenue for this course
-        // Using Order items or Revenue table. Assuming Revenue table exists based on ERD scope.
-        // The prompt mentions "revenues.instructor_amount" etc.
         $query = DB::table('revenues')
-            ->join('orders', 'revenues.order_id', '=', 'orders.id')
-            ->join('order_items', 'order_items.order_id', '=', 'orders.id')
-            ->where('order_items.item_type', 'course')
-            ->where('order_items.item_id', $courseId)
-            ->where('revenues.status', 'completed');
+            ->where('course_id', $courseId);
 
         if ($fromDate) {
-            $query->where('revenues.earned_at', '>=', $fromDate);
+            $query->where('earned_at', '>=', $fromDate);
         }
         if ($toDate) {
-            $query->where('revenues.earned_at', '<=', $toDate . ' 23:59:59');
+            $query->where('earned_at', '<=', $toDate . ' 23:59:59');
         }
 
-        $instructorAmount = $query->sum('revenues.instructor_amount');
+        $instructorAmount = $query->sum('instructor_amount') ?? 0;
 
         return (object) [
             'instructor_amount' => (float) $instructorAmount,
@@ -69,17 +65,19 @@ class CourseAnalyticsRepository
 
     public function getReviewMetrics(int $courseId, ?string $fromDate, ?string $toDate): object
     {
-        $query = CourseReview::where('course_id', $courseId);
+        $query = DB::table('course_reviews')
+            ->join('orders', 'course_reviews.order_id', '=', 'orders.id')
+            ->where('orders.course_id', $courseId);
 
         if ($fromDate) {
-            $query->where('created_at', '>=', $fromDate);
+            $query->where('course_reviews.created_at', '>=', $fromDate);
         }
         if ($toDate) {
-            $query->where('created_at', '<=', $toDate . ' 23:59:59');
+            $query->where('course_reviews.created_at', '<=', $toDate . ' 23:59:59');
         }
 
-        $total = $query->count();
-        $avgRating = $query->avg('rating') ?? 0;
+        $total = (clone $query)->count();
+        $avgRating = (clone $query)->avg('course_reviews.rating') ?? 0;
 
         return (object) [
             'total' => $total,

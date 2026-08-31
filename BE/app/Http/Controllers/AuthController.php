@@ -66,7 +66,7 @@ class AuthController extends Controller
 
     public function verifyEmail(Request $request, int $id, string $hash)
     {
-        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+        $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
 
         if (! $request->hasValidSignature()) {
             if ($request->wantsJson()) {
@@ -155,7 +155,7 @@ class AuthController extends Controller
 
     public function googleCallback(Request $request)
     {
-        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'));
+        $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
         $code = $request->query('code');
 
         if (! $code) {

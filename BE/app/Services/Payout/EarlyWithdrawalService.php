@@ -54,7 +54,7 @@ class EarlyWithdrawalService
             ->sum('amount');
 
         $minimumWithdrawal = (float) config(
-            'revenue.early_withdrawal.minimum_amount',
+            'payout.early_withdrawal.minimum_amount',
             200000
         );
 
@@ -143,11 +143,11 @@ class EarlyWithdrawalService
 
         $otpCode = (string) random_int(100000, 999999);
         $expiresInMinutes = (int) config(
-            'revenue.early_withdrawal.otp_expires_minutes',
+            'payout.early_withdrawal.otp_expires_minutes',
             5
         );
         $resendSeconds = (int) config(
-            'revenue.early_withdrawal.otp_resend_seconds',
+            'payout.early_withdrawal.otp_resend_seconds',
             60
         );
 
@@ -216,7 +216,7 @@ class EarlyWithdrawalService
             }
 
             $maxAttempts = (int) config(
-                'revenue.early_withdrawal.otp_max_attempts',
+                'payout.early_withdrawal.otp_max_attempts',
                 5
             );
 
@@ -440,7 +440,7 @@ class EarlyWithdrawalService
         float $amount,
         ?int $payoutAccountId = null
     ): void {
-        if (! config('revenue.early_withdrawal.enabled', true)) {
+        if (! config('payout.early_withdrawal.enabled', true)) {
             throw new BusinessException(
                 'Tính năng rút tiền hiện đang tạm tắt.',
                 422
@@ -448,7 +448,7 @@ class EarlyWithdrawalService
         }
 
         $minimumAmount = (float) config(
-            'revenue.early_withdrawal.minimum_amount',
+            'payout.early_withdrawal.minimum_amount',
             200000
         );
 

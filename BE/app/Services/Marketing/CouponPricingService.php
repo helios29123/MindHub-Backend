@@ -175,7 +175,7 @@ final class CouponPricingService
 
         $discount = $this->discountAmount($temp, $price);
         $sale = max(0, $price - $discount);
-        $minimum = (int) config('coupon.minimum_payable_amount', 10000);
+        $minimum = (int) config('order.minimum_payable_amount', 10000);
 
         if ($sale < $minimum) {
             $maxByMinimum = max(0, $price - $minimum);

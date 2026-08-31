@@ -374,23 +374,23 @@ class InstructorLearnerRepository
             throw new NotFoundHttpException('Không tìm thấy dữ liệu học viên.');
         }
 
-        // Total lessons count
+        // Total lessons count (published only)
         $totalLessons = DB::table('lessons')
             ->where('course_id', $enrollment->course_id)
-            
+            ->where('status', 'published')
             ->count();
 
         // Total course duration seconds
         $totalDurationSeconds = (int) ($enrollment->course_duration_seconds ?: DB::table('lessons')
             ->where('course_id', $enrollment->course_id)
-            
+            ->where('status', 'published')
             ->sum('video_duration_seconds'));
 
-        // Completed lessons count
+        // Completed lessons count (published only)
         $completedLessons = DB::table('lesson_progress')
             ->where('enrollment_id', $enrollment->enrollment_id)
             ->whereIn('lesson_id', function ($query) use ($enrollment) {
-                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id);
+                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id)->where('status', 'published');
             })
             ->where(function ($q) {
                 $q->where('status', 'completed')->orWhereNotNull('completed_at');
@@ -401,7 +401,7 @@ class InstructorLearnerRepository
         $learnedDurationSeconds = (int) DB::table('lesson_progress')
             ->where('enrollment_id', $enrollment->enrollment_id)
             ->whereIn('lesson_id', function ($query) use ($enrollment) {
-                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id);
+                $query->select('id')->from('lessons')->where('course_id', $enrollment->course_id)->where('status', 'published');
             })
             ->sum('learning_duration_seconds');
 

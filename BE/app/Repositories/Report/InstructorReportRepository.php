@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Repositories\Report;
-use Illuminate\Support\Facades\DB;
+
 use App\Models\Course;
+use Illuminate\Support\Facades\DB;
+
 class InstructorReportRepository
 {
     public function getCompletionRates(array $filters, $user)
@@ -10,6 +13,7 @@ class InstructorReportRepository
             ->select('courses.id', 'courses.title')
             ->selectRaw('COUNT(enrollments.id) as total_enrollments')
             ->selectRaw('SUM(CASE WHEN enrollments.status = "completed" THEN 1 ELSE 0 END) as completed_enrollments')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM lesson_progress WHERE lesson_progress.enrollment_id = enrollments.id) THEN enrollments.id ELSE NULL END) as started_enrollments')
             ->selectRaw('IFNULL(AVG(enrollments.progress_percent), 0) as avg_progress')
             ->leftJoin('enrollments', function ($join) use ($filters) {
                 $join->on('courses.id', '=', 'enrollments.course_id');
@@ -27,13 +31,17 @@ class InstructorReportRepository
                 }
             })
             ->groupBy('courses.id', 'courses.title');
+
         if ($user->role === 'instructor') {
             $query->where('courses.instructor_id', $user->id);
         }
+
         if (!empty($filters['course_id'])) {
             $query->where('courses.id', $filters['course_id']);
         }
-        $perPage = $filters['per_page'] ?? 15;
+
+        $perPage = max(1, (int) ($filters['per_page'] ?? 15));
+
         return $query->paginate($perPage);
     }
 }

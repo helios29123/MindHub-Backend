@@ -38,14 +38,11 @@ final class WatermarkInfoService
     }
     private function hasEnrollment(int $learnerId, int $courseId): bool
     {
-        $query = DB::table('enrollments')
+        return DB::table('enrollments')
             ->where('user_id', $learnerId)
             ->where('course_id', $courseId)
-            ->whereIn('status', ['active', 'completed']);
-        if (Schema::hasColumn('enrollments', 'deleted_at')) {
-            $query;
-        }
-        return $query->exists();
+            ->whereIn('status', ['active', 'completed'])
+            ->exists();
     }
     private function maskEmail(string $email): string
     {

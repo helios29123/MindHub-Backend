@@ -8,12 +8,9 @@ use Illuminate\Support\Str;
 
 class AccessTokenService
 {
-    private const ACCESS_TOKEN_EXPIRES_MINUTES = 60 * 24 * 365; // 365 days
-    private const REFRESH_TOKEN_EXPIRES_DAYS = 365; // 365 days
-
     private function getAccessTokenExpiresMinutes(): int
     {
-        return (int) env('ACCESS_TOKEN_EXPIRES_MINUTES', 10080);
+        return (int) config('auth.access_token_expires_minutes', 10080);
     }
 
     public function createAccessToken(int $userId, int $sessionId): array
@@ -41,11 +38,12 @@ class AccessTokenService
     public function createRefreshToken(): array
     {
         $plainRefreshToken = Str::random(80);
+        $expiresDays = (int) config('auth.refresh_token_expires_days', 365);
 
         return [
             'token' => $plainRefreshToken,
             'token_hash' => hash('sha256', $plainRefreshToken),
-            'expires_at' => now()->addDays(self::REFRESH_TOKEN_EXPIRES_DAYS),
+            'expires_at' => now()->addDays($expiresDays),
         ];
     }
 

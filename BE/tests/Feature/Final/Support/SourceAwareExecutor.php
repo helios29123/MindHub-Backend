@@ -504,7 +504,7 @@ final class SourceAwareExecutor
             case 'G3-057':
                 $o=$t->paidOrder($t->learner(),$t->course(),$t->rule());$t->enrollment($o);self::expectQueryFailure($t,fn()=>$t->enrollment($o)); return;
             case 'G3-060':
-                $t->assertSame(10000,(int)config('coupon.minimum_payable_amount')); return;
+                $t->assertSame(10000,(int)config('order.minimum_payable_amount')); return;
             case 'G3-062':
                 $o=$t->order($t->learner(),$t->course(),$t->rule(),['amount'=>10000]);$t->assertSame('10000.00',$o->amount); return;
             case 'G3-063':
@@ -1096,7 +1096,7 @@ final class SourceAwareExecutor
             case 'G8-014':
                 $c=$t->course();$t->kyVongNgoaiLe(BusinessException::class);$pricing->validateDiscount($c,['discount_type'=>'fixed','discount_value'=>100000,'max_discount_amount'=>50000]); return;
             case 'G8-015': case 'G8-016': case 'G8-017':
-                $t->assertSame(10000,(int)config('coupon.minimum_payable_amount'));return;
+                $t->assertSame(10000,(int)config('order.minimum_payable_amount'));return;
             case 'G8-018':
                 $cp=$t->coupon($t->course(),['status'=>'scheduled','start_at'=>now()->subSecond()]);$t->assertTrue($pricing->isEffective($cp)); return;
             case 'G8-019':
@@ -1331,7 +1331,7 @@ final class SourceAwareExecutor
             case 'G8-014':
                 $c=$t->course();$t->kyVongNgoaiLe(BusinessException::class);$pricing->validateDiscount($c,['discount_type'=>'fixed','discount_value'=>100000,'max_discount_amount'=>50000]); return;
             case 'G8-015': case 'G8-016': case 'G8-017':
-                $t->assertSame(10000,(int)config('coupon.minimum_payable_amount'));return;
+                $t->assertSame(10000,(int)config('order.minimum_payable_amount'));return;
             case 'G8-018':
                 $cp=$t->coupon($t->course(),['status'=>'scheduled','start_at'=>now()->subSecond()]);$t->assertTrue($pricing->isEffective($cp)); return;
             case 'G8-019':

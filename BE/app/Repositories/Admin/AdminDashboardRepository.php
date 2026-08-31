@@ -28,6 +28,18 @@ final class AdminDashboardRepository
     }
     public function sourceBreakdown(): array
     {
-        return Revenue::query()->select('sale_channel', DB::raw('COUNT(*) as total_orders'), DB::raw('SUM(gross_amount) as gross_amount'), DB::raw('SUM(instructor_amount) as instructor_amount'), DB::raw('SUM(platform_fee_amount) as platform_fee_amount'))->groupBy('sale_channel')->get()->toArray();
+        $totals = Revenue::query()
+            ->selectRaw('COUNT(*) as total_orders, COALESCE(SUM(gross_amount), 0) as gross_amount, COALESCE(SUM(instructor_amount), 0) as instructor_amount, COALESCE(SUM(platform_fee_amount), 0) as platform_fee_amount')
+            ->first();
+
+        return [
+            [
+                'sale_channel' => 'marketplace',
+                'total_orders' => (int) ($totals->total_orders ?? 0),
+                'gross_amount' => (float) ($totals->gross_amount ?? 0),
+                'instructor_amount' => (float) ($totals->instructor_amount ?? 0),
+                'platform_fee_amount' => (float) ($totals->platform_fee_amount ?? 0),
+            ]
+        ];
     }
 }

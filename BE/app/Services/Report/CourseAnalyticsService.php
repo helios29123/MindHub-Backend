@@ -2,6 +2,7 @@
 
 namespace App\Services\Report;
 
+use App\Exceptions\BusinessException;
 use App\Repositories\Report\CourseAnalyticsRepository;
 
 class CourseAnalyticsService
@@ -16,36 +17,21 @@ class CourseAnalyticsService
         $course = $this->repository->getCourseForInstructor($courseId, $instructorId);
 
         if (!$course) {
-            throw new \App\Exceptions\BusinessException('Không tìm thấy khóa học.', 404);
-        }
-
-        if ((int) $course->instructor_id !== $instructorId) {
-            throw new \App\Exceptions\BusinessException('Bạn không có quyền xem báo cáo khóa học này.', 403);
+            throw new BusinessException('Không tìm thấy khóa học hoặc bạn không có quyền truy cập.', 404);
         }
 
         $fromDate = $filters['from_date'] ?? null;
         $toDate = $filters['to_date'] ?? null;
 
         $enrollmentMetrics = $this->repository->getEnrollmentMetrics($courseId, $fromDate, $toDate);
-        $quizMetrics = $this->repository->getQuizMetrics($courseId, $fromDate, $toDate);
-        
-        // Wrap revenue in try catch just in case tables differ
-        $revenueMetrics = null;
-        try {
-            $revenueMetrics = $this->repository->getRevenueMetrics($courseId, $fromDate, $toDate);
-        } catch (\Exception $e) {
-            $revenueMetrics = (object) ['instructor_amount' => 0];
-        }
-
+        $revenueMetrics = $this->repository->getRevenueMetrics($courseId, $fromDate, $toDate);
         $reviewMetrics = $this->repository->getReviewMetrics($courseId, $fromDate, $toDate);
 
-        $completionRate = $enrollmentMetrics->total > 0 
-            ? round(($enrollmentMetrics->completed / $enrollmentMetrics->total) * 100, 2) 
-            : 0;
-
-        $quizPassRate = $quizMetrics->total_attempts > 0 
-            ? round(($quizMetrics->passed_count / $quizMetrics->total_attempts) * 100, 2) 
-            : 0;
+        // Completion Rate formula: completed / started learning * 100
+        $startedCount = $enrollmentMetrics->started ?? 0;
+        $completionRate = $startedCount > 0
+            ? round(($enrollmentMetrics->completed / $startedCount) * 100, 2)
+            : 0.0;
 
         return [
             'course' => [
@@ -55,18 +41,17 @@ class CourseAnalyticsService
                 'status' => $course->status,
             ],
             'learning' => [
-                'enrollment_count' => $enrollmentMetrics->total,
-                'completed_enrollment_count' => $enrollmentMetrics->completed,
-                'completion_rate' => $completionRate,
-                'average_progress' => $enrollmentMetrics->avg_progress,
+                'enrollment_count' => (int) $enrollmentMetrics->total,
+                'completed_enrollment_count' => (int) $enrollmentMetrics->completed,
+                'completion_rate' => (float) $completionRate,
+                'average_progress' => (float) $enrollmentMetrics->avg_progress,
             ],
-
             'revenue' => [
-                'instructor_amount' => $revenueMetrics->instructor_amount,
+                'instructor_amount' => (float) $revenueMetrics->instructor_amount,
             ],
             'review' => [
-                'average_rating' => $reviewMetrics->avg_rating,
-                'review_count' => $reviewMetrics->total,
+                'average_rating' => (float) $reviewMetrics->avg_rating,
+                'review_count' => (int) $reviewMetrics->total,
             ],
         ];
     }
