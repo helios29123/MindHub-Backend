@@ -51,11 +51,21 @@ class CatalogService
             ->limit(4)
             ->get();
 
+        $totalStudents = \App\Models\CourseEnrollment::query()->distinct('user_id')->count('user_id');
+        if ($totalStudents === 0) {
+            $totalStudents = \App\Models\User::query()->where('role', 'learner')->count();
+        }
+
+        $totalFiveStarReviews = \App\Models\CourseReview::query()->where('rating', 5)->count();
+        $totalReviews = \App\Models\CourseReview::query()->count();
+
         $stats = [
             'total_courses' => \App\Models\Course::query()->where('status', 'published')->count(),
-            'total_students' => \App\Models\User::query()->where('role', 'learner')->count(),
+            'total_students' => $totalStudents,
             'total_instructors' => \App\Models\User::query()->where('role', 'instructor')->count(),
-            'total_reviews' => \App\Models\CourseReview::query()->count(),
+            'total_reviews' => $totalFiveStarReviews > 0 ? $totalFiveStarReviews : $totalReviews,
+            'total_5_star_reviews' => $totalFiveStarReviews,
+            'total_all_reviews' => $totalReviews,
         ];
 
         return [
