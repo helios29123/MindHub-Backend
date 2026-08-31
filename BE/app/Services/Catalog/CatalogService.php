@@ -51,7 +51,7 @@ class CatalogService
             ->limit(4)
             ->get();
 
-        $totalStudents = \App\Models\CourseEnrollment::query()->distinct('user_id')->count('user_id');
+        $totalStudents = \App\Models\Enrollment::query()->distinct('user_id')->count('user_id');
         if ($totalStudents === 0) {
             $totalStudents = \App\Models\User::query()->where('role', 'learner')->count();
         }
