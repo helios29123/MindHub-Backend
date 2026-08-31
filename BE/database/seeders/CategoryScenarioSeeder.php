@@ -32,8 +32,8 @@ final class CategoryScenarioSeeder extends Seeder
                     ['slug' => $slug],
                     [
                         'parent_id' => null,
-                        'name' => 'TEST CATEGORY - ' . $label,
-                        'description' => 'Dữ liệu kiểm thử trang quản lý danh mục. Có thể chạy lại seeder an toàn.',
+                        'name' => $label,
+                        'description' => 'Chủ đề đào tạo: ' . $label,
                         'sort_order' => $rootKeys[$index] ?? 'z',
                         'status' => $status,
                         'created_at' => $now,
@@ -79,8 +79,8 @@ final class CategoryScenarioSeeder extends Seeder
                     ['slug' => 'test-category-child-' . $slugPart],
                     [
                         'parent_id' => $rootIds[$parentKey],
-                        'name' => 'TEST CATEGORY - ' . $label,
-                        'description' => 'Danh mục con phục vụ filter, phân trang và kéo thả.',
+                        'name' => $label,
+                        'description' => 'Danh mục con chuyên môn: ' . $label,
                         'sort_order' => $sortVal,
                         'status' => $status,
                         'created_at' => $now,

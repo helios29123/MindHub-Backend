@@ -14,27 +14,27 @@ class CatalogCategoriesSeeder extends Seeder
 
         $this->upsert([
             'parent_id' => null,
-            'name' => 'CATEGORY_ACTIVE Programming',
+            'name' => 'Lập trình Web & Phần mềm',
             'slug' => 'cat-category-active-programming',
-            'description' => 'Danh mục lập trình active.',
+            'description' => 'Khóa học lập trình Fullstack, Frontend, Backend với các công nghệ hiện đại.',
             'sort_order' => 1,
             'status' => 'active',
         ], $now);
 
         $this->upsert([
             'parent_id' => null,
-            'name' => 'CATEGORY_ACTIVE Design',
+            'name' => 'Thiết kế UI/UX & Đồ họa',
             'slug' => 'cat-category-active-design',
-            'description' => 'Danh mục design active.',
+            'description' => 'Thiết kế giao diện người dùng, trải nghiệm người dùng với Figma và Design System.',
             'sort_order' => 2,
             'status' => 'active',
         ], $now);
 
         $this->upsert([
             'parent_id' => null,
-            'name' => 'CATEGORY_ACTIVE Marketing',
+            'name' => 'Digital Marketing & Kinh doanh',
             'slug' => 'cat-category-active-marketing',
-            'description' => 'Danh mục marketing active.',
+            'description' => 'Chiến lược tiếp thị số, SEO, quảng cáo đa kênh và phát triển thương hiệu.',
             'sort_order' => 3,
             'status' => 'active',
         ], $now);
@@ -45,36 +45,36 @@ class CatalogCategoriesSeeder extends Seeder
 
         $this->upsert([
             'parent_id' => $programmingId,
-            'name' => 'CATEGORY_ACTIVE Laravel Child',
+            'name' => 'Khóa học Laravel Framework',
             'slug' => 'cat-category-active-laravel-child',
-            'description' => 'Danh mục con Laravel active.',
+            'description' => 'Xây dựng ứng dụng Restful API, kiến trúc đa tầng với Laravel Framework.',
             'sort_order' => 1,
             'status' => 'active',
         ], $now);
 
         $this->upsert([
             'parent_id' => $programmingId,
-            'name' => 'CATEGORY_ACTIVE PHP Child',
+            'name' => 'Lập trình PHP & Cơ sở dữ liệu',
             'slug' => 'cat-category-active-php-child',
-            'description' => 'Danh mục con PHP active.',
+            'description' => 'Nền tảng ngôn ngữ PHP, lập trình hướng đối tượng OOP và tối ưu hóa MySQL.',
             'sort_order' => 2,
             'status' => 'active',
         ], $now);
 
         $this->upsert([
             'parent_id' => null,
-            'name' => 'CATEGORY_INACTIVE Hidden',
+            'name' => 'Danh mục nội bộ',
             'slug' => 'cat-category-inactive-hidden',
-            'description' => 'Danh mục inactive, không nên public.',
+            'description' => 'Danh mục thử nghiệm nội bộ, không public.',
             'sort_order' => 4,
             'status' => 'inactive',
         ], $now);
 
         $this->upsert([
             'parent_id' => null,
-            'name' => 'CATEGORY_ACTIVE Soft Deleted Not Public',
+            'name' => 'Danh mục lưu trữ',
             'slug' => 'cat-category-active-soft-deleted',
-            'description' => 'Danh mục active nhưng soft deleted.',
+            'description' => 'Danh mục đã lưu trữ.',
             'sort_order' => 5,
             'status' => 'active',
         ], $now);
