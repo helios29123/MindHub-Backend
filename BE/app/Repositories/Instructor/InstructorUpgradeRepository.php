@@ -179,23 +179,23 @@ class InstructorUpgradeRepository
             return 'none';
         }
 
-        if ($user->role === 'instructor' && $payout?->status === 'verified') {
-            return 'approved';
-        }
-
-        if ($profile && $payout?->status === 'pending_verification') {
-            return 'pending';
-        }
-
-        if ($profile && $payout?->status === 'disabled') {
+        if ($payout?->status === 'disabled') {
             return 'rejected';
         }
 
-        if ($profile && ! $payout) {
-            return 'missing_payout';
+        if ($user->role === 'instructor' && $user->status === 'active' && ($payout?->status === 'verified' || ! $payout)) {
+            return 'approved';
         }
 
-        return 'unknown';
+        if ($payout?->status === 'pending_verification') {
+            return 'pending';
+        }
+
+        if ($profile && ($user->status !== 'active' || $user->role === 'learner' || ! $payout)) {
+            return 'pending';
+        }
+
+        return 'pending';
     }
 
     private function buildReviewNote(User $user, ?InstructorProfile $profile, ?PayoutAccount $payout): ?string

@@ -192,8 +192,24 @@ class InstructorUpgradeService
             ->leftJoin('payout_accounts as pa', 'pa.id', '=', 'latest_pa.payout_id');
 
         $total = (clone $baseQuery)->count();
-        $pending = (clone $baseQuery)->where('pa.status', 'pending_verification')->count();
-        $approved = (clone $baseQuery)->where('u.role', 'instructor')->where('pa.status', 'verified')->count();
+        $pending = (clone $baseQuery)->where(function ($builder): void {
+            $builder->where('pa.status', 'pending_verification')
+                    ->orWhere(function ($sub): void {
+                        $sub->where('u.status', '!=', 'active')
+                            ->where(function ($pSub): void {
+                                $pSub->whereNull('pa.status')
+                                     ->orWhere('pa.status', '!=', 'disabled');
+                            });
+                    });
+        })->count();
+
+        $approved = (clone $baseQuery)->where('u.role', 'instructor')
+            ->where('u.status', 'active')
+            ->where(function ($builder): void {
+                $builder->where('pa.status', 'verified')
+                        ->orWhereNull('pa.id');
+            })->count();
+
         $rejected = (clone $baseQuery)->where('pa.status', 'disabled')->count();
 
         $summary = [
@@ -222,9 +238,23 @@ class InstructorUpgradeService
         if (!empty($queryParams['status'])) {
             $st = $queryParams['status'];
             if ($st === 'pending') {
-                $query->where('pa.status', 'pending_verification');
+                $query->where(function ($builder): void {
+                    $builder->where('pa.status', 'pending_verification')
+                            ->orWhere(function ($sub): void {
+                                $sub->where('u.status', '!=', 'active')
+                                    ->where(function ($pSub): void {
+                                        $pSub->whereNull('pa.status')
+                                             ->orWhere('pa.status', '!=', 'disabled');
+                                    });
+                            });
+                });
             } elseif ($st === 'approved') {
-                $query->where('u.role', 'instructor')->where('pa.status', 'verified');
+                $query->where('u.role', 'instructor')
+                      ->where('u.status', 'active')
+                      ->where(function ($builder): void {
+                          $builder->where('pa.status', 'verified')
+                                  ->orWhereNull('pa.id');
+                      });
             } elseif ($st === 'rejected') {
                 $query->where('pa.status', 'disabled');
             }
@@ -323,13 +353,13 @@ class InstructorUpgradeService
             ->appends($queryParams);
 
         $mappedItems = collect($paginator->items())->map(function ($row) {
-            $status = 'unknown';
-            if ($row->role === 'instructor' && $row->payout_status === 'verified') {
-                $status = 'approved';
-            } elseif ($row->payout_status === 'pending_verification') {
-                $status = 'pending';
-            } elseif ($row->payout_status === 'disabled') {
+            $status = 'pending';
+            if ($row->payout_status === 'disabled') {
                 $status = 'rejected';
+            } elseif ($row->role === 'instructor' && $row->user_status === 'active' && ($row->payout_status === 'verified' || ! $row->payout_id)) {
+                $status = 'approved';
+            } elseif ($row->payout_status === 'pending_verification' || $row->user_status !== 'active' || $row->role === 'learner') {
+                $status = 'pending';
             }
 
             $isResubmission = false;
@@ -413,16 +443,8 @@ class InstructorUpgradeService
 
         $pendingPayout = $this->instructorUpgradeRepository->findPendingPayoutByUserId($userId);
 
-        if (! $pendingPayout) {
-            throw new BusinessException('Tài khoản chưa có yêu cầu payout đang chờ duyệt.', 400);
-        }
-
         if ($user->role !== 'learner' && $user->role !== 'instructor') {
             throw new BusinessException('Chỉ tài khoản learner hoặc instructor mới có thể phê duyệt hồ sơ.', 400);
-        }
-
-        if ($user->status !== 'active' || ! $user->email_verified_at) {
-            throw new BusinessException('Tài khoản chưa active hoặc chưa xác thực email.', 400);
         }
 
         $profile = $this->instructorUpgradeRepository->findProfileByUserId($userId);
@@ -432,18 +454,19 @@ class InstructorUpgradeService
         }
 
         DB::transaction(function () use ($user, $pendingPayout) {
-            if ($user->role === 'learner') {
-                $this->instructorUpgradeRepository->updateUser($user, [
-                    'role' => 'instructor',
+            $this->instructorUpgradeRepository->updateUser($user, [
+                'role' => 'instructor',
+                'status' => 'active',
+            ]);
+
+            if ($pendingPayout) {
+                $this->instructorUpgradeRepository->updatePayout($pendingPayout, [
+                    'status' => 'verified',
+                    'is_default' => true,
+                    'verified_at' => now(),
+                    'disabled_at' => null,
                 ]);
             }
-
-            $this->instructorUpgradeRepository->updatePayout($pendingPayout, [
-                'status' => 'verified',
-                'is_default' => true,
-                'verified_at' => now(),
-                'disabled_at' => null,
-            ]);
         });
 
         // Gửi thông báo chúc mừng tới User
