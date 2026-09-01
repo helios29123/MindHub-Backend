@@ -135,15 +135,22 @@ class AuthController extends Controller
         ]);
 
         $channel = $request->input('channel', 'email');
+        $email = $request->input('email');
+        $phone = $request->input('phone');
         $identifier = ($channel === 'sms' || $channel === 'phone')
-            ? ($request->input('phone') ?: $request->input('email'))
-            : ($request->input('email') ?: $request->input('phone'));
+            ? ($phone ?: $email)
+            : ($email ?: $phone);
 
         if (empty($identifier)) {
             return ApiResponse::error('Vui lòng cung cấp thông tin liên hệ để gửi mã OTP.', [], 422);
         }
 
-        $result = $this->authService->resendVerifyOtp((string) $identifier, $channel);
+        $result = $this->authService->resendVerifyOtp(
+            (string) $identifier,
+            (string) $channel,
+            $email ? (string) $email : null,
+            $phone ? (string) $phone : null
+        );
 
         $msg = ($channel === 'sms' || $channel === 'phone')
             ? 'Mã OTP xác thực đã được gửi tới số điện thoại của bạn qua tin nhắn SMS.'
