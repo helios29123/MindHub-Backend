@@ -340,6 +340,16 @@ class AdminController extends Controller
         );
     }
 
+    public function bulkUserAction(\App\Http\Requests\Admin\BulkUserActionRequest $request): JsonResponse
+    {
+        $result = $this->adminService->bulkUserAction($request->validated(), $request->user()->id);
+        return ApiResponse::success(
+            $result,
+            $result['message'] ?? 'Thao tác hàng loạt thành công.',
+            200
+        );
+    }
+
     public function roles(): JsonResponse
     {
         return ApiResponse::error(

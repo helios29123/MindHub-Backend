@@ -120,6 +120,8 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
 
         Route::post('/users', [AdminController::class, 'storeUser']);
 
+        Route::post('/users/bulk-action', [AdminController::class, 'bulkUserAction']);
+
         Route::get('/users/{id}', [AdminController::class, 'showUser'])
             ->whereNumber('id');
 

@@ -749,4 +749,107 @@ class AdminService
             }
         });
     }
+
+    public function bulkUserAction(array $data, int $currentAdminId): array
+    {
+        $action = $data['action'];
+        $userIds = array_unique(array_map('intval', $data['user_ids']));
+
+        // Exclude current admin ID from any dangerous operations
+        $sanitizedIds = array_values(array_filter($userIds, fn ($id) => $id !== $currentAdminId));
+
+        if (empty($sanitizedIds)) {
+            throw new BusinessException('Không có tài khoản hợp lệ để thực hiện thao tác (không thể thao tác trên tài khoản của chính mình).', 422);
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($action, $sanitizedIds, $data, $userIds, $currentAdminId): array {
+            $query = \App\Models\User::whereIn('id', $sanitizedIds);
+
+            if ($action === 'lock') {
+                // Only lock users who are NOT currently locked
+                $eligibleUsers = (clone $query)->where(function ($q) {
+                    $q->where('locked', false)->where('status', '!=', 'locked');
+                })->get();
+
+                $eligibleCount = $eligibleUsers->count();
+                $skippedCount = count($userIds) - $eligibleCount;
+
+                if ($eligibleCount > 0) {
+                    $reason = $data['locked_reason'] ?? 'Khóa hàng loạt bởi Quản trị viên';
+                    \App\Models\User::whereIn('id', $eligibleUsers->pluck('id'))
+                        ->update([
+                            'status' => 'locked',
+                            'locked' => true,
+                            'locked_reason' => $reason,
+                        ]);
+                }
+
+                return [
+                    'action' => 'lock',
+                    'updated_count' => $eligibleCount,
+                    'skipped_count' => $skippedCount,
+                    'message' => $eligibleCount > 0 
+                        ? "Đã khóa thành công {$eligibleCount} tài khoản." . ($skippedCount > 0 ? " (Bỏ qua {$skippedCount} tài khoản)" : '')
+                        : 'Không có tài khoản nào đủ điều kiện để khóa (các tài khoản đã ở trạng thái khóa).',
+                ];
+            }
+
+            if ($action === 'unlock') {
+                // Only unlock users who ARE currently locked
+                $eligibleUsers = (clone $query)->where(function ($q) {
+                    $q->where('locked', true)->orWhere('status', 'locked');
+                })->get();
+
+                $eligibleCount = $eligibleUsers->count();
+                $skippedCount = count($userIds) - $eligibleCount;
+
+                if ($eligibleCount > 0) {
+                    \App\Models\User::whereIn('id', $eligibleUsers->pluck('id'))
+                        ->update([
+                            'status' => 'active',
+                            'locked' => false,
+                            'locked_reason' => null,
+                        ]);
+                }
+
+                return [
+                    'action' => 'unlock',
+                    'updated_count' => $eligibleCount,
+                    'skipped_count' => $skippedCount,
+                    'message' => $eligibleCount > 0 
+                        ? "Đã mở khóa thành công {$eligibleCount} tài khoản." . ($skippedCount > 0 ? " (Bỏ qua {$skippedCount} tài khoản)" : '')
+                        : 'Không có tài khoản nào đủ điều kiện để mở khóa (các tài khoản đang hoạt động bình thường).',
+                ];
+            }
+
+            if ($action === 'activate') {
+                // Activate users who are inactive
+                $eligibleUsers = (clone $query)->where('status', '!=', 'active')->get();
+
+                $eligibleCount = $eligibleUsers->count();
+                $skippedCount = count($userIds) - $eligibleCount;
+
+                if ($eligibleCount > 0) {
+                    \App\Models\User::whereIn('id', $eligibleUsers->pluck('id'))
+                        ->update([
+                            'status' => 'active',
+                            'locked' => false,
+                            'locked_reason' => null,
+                        ]);
+                }
+
+                return [
+                    'action' => 'activate',
+                    'updated_count' => $eligibleCount,
+                    'skipped_count' => $skippedCount,
+                    'message' => $eligibleCount > 0 
+                        ? "Đã kích hoạt thành công {$eligibleCount} tài khoản." . ($skippedCount > 0 ? " (Bỏ qua {$skippedCount} tài khoản)" : '')
+                        : 'Không có tài khoản nào cần kích hoạt.',
+                ];
+            }
+
+            throw new BusinessException('Hành động xử lý không hợp lệ.', 422);
+        });
+    }
 }
+
