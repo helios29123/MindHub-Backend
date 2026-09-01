@@ -135,6 +135,43 @@ class UserSeeder extends Seeder
             ]
         );
 
+        User::updateOrCreate(
+            ['email' => 'admin@mindhub.test'],
+            [
+                'full_name' => 'Administrator MindHub',
+                'password_hash' => Hash::make('12345678'),
+                'phone' => '0901234560',
+                'role' => User::ROLE_ADMIN,
+                'status' => User::STATUS_ACTIVE,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+                'locked' => false,
+                'locked_reason' => null,
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'dominhdang3010@gmail.com'],
+            [
+                'full_name' => 'Đỗ Minh Đăng (Admin)',
+                'password_hash' => Hash::make('12345678'),
+                'phone' => '0901234561',
+                'role' => User::ROLE_ADMIN,
+                'status' => User::STATUS_ACTIVE,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+                'locked' => false,
+                'locked_reason' => null,
+            ]
+        );
+
+        User::where('email', 'dangdominh303@gmail.com')->update([
+            'role' => User::ROLE_ADMIN,
+            'status' => User::STATUS_ACTIVE,
+            'password_hash' => Hash::make('12345678'),
+            'email_verified_at' => now(),
+        ]);
+
         $testInstructor = User::updateOrCreate(
             ['email' => 'instructor@test.com'],
             [
