@@ -12,11 +12,12 @@ class InstructorUpgradeTestSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Target Learner -> Pending Verification
+        // 1. Target Learner -> Pending Verification (Nộp lại hồ sơ)
         $user1 = User::firstOrNew(['email' => 'dangdominh303@gmail.com']);
         $user1->full_name = 'Đặng Đỗ Minh';
         $user1->role = 'learner';
         $user1->status = 'active';
+        $user1->avatar_url = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
         $user1->email_verified_at = $user1->email_verified_at ?? now();
         if (empty($user1->phone)) {
             $user1->phone = '0981112233';
@@ -26,15 +27,19 @@ class InstructorUpgradeTestSeeder extends Seeder
         }
         $user1->save();
 
-        InstructorProfile::updateOrCreate(
+        $profile1 = InstructorProfile::updateOrCreate(
             ['user_id' => $user1->id],
             [
-                'bio' => 'Kỹ sư phần mềm với hơn 4 năm kinh nghiệm phát triển hệ thống web Fullstack và Cloud. Đam mê chia sẻ kiến thức thực chiến về React, Laravel và CI/CD.',
+                'bio' => 'Kỹ sư phần mềm với hơn 5 năm kinh nghiệm phát triển hệ thống web Fullstack và Cloud. Đam mê chia sẻ kiến thức thực chiến về React, Laravel và CI/CD.',
                 'expertise' => 'Lập trình Web Fullstack (Laravel, React, NodeJS)',
-                'experience_years' => 4,
-                'instructor_rank' => 'silver',
+                'experience_years' => 5,
+                'instructor_rank' => 'diamond',
             ]
         );
+        // Set created_at earlier than updated_at to simulate a resubmitted application
+        $profile1->created_at = now()->subDays(5);
+        $profile1->updated_at = now();
+        $profile1->save();
 
         PayoutAccount::updateOrCreate(
             [

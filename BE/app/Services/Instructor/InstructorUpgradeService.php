@@ -34,7 +34,8 @@ class InstructorUpgradeService
         }
 
         if ($profile && $payout?->status === 'disabled') {
-            throw new BusinessException('Yêu cầu trước đó đã bị từ chối. Vui lòng dùng API cập nhật để gửi lại.', 409);
+            // Tự động gọi sang update để nộp lại hồ sơ mà không chặn lỗi 409
+            return $this->update($user, $data);
         }
 
         if ($profile || $payout) {
@@ -144,6 +145,30 @@ class InstructorUpgradeService
                 'disabled_at' => null,
             ]);
         });
+
+        // Send Email & Notification to Admin for Resubmission
+        try {
+            $adminEmail = config('mail.admin_address', 'dominhdang3010@gmail.com');
+            \Illuminate\Support\Facades\Mail::to($adminEmail)->send(
+                new \App\Mail\InstructorUpgradeRequestedMail($user, $data)
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to send admin instructor upgrade resubmission email: ' . $e->getMessage());
+        }
+
+        try {
+            $adminUsers = User::where('role', 'admin')->get();
+            foreach ($adminUsers as $admin) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'type' => 'instructor_upgrade_request',
+                    'title' => 'Học viên nộp lại hồ sơ Giảng viên',
+                    'message' => "Học viên {$user->full_name} ({$user->email}) đã cập nhật và nộp lại hồ sơ đăng ký Giảng viên.",
+                    'action_url' => '/admin/instructor-upgrades',
+                    'channel' => 'web',
+                ]);
+            }
+        } catch (\Throwable $e) {}
 
         return $this->instructorUpgradeRepository->buildApplicationData((int) $user->id);
     }
@@ -285,6 +310,7 @@ class InstructorUpgradeService
                 'ip.experience_years',
                 'ip.instructor_rank as level',
                 'ip.created_at as submitted_at',
+                'ip.updated_at as profile_updated_at',
                 'pa.id as payout_id',
                 'pa.provider',
                 'pa.account_number',
@@ -306,11 +332,17 @@ class InstructorUpgradeService
                 $status = 'rejected';
             }
 
+            $isResubmission = false;
+            if ($status === 'pending' && !empty($row->profile_updated_at) && !empty($row->submitted_at)) {
+                $isResubmission = \Carbon\Carbon::parse($row->profile_updated_at)->gt(\Carbon\Carbon::parse($row->submitted_at)->addSeconds(5));
+            }
+
             return [
                 'application_status' => $status,
+                'is_resubmission' => $isResubmission,
                 'submitted_at' => $row->submitted_at ? \Carbon\Carbon::parse($row->submitted_at)->toISOString() : null,
                 'reviewed_at' => ($status === 'approved' && $row->connected_at) ? \Carbon\Carbon::parse($row->connected_at)->toISOString() : (($status === 'rejected' && $row->disabled_at) ? \Carbon\Carbon::parse($row->disabled_at)->toISOString() : null),
-                'review_note' => $status === 'approved' ? 'Tài khoản đã được nâng cấp thành giảng viên.' : ($status === 'rejected' ? 'Yêu cầu đã bị từ chối.' : 'Yêu cầu đang chờ admin duyệt.'),
+                'review_note' => $status === 'approved' ? 'Tài khoản đã được nâng cấp thành giảng viên.' : ($status === 'rejected' ? 'Yêu cầu đã bị từ chối.' : ($isResubmission ? 'Học viên đã cập nhật và nộp lại hồ sơ.' : 'Yêu cầu đang chờ admin duyệt.')),
 
                 'user' => [
                     'id' => $row->user_id,

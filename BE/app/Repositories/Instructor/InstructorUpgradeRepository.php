@@ -125,9 +125,16 @@ class InstructorUpgradeRepository
         $profile = $this->findProfileByUserId($userId);
         $payout = $this->findLatestPayoutByUserId($userId);
 
+        $isResubmission = false;
+        if ($profile && $payout && $payout->status === 'pending_verification' && $profile->updated_at && $profile->created_at) {
+            $isResubmission = $profile->updated_at->gt($profile->created_at->addSeconds(5));
+        }
+
         return [
             'application_status' => $this->determineApplicationStatus($user, $profile, $payout),
+            'is_resubmission' => $isResubmission,
             'submitted_at' => $profile?->created_at?->toISOString(),
+            'reviewed_at' => $payout?->verified_at?->toISOString() ?? $payout?->disabled_at?->toISOString() ?? null,
             'review_note' => $this->buildReviewNote($user, $profile, $payout),
 
             'user' => [

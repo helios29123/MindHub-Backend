@@ -11,7 +11,9 @@ class InstructorUpgradeRequestResource extends JsonResource
     {
         return [
             'application_status' => $this->resource['application_status'] ?? null,
+            'is_resubmission' => (bool) ($this->resource['is_resubmission'] ?? false),
             'submitted_at' => $this->resource['submitted_at'] ?? null,
+            'reviewed_at' => $this->resource['reviewed_at'] ?? null,
             'review_note' => $this->resource['review_note'] ?? null,
 
             'user' => $this->resource['user'] ?? null,

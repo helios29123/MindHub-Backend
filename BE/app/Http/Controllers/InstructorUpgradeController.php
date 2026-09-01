@@ -91,7 +91,11 @@ class InstructorUpgradeController extends Controller
     public function reject(Request $request, int $userId): JsonResponse
     {
         $reason = $request->input('reason') ?? $request->input('rejection_reason');
-        $application = $this->instructorUpgradeService->reject($userId, is_string($reason) ? trim($reason) : null);
+        if (empty($reason) || ! is_string($reason) || trim($reason) === '') {
+            throw new \App\Exceptions\BusinessException('Vui lòng nhập lý do từ chối yêu cầu.', 422);
+        }
+
+        $application = $this->instructorUpgradeService->reject($userId, trim($reason));
 
         return ApiResponse::success(
             new InstructorUpgradeRequestResource($application),
