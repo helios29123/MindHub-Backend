@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
+use App\Services\Notification\SpeedSmsService;
+
 class AuthService
 {
     private const PASSWORD_RESET_EXPIRES_MINUTES = 15;
@@ -30,7 +32,8 @@ class AuthService
         private readonly GoogleTokenVerifier $googleTokenVerifier,
         private readonly InstructorProfileRepository $instructorProfileRepository,
         private readonly PayoutAccountRepository $payoutAccountRepository,
-        private readonly OtpService $otpService
+        private readonly OtpService $otpService,
+        private readonly SpeedSmsService $speedSmsService
     ) {}
 
     public function register(array $registerData): array
@@ -232,6 +235,8 @@ class AuthService
         if ($channel === 'sms' || $channel === 'phone') {
             $phoneTarget = $user->phone ?: $fallbackPhone ?: $identifier;
             \Illuminate\Support\Facades\Log::info("SMS OTP sent to {$phoneTarget}: {$otpCode}");
+            // Kích hoạt gửi tin nhắn SMS thật qua SpeedSMS Gateway
+            $this->speedSmsService->sendOtp((string) $phoneTarget, (string) $otpCode);
         } else {
             // Gửi Email OTP
             $verifyUrl = $this->sendVerifyEmail($user, $otpCode);
