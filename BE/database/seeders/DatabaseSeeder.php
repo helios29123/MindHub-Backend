@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             CommissionRuleSeeder::class,
             CatalogCatDatabaseSeeder::class,
             CourseVideoSeeder::class,
+            BannersTableSeeder::class,
         ]);
     }
 }
