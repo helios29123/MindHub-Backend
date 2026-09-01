@@ -49,6 +49,7 @@ class CourseVideoSeeder extends Seeder
             }
 
             $videos = $videosData[$videoGroup];
+            $videos = array_reverse($videos); // Reverse to correct chronological order
 
             // Clear existing sections and lessons if any to avoid duplicates
             // We only do this for the specific course if we re-run the seeder

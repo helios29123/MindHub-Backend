@@ -119,5 +119,59 @@ class UserSeeder extends Seeder
                 'verified_at' => now(),
             ]
         );
+
+        User::updateOrCreate(
+            ['email' => 'admin@test.com'],
+            [
+                'full_name' => 'Test Admin',
+                'password_hash' => Hash::make('12345678'),
+                'phone' => '0901234567',
+                'role' => User::ROLE_ADMIN,
+                'status' => User::STATUS_ACTIVE,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+                'locked' => false,
+                'locked_reason' => null,
+            ]
+        );
+
+        $testInstructor = User::updateOrCreate(
+            ['email' => 'instructor@test.com'],
+            [
+                'full_name' => 'Test Instructor',
+                'password_hash' => Hash::make('12345678'),
+                'phone' => '0901234568',
+                'role' => User::ROLE_INSTRUCTOR,
+                'status' => User::STATUS_ACTIVE,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+                'locked' => false,
+                'locked_reason' => null,
+            ]
+        );
+
+        \App\Models\InstructorProfile::firstOrCreate(
+            ['user_id' => $testInstructor->id],
+            [
+                'bio' => 'Test instructor bio.',
+                'expertise' => 'Test Expertise',
+                'experience_years' => 1,
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'learner@test.com'],
+            [
+                'full_name' => 'Test Learner',
+                'password_hash' => Hash::make('12345678'),
+                'phone' => '0901234569',
+                'role' => User::ROLE_LEARNER,
+                'status' => User::STATUS_ACTIVE,
+                'email_verified_at' => now(),
+                'last_login_at' => null,
+                'locked' => false,
+                'locked_reason' => null,
+            ]
+        );
     }
 }
