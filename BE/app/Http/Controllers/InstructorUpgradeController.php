@@ -88,9 +88,10 @@ class InstructorUpgradeController extends Controller
         );
     }
 
-    public function reject(int $userId): JsonResponse
+    public function reject(Request $request, int $userId): JsonResponse
     {
-        $application = $this->instructorUpgradeService->reject($userId);
+        $reason = $request->input('reason') ?? $request->input('rejection_reason');
+        $application = $this->instructorUpgradeService->reject($userId, is_string($reason) ? trim($reason) : null);
 
         return ApiResponse::success(
             new InstructorUpgradeRequestResource($application),

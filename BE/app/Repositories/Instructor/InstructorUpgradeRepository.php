@@ -83,7 +83,6 @@ class InstructorUpgradeRepository
             ->join('payout_accounts as pa', 'pa.user_id', '=', 'u.id')
             ->where('u.role', 'learner')
             ->where('pa.status', 'pending_verification')
-            
             ->select([
                 'u.id as user_id',
                 'u.full_name',
@@ -95,14 +94,14 @@ class InstructorUpgradeRepository
                 'ip.bio',
                 'ip.expertise',
                 'ip.experience_years',
-                'ip.level',
+                'ip.instructor_rank as level',
                 'ip.created_at as submitted_at',
                 'pa.id as payout_id',
                 'pa.provider',
                 'pa.account_number',
                 'pa.account_name',
                 'pa.status as payout_status',
-                'pa.connected_at',
+                'pa.verified_at as connected_at',
             ])
             ->orderByDesc('ip.created_at')
             ->paginate($perPage);
@@ -144,7 +143,8 @@ class InstructorUpgradeRepository
                 'bio' => $profile->bio,
                 'expertise' => $profile->expertise,
                 'experience_years' => $profile->experience_years,
-                'level' => $profile->level,
+                'level' => $profile->instructor_rank ?? 'bronze',
+                'instructor_rank' => $profile->instructor_rank ?? 'bronze',
                 'created_at' => $profile->created_at,
                 'updated_at' => $profile->updated_at,
             ] : null,
@@ -155,7 +155,9 @@ class InstructorUpgradeRepository
                 'account_number' => $payout->account_number,
                 'account_name' => $payout->account_name,
                 'status' => $payout->status,
-                'connected_at' => $payout->connected_at,
+                'connected_at' => $payout->verified_at,
+                'verified_at' => $payout->verified_at,
+                'disabled_at' => $payout->disabled_at,
                 'created_at' => $payout->created_at,
                 'updated_at' => $payout->updated_at,
             ] : null,
@@ -168,7 +170,7 @@ class InstructorUpgradeRepository
             return 'none';
         }
 
-        if ($user->role === 'instructor' && $payout?->status === 'active') {
+        if ($user->role === 'instructor' && $payout?->status === 'verified') {
             return 'approved';
         }
 
@@ -176,7 +178,7 @@ class InstructorUpgradeRepository
             return 'pending';
         }
 
-        if ($profile && $payout?->status === 'rejected') {
+        if ($profile && $payout?->status === 'disabled') {
             return 'rejected';
         }
 
@@ -197,11 +199,11 @@ class InstructorUpgradeRepository
             return 'Yêu cầu đang chờ admin duyệt.';
         }
 
-        if ($profile && $payout?->status === 'rejected') {
+        if ($profile && $payout?->status === 'disabled') {
             return 'Yêu cầu đã bị từ chối. Bạn có thể cập nhật thông tin và gửi lại.';
         }
 
-        if ($user->role === 'instructor' && $payout?->status === 'active') {
+        if ($user->role === 'instructor' && $payout?->status === 'verified') {
             return 'Tài khoản đã được nâng cấp thành giảng viên.';
         }
 
@@ -229,7 +231,7 @@ class InstructorUpgradeRepository
                 'bio' => $row['bio'],
                 'expertise' => $row['expertise'],
                 'experience_years' => $row['experience_years'],
-                'level' => $row['level'],
+                'level' => $row['level'] ?? 'bronze',
             ],
 
             'payout_account' => [
@@ -238,7 +240,7 @@ class InstructorUpgradeRepository
                 'account_number' => $row['account_number'],
                 'account_name' => $row['account_name'],
                 'status' => $row['payout_status'],
-                'connected_at' => $row['connected_at'],
+                'connected_at' => $row['connected_at'] ?? null,
             ],
         ];
     }

@@ -3,6 +3,7 @@
 namespace App\Services\Instructor;
 
 use App\Exceptions\BusinessException;
+use App\Models\Notification;
 use App\Models\User;
 use App\Repositories\Instructor\InstructorUpgradeRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -32,7 +33,7 @@ class InstructorUpgradeService
             throw new BusinessException('Bạn đã gửi yêu cầu nâng cấp giảng viên và đang chờ duyệt.', 409);
         }
 
-        if ($profile && $payout?->status === 'rejected') {
+        if ($profile && $payout?->status === 'disabled') {
             throw new BusinessException('Yêu cầu trước đó đã bị từ chối. Vui lòng dùng API cập nhật để gửi lại.', 409);
         }
 
@@ -40,7 +41,9 @@ class InstructorUpgradeService
             throw new BusinessException('Tài khoản đã có dữ liệu yêu cầu nâng cấp giảng viên.', 409);
         }
 
-        DB::transaction(function () use ($user, $data) {
+        $rank = in_array($data['level'] ?? '', ['bronze', 'silver', 'gold', 'diamond']) ? $data['level'] : 'bronze';
+
+        DB::transaction(function () use ($user, $data, $rank) {
             if (! empty($data['phone']) && $data['phone'] !== $user->phone) {
                 $this->instructorUpgradeRepository->updateUser($user, [
                     'phone' => $data['phone'],
@@ -52,7 +55,7 @@ class InstructorUpgradeService
                 'bio' => $data['bio'],
                 'expertise' => $data['expertise'],
                 'experience_years' => $data['experience_years'],
-                'level' => $data['level'],
+                'instructor_rank' => $rank,
             ]);
 
             $this->instructorUpgradeRepository->createPayout([
@@ -60,8 +63,8 @@ class InstructorUpgradeService
                 'provider' => $data['bank_provider'],
                 'account_number' => $data['bank_account_number'],
                 'account_name' => $data['bank_account_name'],
-                'connected_at' => null,
                 'status' => 'pending_verification',
+                'is_default' => false,
             ]);
         });
 
@@ -78,12 +81,12 @@ class InstructorUpgradeService
         try {
             $adminUsers = User::where('role', 'admin')->get();
             foreach ($adminUsers as $admin) {
-                \App\Models\Notification::create([
+                Notification::create([
                     'user_id' => $admin->id,
                     'type' => 'instructor_upgrade_request',
                     'title' => 'Yêu cầu đăng ký Giảng viên mới',
                     'message' => "Học viên {$user->full_name} ({$user->email}) đã gửi yêu cầu đăng ký làm Giảng viên.",
-                    'action_url' => '/admin/instructors/upgrade-requests',
+                    'action_url' => '/admin/instructor-upgrades',
                     'channel' => 'web',
                 ]);
             }
@@ -108,15 +111,17 @@ class InstructorUpgradeService
             throw new BusinessException('Yêu cầu nâng cấp giảng viên đang chờ duyệt, chưa thể gửi lại.', 409);
         }
 
-        if ($payout->status === 'active') {
+        if ($payout->status === 'verified' && $user->role === 'instructor') {
             throw new BusinessException('Tài khoản đã được duyệt thành giảng viên.', 409);
         }
 
-        if ($payout->status !== 'rejected') {
+        if ($payout->status !== 'disabled') {
             throw new BusinessException('Trạng thái yêu cầu nâng cấp không cho phép cập nhật.', 409);
         }
 
-        DB::transaction(function () use ($user, $profile, $payout, $data) {
+        $rank = in_array($data['level'] ?? '', ['bronze', 'silver', 'gold', 'diamond']) ? $data['level'] : 'bronze';
+
+        DB::transaction(function () use ($user, $profile, $payout, $data, $rank) {
             if (! empty($data['phone']) && $data['phone'] !== $user->phone) {
                 $this->instructorUpgradeRepository->updateUser($user, [
                     'phone' => $data['phone'],
@@ -127,15 +132,16 @@ class InstructorUpgradeService
                 'bio' => $data['bio'],
                 'expertise' => $data['expertise'],
                 'experience_years' => $data['experience_years'],
-                'level' => $data['level'],
+                'instructor_rank' => $rank,
             ]);
 
             $this->instructorUpgradeRepository->updatePayout($payout, [
                 'provider' => $data['bank_provider'],
                 'account_number' => $data['bank_account_number'],
                 'account_name' => $data['bank_account_name'],
-                'connected_at' => null,
                 'status' => 'pending_verification',
+                'is_default' => false,
+                'disabled_at' => null,
             ]);
         });
 
@@ -162,8 +168,8 @@ class InstructorUpgradeService
 
         $total = (clone $baseQuery)->count();
         $pending = (clone $baseQuery)->where('pa.status', 'pending_verification')->count();
-        $approved = (clone $baseQuery)->where('u.role', 'instructor')->where('pa.status', 'active')->count();
-        $rejected = (clone $baseQuery)->where('pa.status', 'rejected')->count();
+        $approved = (clone $baseQuery)->where('u.role', 'instructor')->where('pa.status', 'verified')->count();
+        $rejected = (clone $baseQuery)->where('pa.status', 'disabled')->count();
 
         $summary = [
             'total' => $total,
@@ -193,9 +199,9 @@ class InstructorUpgradeService
             if ($st === 'pending') {
                 $query->where('pa.status', 'pending_verification');
             } elseif ($st === 'approved') {
-                $query->where('u.role', 'instructor')->where('pa.status', 'active');
+                $query->where('u.role', 'instructor')->where('pa.status', 'verified');
             } elseif ($st === 'rejected') {
-                $query->where('pa.status', 'rejected');
+                $query->where('pa.status', 'disabled');
             }
         }
 
@@ -222,8 +228,8 @@ class InstructorUpgradeService
                 $query->whereNotNull('pa.id');
             } elseif ($pf === 'unlinked') {
                 $query->whereNull('pa.id');
-            } elseif ($pf === 'active') {
-                $query->where('pa.status', 'active');
+            } elseif ($pf === 'active' || $pf === 'verified') {
+                $query->where('pa.status', 'verified');
             } elseif ($pf === 'pending_verification') {
                 $query->where('pa.status', 'pending_verification');
             }
@@ -245,7 +251,7 @@ class InstructorUpgradeService
         } elseif ($sortBy === 'oldest') {
             $query->orderBy('ip.created_at');
         } elseif ($sortBy === 'reviewed_newest') {
-            $query->orderByDesc('pa.connected_at')->orderByDesc('pa.updated_at');
+            $query->orderByDesc('pa.verified_at')->orderByDesc('pa.updated_at');
         } elseif ($sortBy === 'name_asc') {
             $query->orderBy('u.full_name');
         } elseif ($sortBy === 'name_desc') {
@@ -264,7 +270,7 @@ class InstructorUpgradeService
 
         $query->orderByDesc('u.id');
 
-        $perPage = min((int) ($queryParams['per_page'] ?? 15), 100);
+        $perPage = min(max((int) ($queryParams['per_page'] ?? 15), 1), 100);
         $paginator = $query->select([
                 'u.id as user_id',
                 'u.full_name',
@@ -276,31 +282,33 @@ class InstructorUpgradeService
                 'ip.bio',
                 'ip.expertise',
                 'ip.experience_years',
-                'ip.level',
+                'ip.instructor_rank as level',
                 'ip.created_at as submitted_at',
                 'pa.id as payout_id',
                 'pa.provider',
                 'pa.account_number',
                 'pa.account_name',
                 'pa.status as payout_status',
-                'pa.connected_at',
+                'pa.verified_at as connected_at',
+                'pa.disabled_at',
             ])
             ->paginate($perPage)
             ->appends($queryParams);
 
         $mappedItems = collect($paginator->items())->map(function ($row) {
             $status = 'unknown';
-            if ($row->role === 'instructor' && $row->payout_status === 'active') {
+            if ($row->role === 'instructor' && $row->payout_status === 'verified') {
                 $status = 'approved';
             } elseif ($row->payout_status === 'pending_verification') {
                 $status = 'pending';
-            } elseif ($row->payout_status === 'rejected') {
+            } elseif ($row->payout_status === 'disabled') {
                 $status = 'rejected';
             }
 
             return [
                 'application_status' => $status,
                 'submitted_at' => $row->submitted_at ? \Carbon\Carbon::parse($row->submitted_at)->toISOString() : null,
+                'reviewed_at' => ($status === 'approved' && $row->connected_at) ? \Carbon\Carbon::parse($row->connected_at)->toISOString() : (($status === 'rejected' && $row->disabled_at) ? \Carbon\Carbon::parse($row->disabled_at)->toISOString() : null),
                 'review_note' => $status === 'approved' ? 'Tài khoản đã được nâng cấp thành giảng viên.' : ($status === 'rejected' ? 'Yêu cầu đã bị từ chối.' : 'Yêu cầu đang chờ admin duyệt.'),
 
                 'user' => [
@@ -317,16 +325,19 @@ class InstructorUpgradeService
                     'bio' => $row->bio,
                     'expertise' => $row->expertise,
                     'experience_years' => $row->experience_years,
-                    'level' => $row->level,
+                    'level' => $row->level ?? 'bronze',
                 ],
 
                 'payout_account' => $row->payout_id ? [
                     'id' => $row->payout_id,
                     'provider' => $row->provider,
                     'account_number_masked' => $row->account_number ? (substr($row->account_number, 0, 3) . '******' . substr($row->account_number, -2)) : null,
+                    'account_number' => $row->account_number,
                     'account_name' => $row->account_name,
                     'status' => $row->payout_status,
                     'connected_at' => $row->connected_at,
+                    'verified_at' => $row->connected_at,
+                    'disabled_at' => $row->disabled_at,
                 ] : null,
             ];
         })->toArray();
@@ -394,15 +405,29 @@ class InstructorUpgradeService
             }
 
             $this->instructorUpgradeRepository->updatePayout($pendingPayout, [
-                'status' => 'active',
-                'connected_at' => now(),
+                'status' => 'verified',
+                'is_default' => true,
+                'verified_at' => now(),
+                'disabled_at' => null,
             ]);
         });
+
+        // Gửi thông báo chúc mừng tới User
+        try {
+            Notification::create([
+                'user_id' => $user->id,
+                'type' => 'instructor_upgrade_approved',
+                'title' => 'Chúc mừng! Hồ sơ Giảng viên đã được phê duyệt',
+                'message' => 'Yêu cầu đăng ký giảng viên của bạn đã được quản trị viên duyệt thành công. Bạn đã có thể bắt đầu tạo khóa học và giảng dạy trên MindHub.',
+                'action_url' => '/instructor/courses',
+                'channel' => 'web',
+            ]);
+        } catch (\Throwable $e) {}
 
         return $this->instructorUpgradeRepository->buildApplicationData($userId);
     }
 
-    public function reject(int $userId): array
+    public function reject(int $userId, ?string $reason = null): array
     {
         $user = $this->instructorUpgradeRepository->findUserById($userId);
 
@@ -426,9 +451,29 @@ class InstructorUpgradeService
         }
 
         $this->instructorUpgradeRepository->updatePayout($pendingPayout, [
-            'status' => 'rejected',
-            'connected_at' => null,
+            'status' => 'disabled',
+            'is_default' => false,
+            'verified_at' => null,
+            'disabled_at' => now(),
         ]);
+
+        // Gửi thông báo lý do từ chối tới User
+        try {
+            $msg = 'Hồ sơ đăng ký giảng viên của bạn chưa được phê duyệt.';
+            if (! empty($reason)) {
+                $msg .= " Lý do: {$reason}.";
+            }
+            $msg .= ' Bạn có thể kiểm tra và cập nhật lại thông tin để gửi xét duyệt lại.';
+
+            Notification::create([
+                'user_id' => $user->id,
+                'type' => 'instructor_upgrade_rejected',
+                'title' => 'Yêu cầu đăng ký Giảng viên chưa được duyệt',
+                'message' => $msg,
+                'action_url' => '/become-instructor',
+                'channel' => 'web',
+            ]);
+        } catch (\Throwable $e) {}
 
         return $this->instructorUpgradeRepository->buildApplicationData($userId);
     }
