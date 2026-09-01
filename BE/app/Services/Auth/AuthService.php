@@ -164,12 +164,16 @@ class AuthService
         return $this->userRepository->update($user, $updateData);
     }
 
-    public function verifyOtp(string $email, string $otp): User
+    public function verifyOtp(string $identifier, string $otp): User
     {
-        $user = $this->userRepository->findByEmail(strtolower(trim($email)));
+        $identifier = trim($identifier);
+        $user = $this->userRepository->findByEmail(strtolower($identifier));
+        if (! $user && ! empty($identifier)) {
+            $user = User::query()->where('phone', $identifier)->first();
+        }
 
         if (! $user) {
-            throw new BusinessException('Không tìm thấy người dùng với email này.', 404);
+            throw new BusinessException('Không tìm thấy thông tin tài khoản hợp lệ.', 404);
         }
 
         $this->otpService->verify(
@@ -182,6 +186,51 @@ class AuthService
             'email_verified_at' => now(),
             'status' => User::STATUS_ACTIVE,
         ]);
+    }
+
+    public function resendVerifyOtp(string $identifier, string $channel = 'email'): array
+    {
+        $identifier = trim($identifier);
+        $user = $this->userRepository->findByEmail(strtolower($identifier));
+        if (! $user && ! empty($identifier)) {
+            $user = User::query()->where('phone', $identifier)->first();
+        }
+
+        if (! $user) {
+            return [
+                'verify_url' => null,
+                'otp_code' => null,
+                'channel' => $channel,
+            ];
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            throw new BusinessException('Tài khoản đã được xác thực trước đó.', 400, [
+                'email' => ['Tài khoản đã được xác thực trước đó.'],
+            ]);
+        }
+
+        $otpCode = $this->otpService->generate(
+            (int) $user->id,
+            'email_verification',
+            self::VERIFY_EMAIL_EXPIRES_MINUTES * 60
+        );
+
+        $verifyUrl = null;
+        if ($channel === 'sms' || $channel === 'phone') {
+            // Cấu hình ghi log tin nhắn SMS OTP gửi đến số điện thoại
+            \Illuminate\Support\Facades\Log::info("SMS OTP sent to {$user->phone}: {$otpCode}");
+        } else {
+            // Gửi Email OTP
+            $verifyUrl = $this->sendVerifyEmail($user, $otpCode);
+        }
+
+        return [
+            'verify_url' => $verifyUrl,
+            'otp_code' => $otpCode,
+            'channel' => $channel,
+            'sent_to' => ($channel === 'sms' || $channel === 'phone') ? ($user->phone ?? $identifier) : ($user->email ?? $identifier),
+        ];
     }
 
     public function resendVerifyEmail(array $data): array

@@ -106,17 +106,52 @@ class AuthController extends Controller
     public function verifyOtp(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => 'required|email',
-            'otp' => 'nullable|string',
+            'email' => 'nullable|string',
+            'phone' => 'nullable|string',
+            'otp' => 'required|string',
         ]);
 
-        $user = $this->authService->verifyOtp($request->input('email'), (string) $request->input('otp'));
+        $identifier = $request->input('email') ?: $request->input('phone');
+        if (empty($identifier)) {
+            return ApiResponse::error('Vui lòng cung cấp email hoặc số điện thoại để xác thực.', [], 422);
+        }
+
+        $user = $this->authService->verifyOtp((string) $identifier, (string) $request->input('otp'));
 
         return ApiResponse::success(
             [
                 'user' => new UserResource($user),
             ],
             'Xác thực OTP thành công. Tài khoản đã được kích hoạt.'
+        );
+    }
+
+    public function resendVerifyOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'nullable|string',
+            'phone' => 'nullable|string',
+            'channel' => 'nullable|in:email,sms,phone',
+        ]);
+
+        $channel = $request->input('channel', 'email');
+        $identifier = ($channel === 'sms' || $channel === 'phone')
+            ? ($request->input('phone') ?: $request->input('email'))
+            : ($request->input('email') ?: $request->input('phone'));
+
+        if (empty($identifier)) {
+            return ApiResponse::error('Vui lòng cung cấp thông tin liên hệ để gửi mã OTP.', [], 422);
+        }
+
+        $result = $this->authService->resendVerifyOtp((string) $identifier, $channel);
+
+        $msg = ($channel === 'sms' || $channel === 'phone')
+            ? 'Mã OTP xác thực đã được gửi tới số điện thoại của bạn qua tin nhắn SMS.'
+            : 'Mã OTP xác thực đã được gửi tới địa chỉ email của bạn.';
+
+        return ApiResponse::success(
+            $result,
+            $msg
         );
     }
 

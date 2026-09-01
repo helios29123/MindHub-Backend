@@ -19,6 +19,7 @@ Route::prefix('auth')->group(function () {
 
     Route::post('verify-email/resend', [AuthController::class, 'resendVerifyEmail']);
     Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
+    Route::post('resend-verify-otp', [AuthController::class, 'resendVerifyOtp']);
 
     // Luồng Đăng nhập Email/Password & Google OAuth
     Route::post('login', [AuthController::class, 'login']);
