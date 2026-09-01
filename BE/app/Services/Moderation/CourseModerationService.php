@@ -34,10 +34,10 @@ class CourseModerationService
             }
 
             $course->forceFill([
-                'status' => 'approved',
+                'status' => 'published',
                 'reviewed_by' => $adminId,
                 'admin_reject_reason' => null,
-                'published_at' => null,
+                'published_at' => now(),
             ])->save();
 
             $freshCourse = $course->fresh(['instructor', 'categories']);

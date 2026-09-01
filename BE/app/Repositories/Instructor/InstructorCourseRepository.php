@@ -186,9 +186,9 @@ final class InstructorCourseRepository
         // 2. Revenue amount
         $revenuesMap = DB::table('revenues')
             ->whereIn('course_id', $courseIds)
-            ->where(function ($q) {
-                $q->whereNull('status')->orWhereNotIn('status', ['cancelled']);
-            })
+            // ->where(function ($q) {
+            //     $q->whereNull('status')->orWhereNotIn('status', ['cancelled']);
+            // })
             ->groupBy('course_id')
             ->select('course_id', DB::raw('COALESCE(SUM(instructor_amount), 0) as total'))
             ->pluck('total', 'course_id')

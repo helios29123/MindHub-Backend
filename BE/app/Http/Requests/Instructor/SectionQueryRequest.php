@@ -22,7 +22,7 @@ class SectionQueryRequest extends FormRequest
             "course_id" => [
                 "nullable",
                 "integer",
-                Rule::exists("courses", "id")->whereNull("deleted_at"),
+                Rule::exists("courses", "id"),
             ],
             "search" => ["nullable", "string", "max:255"],
             "status" => ["nullable", Rule::in(self::ALLOWED_STATUSES)],

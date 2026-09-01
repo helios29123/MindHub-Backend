@@ -13,7 +13,7 @@ final class UpdateLessonRequest extends FormRequest
             'course_id' => ['sometimes', 'required', 'integer', 'exists:courses,id'],
             'course_section_id' => ['sometimes', 'required', 'integer', 'exists:course_sections,id'],
             'title' => ['sometimes', 'required', 'string', 'max:255'],
-            'lesson_type' => ['sometimes', 'required', 'string', 'in:video,text'],
+            'lesson_type' => ['sometimes', 'required', 'string', 'in:video,text,document'],
             'content' => ['nullable', 'required_if:lesson_type,text', 'string'],
             'video_url' => ['nullable', 'string', 'max:2048', function ($attribute, $value, $fail) {
                 if (empty($value)) return;

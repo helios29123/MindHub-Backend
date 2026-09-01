@@ -13,7 +13,7 @@ final class StoreLessonRequest extends FormRequest
             'course_id' => ['required', 'integer', 'exists:courses,id'],
             'course_section_id' => ['required', 'integer', 'exists:course_sections,id'],
             'title' => ['required', 'string', 'max:255'],
-            'lesson_type' => ['required', 'string', 'in:video,text'],
+            'lesson_type' => ['required', 'string', 'in:video,text,document'],
             'content' => ['nullable', 'required_if:lesson_type,text', 'string'],
             'video_url' => ['nullable', 'string', 'max:2048', function ($attribute, $value, $fail) {
                 if (empty($value)) return;
