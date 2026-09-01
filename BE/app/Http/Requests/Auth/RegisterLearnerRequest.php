@@ -9,9 +9,9 @@ class RegisterLearnerRequest extends BaseApiRequest
     public function rules(): array
     {
         return [
-            'full_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'full_name' => ['required', 'string', 'min:2', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['nullable', 'string', 'regex:/^(0|\+84)[1-9][0-9]{8}$/', 'unique:users,phone'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
     }
@@ -19,13 +19,17 @@ class RegisterLearnerRequest extends BaseApiRequest
     public function messages(): array
     {
         return [
-            'full_name.required' => 'Họ tên không được để trống.',
-            'email.required' => 'Email không được để trống.',
-            'email.email' => 'Email không đúng định dạng.',
-            'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự.',
+            'full_name.required' => 'Họ và tên không được để trống.',
+            'full_name.min' => 'Họ và tên phải có ít nhất 2 ký tự.',
+            'full_name.max' => 'Họ và tên không được vượt quá 255 ký tự.',
+            'email.required' => 'Địa chỉ email không được để trống.',
+            'email.email' => 'Địa chỉ email không đúng định dạng.',
+            'email.unique' => 'Địa chỉ email này đã được sử dụng. Vui lòng đăng nhập hoặc dùng email khác.',
+            'phone.regex' => 'Số điện thoại không đúng định dạng (VD: 0987654321).',
+            'phone.unique' => 'Số điện thoại này đã được sử dụng bởi tài khoản khác.',
             'password.required' => 'Mật khẩu không được để trống.',
             'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
-            'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
+            'password.confirmed' => 'Mật khẩu xác nhận không trùng khớp.',
         ];
     }
 }
