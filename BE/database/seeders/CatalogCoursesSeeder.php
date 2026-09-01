@@ -22,7 +22,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-published-laravel-api-featured',
                 'short_description' => 'Khóa Laravel API public, featured.',
                 'description' => 'Học xây dựng REST API với Laravel, MySQL, Resource, Service, Repository.',
-                'thumbnail_url' => 'https://example.com/images/cat-laravel-api.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202401/courses_thumbnail/l5t4rsgcb6gqgf8hvvs8.jpg',
                 'intro_video_url' => 'https://example.com/videos/cat-laravel-api.mp4',
                 'price' => 1200000,
                 
@@ -43,7 +43,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-published-php-mysql-best-selling',
                 'short_description' => 'Khóa PHP MySQL nhiều enrollment nhất.',
                 'description' => 'Học PHP, MySQL, database design.',
-                'thumbnail_url' => 'https://example.com/images/cat-php-mysql.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202405/courses_thumbnail/smc8ke0qldnezy1ete1u.jpg',
                 'intro_video_url' => 'https://example.com/videos/cat-php-mysql.mp4',
                 'price' => 900000,
                 
@@ -64,7 +64,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-published-react-latest',
                 'short_description' => 'Khóa React mới nhất.',
                 'description' => 'Học React, component, state, props.',
-                'thumbnail_url' => 'https://example.com/images/cat-react-latest.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202408/courses_thumbnail/udqewhfrqn5cjnujcova.jpg',
                 'intro_video_url' => 'https://example.com/videos/cat-react-latest.mp4',
                 'price' => 1500000,
                 
@@ -85,7 +85,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-published-free-ui-design',
                 'short_description' => 'Khóa miễn phí để test sort price_asc.',
                 'description' => 'Học UI design căn bản.',
-                'thumbnail_url' => 'https://example.com/images/cat-free-ui-design.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202412/courses_thumbnail/wqw9amypfhttkgrpvidv.jpg',
                 'intro_video_url' => 'https://example.com/videos/cat-free-ui-design.mp4',
                 'price' => 0,
                 
@@ -106,7 +106,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-draft-not-public',
                 'short_description' => 'Course draft, không được public.',
                 'description' => 'Dữ liệu test không public.',
-                'thumbnail_url' => 'https://example.com/images/cat-draft.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202389/courses_thumbnail/l5uo0m3ic682p3gl26jg.jpg',
                 'intro_video_url' => null,
                 'price' => 100000,
                 
@@ -127,7 +127,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-hidden-not-public',
                 'short_description' => 'Course hidden, không được public.',
                 'description' => 'Dữ liệu test hidden.',
-                'thumbnail_url' => 'https://example.com/images/cat-hidden.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202391/courses_thumbnail/qlfyydulmdlvj8l1pg0v.jpg',
                 'intro_video_url' => null,
                 'price' => 100000,
                 
@@ -148,7 +148,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-pending-review-not-public',
                 'short_description' => 'Course pending_review, không được public.',
                 'description' => 'Dữ liệu test pending review.',
-                'thumbnail_url' => 'https://example.com/images/cat-pending.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202393/courses_thumbnail/ld7or31uun6mvbzxd75s.jpg',
                 'intro_video_url' => null,
                 'price' => 200000,
                 
@@ -169,7 +169,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-rejected-not-public',
                 'short_description' => 'Course rejected, không được public.',
                 'description' => 'Dữ liệu test rejected.',
-                'thumbnail_url' => 'https://example.com/images/cat-rejected.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202395/courses_thumbnail/jz1s8pzosx1vzlbbxqfd.jpg',
                 'intro_video_url' => null,
                 'price' => 300000,
                 
@@ -190,7 +190,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-approved-not-public',
                 'short_description' => 'Course approved nhưng chưa published.',
                 'description' => 'Dữ liệu test approved.',
-                'thumbnail_url' => 'https://example.com/images/cat-approved.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202397/courses_thumbnail/zrfvoo3bbt4brvba8wdg.jpg',
                 'intro_video_url' => null,
                 'price' => 400000,
                 
@@ -211,7 +211,7 @@ class CatalogCoursesSeeder extends Seeder
                 'slug' => 'cat-course-published-soft-deleted-not-public',
                 'short_description' => 'Course published nhưng soft deleted.',
                 'description' => 'Dữ liệu test soft delete course.',
-                'thumbnail_url' => 'https://example.com/images/cat-soft-deleted.jpg',
+                'thumbnail_url' => 'https://res.cloudinary.com/hcoy6dgr/image/upload/v1788202399/courses_thumbnail/zhxwppkb6xhxgtwhd0jf.jpg',
                 'intro_video_url' => null,
                 'price' => 500000,
                 
