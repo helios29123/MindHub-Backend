@@ -278,6 +278,7 @@ class InstructorUpgradeService
                 'u.phone',
                 'u.role',
                 'u.status as user_status',
+                'u.avatar_url',
                 'u.email_verified_at',
                 'ip.bio',
                 'ip.expertise',
@@ -318,6 +319,7 @@ class InstructorUpgradeService
                     'phone' => $row->phone,
                     'role' => $row->role,
                     'status' => $row->user_status,
+                    'avatar_url' => $row->avatar_url,
                     'email_verified_at' => $row->email_verified_at,
                 ],
 
