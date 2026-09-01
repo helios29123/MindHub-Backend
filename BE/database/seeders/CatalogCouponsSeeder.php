@@ -28,5 +28,22 @@ class CatalogCouponsSeeder extends Seeder
                 'updated_at' => $now,
             ]
         );
+
+        DB::table('coupons')->updateOrInsert(
+            ['code' => 'TEST95'],
+            [
+                'course_id' => DB::table('courses')->value('id') ?? 1,
+                'code' => 'TEST95',
+                'discount_type' => 'percent',
+                'discount_value' => 95,
+                'usage_limit' => 100,
+                'used_count' => 0,
+                'start_at' => $now->copy()->subDays(30),
+                'end_at' => $now->copy()->addDays(30),
+                'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]
+        );
     }
 }
