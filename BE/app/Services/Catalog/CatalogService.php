@@ -21,8 +21,7 @@ class CatalogService
 
     public function home(array $filters): array
     {
-        return Cache::remember('catalog_home_payload', 60, function (): array {
-            $now = now();
+        $now = now();
 
         $faqs = \App\Models\Faq::query()
             ->where('status', 'active')
@@ -100,7 +99,6 @@ class CatalogService
 
             'stats' => $stats,
         ];
-        });
     }
 
     public function categories(array $filters)
