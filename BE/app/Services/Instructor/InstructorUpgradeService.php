@@ -3,11 +3,15 @@
 namespace App\Services\Instructor;
 
 use App\Exceptions\BusinessException;
+use App\Mail\InstructorUpgradeApprovedMail;
+use App\Mail\InstructorUpgradeRejectedMail;
 use App\Models\Notification;
 use App\Models\User;
 use App\Repositories\Instructor\InstructorUpgradeRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class InstructorUpgradeService
 {
@@ -433,7 +437,7 @@ class InstructorUpgradeService
         return $application;
     }
 
-    public function approve(int $userId): array
+    public function approve(int $userId, ?string $temporaryPassword = null): array
     {
         $user = $this->instructorUpgradeRepository->findUserById($userId);
 
@@ -453,11 +457,15 @@ class InstructorUpgradeService
             throw new BusinessException('Tài khoản chưa có hồ sơ giảng viên.', 400);
         }
 
-        DB::transaction(function () use ($user, $pendingPayout) {
-            $this->instructorUpgradeRepository->updateUser($user, [
+        DB::transaction(function () use ($user, $pendingPayout, $temporaryPassword) {
+            $updateUserData = [
                 'role' => 'instructor',
                 'status' => 'active',
-            ]);
+            ];
+            if (! empty($temporaryPassword)) {
+                $updateUserData['password_hash'] = Hash::make($temporaryPassword);
+            }
+            $this->instructorUpgradeRepository->updateUser($user, $updateUserData);
 
             if ($pendingPayout) {
                 $this->instructorUpgradeRepository->updatePayout($pendingPayout, [
@@ -469,7 +477,7 @@ class InstructorUpgradeService
             }
         });
 
-        // Gửi thông báo chúc mừng tới User
+        // Gửi thông báo chúc mừng & Email tới Giảng viên (kèm tài khoản, mật khẩu, sđt)
         try {
             Notification::create([
                 'user_id' => $user->id,
@@ -480,6 +488,14 @@ class InstructorUpgradeService
                 'channel' => 'web',
             ]);
         } catch (\Throwable $e) {}
+
+        try {
+            if (! empty($user->email)) {
+                Mail::to($user->email)->send(new InstructorUpgradeApprovedMail($user, $temporaryPassword));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to send instructor approved email to ' . $user->email . ': ' . $e->getMessage());
+        }
 
         return $this->instructorUpgradeRepository->buildApplicationData($userId);
     }
@@ -503,18 +519,31 @@ class InstructorUpgradeService
             throw new BusinessException('Tài khoản chưa có hồ sơ giảng viên.', 400);
         }
 
-        if (! $pendingPayout) {
-            throw new BusinessException('Không có yêu cầu nâng cấp nào đang chờ duyệt.', 400);
+        if ($pendingPayout) {
+            $this->instructorUpgradeRepository->updatePayout($pendingPayout, [
+                'status' => 'disabled',
+                'is_default' => false,
+                'verified_at' => null,
+                'disabled_at' => now(),
+            ]);
+        } else {
+            $this->instructorUpgradeRepository->createPayout([
+                'user_id' => $user->id,
+                'provider' => 'Chưa liên kết',
+                'account_number' => 'CHUA_CO',
+                'account_name' => $user->full_name,
+                'status' => 'disabled',
+                'is_default' => false,
+                'verified_at' => null,
+                'disabled_at' => now(),
+            ]);
         }
 
-        $this->instructorUpgradeRepository->updatePayout($pendingPayout, [
-            'status' => 'disabled',
-            'is_default' => false,
-            'verified_at' => null,
-            'disabled_at' => now(),
+        $this->instructorUpgradeRepository->updateUser($user, [
+            'status' => 'inactive',
         ]);
 
-        // Gửi thông báo lý do từ chối tới User
+        // Gửi thông báo lý do từ chối & Email tới User
         try {
             $msg = 'Hồ sơ đăng ký giảng viên của bạn chưa được phê duyệt.';
             if (! empty($reason)) {
@@ -531,6 +560,14 @@ class InstructorUpgradeService
                 'channel' => 'web',
             ]);
         } catch (\Throwable $e) {}
+
+        try {
+            if (! empty($user->email)) {
+                Mail::to($user->email)->send(new InstructorUpgradeRejectedMail($user, $reason));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to send instructor rejected email to ' . $user->email . ': ' . $e->getMessage());
+        }
 
         return $this->instructorUpgradeRepository->buildApplicationData($userId);
     }

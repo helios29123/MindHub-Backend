@@ -4,6 +4,7 @@ namespace App\Services\Auth;
 
 use App\Exceptions\BusinessException;
 use App\Mail\VerifyEmailMail;
+use App\Models\Notification;
 use App\Models\Session;
 use App\Models\User;
 use App\Repositories\Instructor\InstructorProfileRepository;
@@ -121,6 +122,15 @@ class AuthService
                 'level' => $registerData['level'] ?? null,
             ]);
 
+            $this->payoutAccountRepository->create([
+                'user_id' => $user->id,
+                'provider' => $registerData['bank_provider'] ?? 'Chưa liên kết',
+                'account_number' => $registerData['bank_account_number'] ?? 'CHUA_CO',
+                'account_name' => $registerData['bank_account_name'] ?? $user->full_name,
+                'status' => 'pending_verification',
+                'is_default' => false,
+            ]);
+
             $otpCode = $this->otpService->generate((int) $user->id, 'email_verification', 3600);
             $verifyUrl = $this->sendVerifyEmail($user, $otpCode);
 
@@ -208,10 +218,46 @@ class AuthService
             $otp
         );
 
-        return $this->userRepository->update($user, [
+        $isInstructor = ($user->role === User::ROLE_INSTRUCTOR);
+
+        $updatedUser = $this->userRepository->update($user, [
             'email_verified_at' => now(),
-            'status' => User::STATUS_ACTIVE,
+            'status' => $isInstructor ? User::STATUS_INACTIVE : User::STATUS_ACTIVE,
         ]);
+
+        if ($isInstructor) {
+            try {
+                $adminUsers = User::where('role', 'admin')->get();
+                foreach ($adminUsers as $admin) {
+                    Notification::create([
+                        'user_id' => $admin->id,
+                        'type' => 'instructor_upgrade_request',
+                        'title' => 'Yêu cầu đăng ký Giảng viên mới',
+                        'message' => "Học viên {$user->full_name} ({$user->email}) đã xác thực OTP và gửi hồ sơ đăng ký làm Giảng viên.",
+                        'action_url' => '/admin/instructor-upgrades',
+                        'channel' => 'web',
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed to send admin notification for instructor registration: ' . $e->getMessage());
+            }
+
+            try {
+                $adminEmail = config('mail.admin_address', 'dominhdang3010@gmail.com');
+                Mail::to($adminEmail)->send(
+                    new \App\Mail\InstructorUpgradeRequestedMail($user, [
+                        'bio' => $user->instructorProfile?->bio,
+                        'expertise' => $user->instructorProfile?->expertise,
+                        'experience_years' => $user->instructorProfile?->experience_years,
+                        'bank_provider' => 'Chưa liên kết',
+                        'bank_account_number' => 'N/A',
+                        'bank_account_name' => $user->full_name,
+                    ])
+                );
+            } catch (\Throwable $e) {}
+        }
+
+        return $updatedUser;
     }
 
     public function resendVerifyOtp(string $identifier, string $channel = 'email', ?string $fallbackEmail = null, ?string $fallbackPhone = null): array
@@ -500,7 +546,9 @@ class AuthService
         if ($user->status === User::STATUS_INACTIVE) {
             $message = $user->email_verified_at === null
                 ? 'Tài khoản chưa xác thực email.'
-                : 'Tài khoản đang ngừng hoạt động.';
+                : ($user->role === User::ROLE_INSTRUCTOR
+                    ? 'Tài khoản giảng viên của bạn đã xác thực OTP và đang chờ Quản trị viên (Admin) phê duyệt hồ sơ.'
+                    : 'Tài khoản đang ngừng hoạt động.');
 
             throw new BusinessException($message, 403);
         }

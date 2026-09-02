@@ -78,9 +78,10 @@ class InstructorUpgradeController extends Controller
         );
     }
 
-    public function approve(int $userId): JsonResponse
+    public function approve(Request $request, int $userId): JsonResponse
     {
-        $application = $this->instructorUpgradeService->approve($userId);
+        $temporaryPassword = $request->input('password') ?: $request->input('temporary_password');
+        $application = $this->instructorUpgradeService->approve($userId, $temporaryPassword);
 
         return ApiResponse::success(
             new InstructorUpgradeRequestResource($application),
