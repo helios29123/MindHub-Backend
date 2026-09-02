@@ -6,6 +6,14 @@ use App\Http\Requests\BaseApiRequest;
 
 class RegisterLearnerRequest extends BaseApiRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'email' => !empty($this->email) ? trim($this->email) : null,
+            'phone' => !empty($this->phone) ? trim($this->phone) : null,
+        ]);
+    }
+
     public function rules(): array
     {
         return [
