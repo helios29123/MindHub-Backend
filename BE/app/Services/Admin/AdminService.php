@@ -545,8 +545,10 @@ class AdminService
         $totalUsers = (clone $baseQuery)->count();
         $totalLearners = (clone $baseQuery)->where('role', 'learner')->count();
         $totalInstructors = (clone $baseQuery)->where('role', 'instructor')->count();
-        $activeUsers = (clone $baseQuery)->where('status', 'active')->where('locked', false)->count();
-        $inactiveUsers = (clone $baseQuery)->where('status', 'inactive')->where('locked', false)->count();
+        $activeUsers = (clone $baseQuery)->where('status', 'active')->whereNotNull('last_login_at')->where('locked', false)->count();
+        $inactiveUsers = (clone $baseQuery)->where(function ($q) {
+            $q->where('status', 'inactive')->orWhereNull('last_login_at');
+        })->where('locked', false)->count();
         $lockedUsers = (clone $baseQuery)->where(function ($q) {
             $q->where('locked', true)->orWhere('status', 'locked');
         })->count();
@@ -602,9 +604,11 @@ class AdminService
                     $q->where('locked', true)->orWhere('status', 'locked');
                 });
             } elseif ($statusVal === 'active') {
-                $query->where('status', 'active')->where('locked', false);
+                $query->where('status', 'active')->where('locked', false)->whereNotNull('last_login_at');
             } elseif ($statusVal === 'inactive') {
-                $query->where('status', 'inactive')->where('locked', false);
+                $query->where(function ($q) {
+                    $q->where('status', 'inactive')->orWhereNull('last_login_at');
+                })->where('locked', false);
             } else {
                 $query->where('status', $statusVal);
             }
