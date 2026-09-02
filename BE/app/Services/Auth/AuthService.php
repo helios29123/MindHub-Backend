@@ -43,16 +43,24 @@ class AuthService
 
     public function registerLearner(array $registerData): array
     {
+        $hasEmail = ! empty($registerData['email']);
+        $hasPhone = ! empty($registerData['phone']);
+
+        $emailInput = $hasEmail ? strtolower(trim($registerData['email'])) : null;
+        $phoneInput = $hasPhone ? trim($registerData['phone']) : null;
+
         $this->ensureEmailAndPhoneAreUnique(
-            $registerData['email'],
-            $registerData['phone'] ?? null
+            $emailInput,
+            $phoneInput
         );
 
-        return DB::transaction(function () use ($registerData) {
+        $dbEmail = $emailInput ?: ($phoneInput . '@phone.mindhub.vn');
+
+        return DB::transaction(function () use ($registerData, $dbEmail, $phoneInput, $hasEmail, $hasPhone) {
             $user = $this->userRepository->create([
                 'full_name' => $registerData['full_name'],
-                'email' => $registerData['email'],
-                'phone' => $registerData['phone'] ?? null,
+                'email' => $dbEmail,
+                'phone' => $phoneInput,
                 'password_hash' => Hash::make($registerData['password']),
                 'role' => User::ROLE_LEARNER,
                 'status' => User::STATUS_INACTIVE,
@@ -61,11 +69,26 @@ class AuthService
                 'email_verified_at' => null,
             ]);
 
-            $verifyUrl = $this->sendVerifyEmail($user);
+            $otpCode = $this->otpService->generate((int) $user->id, 'email_verification', self::VERIFY_EMAIL_EXPIRES_MINUTES * 60);
+            $verifyUrl = null;
+            $channel = ($hasPhone && ! $hasEmail) ? 'sms' : 'email';
+
+            if ($channel === 'sms') {
+                try {
+                    $this->speedSmsService->sendOtp((string) $phoneInput, (string) $otpCode);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('SMS send failed: ' . $e->getMessage());
+                }
+            } else {
+                $verifyUrl = $this->sendVerifyEmail($user, $otpCode);
+            }
 
             return [
                 'user' => $user->refresh(),
                 'verify_url' => config('app.debug') ? $verifyUrl : null,
+                'otp_code' => $otpCode,
+                'channel' => $channel,
+                'sent_to' => $channel === 'sms' ? $phoneInput : $dbEmail,
             ];
         });
     }
@@ -275,14 +298,18 @@ class AuthService
 
     public function login(array $loginData, Request $request): array
     {
-        $user = $this->userRepository->findByEmail(strtolower(trim($loginData['email'])));
+        $loginId = trim($loginData['email']);
+        $user = $this->userRepository->findByEmail(strtolower($loginId));
+        if (! $user) {
+            $user = User::query()->where('phone', $loginId)->first();
+        }
 
         if (
             ! $user ||
             ! $user->password_hash ||
             ! Hash::check($loginData['password'], (string) $user->password_hash)
         ) {
-            throw new BusinessException('Email hoặc mật khẩu không đúng.', 401);
+            throw new BusinessException('Email/Số điện thoại hoặc mật khẩu không đúng.', 401);
         }
 
         $this->ensureUserCanLogin($user);
@@ -445,9 +472,9 @@ class AuthService
         }
     }
 
-    private function ensureEmailAndPhoneAreUnique(string $email, ?string $phone): void
+    private function ensureEmailAndPhoneAreUnique(?string $email, ?string $phone): void
     {
-        if ($this->userRepository->existsByEmail($email)) {
+        if ($email !== null && $this->userRepository->existsByEmail($email)) {
             throw new BusinessException('Email đã được sử dụng.', 409, [
                 'email' => ['Email đã được sử dụng.'],
             ]);

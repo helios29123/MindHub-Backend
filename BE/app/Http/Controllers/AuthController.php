@@ -42,8 +42,13 @@ class AuthController extends Controller
             [
                 'user' => new UserResource($result['user']),
                 'verify_url' => $result['verify_url'] ?? null,
+                'otp_code' => $result['otp_code'] ?? null,
+                'channel' => $result['channel'] ?? 'email',
+                'sent_to' => $result['sent_to'] ?? null,
             ],
-            'Đăng ký học viên thành công. Vui lòng xác thực email để kích hoạt tài khoản.',
+            ($result['channel'] ?? 'email') === 'sms'
+                ? 'Đăng ký học viên thành công. Mã OTP xác thực đã được gửi tới số điện thoại của bạn.'
+                : 'Đăng ký học viên thành công. Mã OTP xác thực đã được gửi tới email của bạn.',
             201
         );
     }

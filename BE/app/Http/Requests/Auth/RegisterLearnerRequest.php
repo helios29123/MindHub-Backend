@@ -10,8 +10,8 @@ class RegisterLearnerRequest extends BaseApiRequest
     {
         return [
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'phone' => ['nullable', 'string', 'regex:/^(0|\+84)[1-9][0-9]{8}$/', 'unique:users,phone'],
+            'email' => ['required_without:phone', 'nullable', 'string', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['required_without:email', 'nullable', 'string', 'regex:/^(0|\+84)[1-9][0-9]{8}$/', 'unique:users,phone'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
     }
@@ -22,9 +22,10 @@ class RegisterLearnerRequest extends BaseApiRequest
             'full_name.required' => 'Họ và tên không được để trống.',
             'full_name.min' => 'Họ và tên phải có ít nhất 2 ký tự.',
             'full_name.max' => 'Họ và tên không được vượt quá 255 ký tự.',
-            'email.required' => 'Địa chỉ email không được để trống.',
+            'email.required_without' => 'Vui lòng cung cấp Email hoặc Số điện thoại để đăng ký.',
             'email.email' => 'Địa chỉ email không đúng định dạng.',
             'email.unique' => 'Địa chỉ email này đã được sử dụng. Vui lòng đăng nhập hoặc dùng email khác.',
+            'phone.required_without' => 'Vui lòng cung cấp Email hoặc Số điện thoại để đăng ký.',
             'phone.regex' => 'Số điện thoại không đúng định dạng (VD: 0987654321).',
             'phone.unique' => 'Số điện thoại này đã được sử dụng bởi tài khoản khác.',
             'password.required' => 'Mật khẩu không được để trống.',
