@@ -114,7 +114,7 @@ class InstructorUpgradeApprovedMail extends Mailable
         ")
             ->withSymfonyMessage(function (\Symfony\Component\Mime\Email $message) use ($logoFile, $cidName) {
                 if (file_exists($logoFile)) {
-                    $message->embedFromPath($logoFile, $cidName, 'image/jpeg');
+                    $message->embedFromPath($logoFile, $cidName);
                 }
             });
     }
