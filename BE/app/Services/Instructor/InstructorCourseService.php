@@ -1035,6 +1035,17 @@ final class InstructorCourseService
             if (array_key_exists('outcomes', $data)) {
                 $data['outcomes'] = $this->normalizeArrayOrStringList($data['outcomes']);
             }
+            if (array_key_exists('description', $data)) {
+                $data['description'] = $this->cleanCourseHtmlDescription($data['description']);
+            }
+            if (array_key_exists('thumbnail_url', $data)) {
+                $thumb = trim((string) ($data['thumbnail_url'] ?? ''));
+                $data['thumbnail_url'] = $thumb !== '' ? $thumb : null;
+            }
+            if (array_key_exists('intro_video_url', $data)) {
+                $video = trim((string) ($data['intro_video_url'] ?? ''));
+                $data['intro_video_url'] = $video !== '' ? $video : null;
+            }
 
             $courseData = array_merge($data, [
                 'instructor_id' => $instructor->id,
@@ -1134,6 +1145,17 @@ final class InstructorCourseService
         if (array_key_exists('outcomes', $data)) {
             $data['outcomes'] = $this->normalizeArrayOrStringList($data['outcomes']);
         }
+        if (array_key_exists('description', $data)) {
+            $data['description'] = $this->cleanCourseHtmlDescription($data['description']);
+        }
+        if (array_key_exists('thumbnail_url', $data)) {
+            $thumb = trim((string) ($data['thumbnail_url'] ?? ''));
+            $data['thumbnail_url'] = $thumb !== '' ? $thumb : null;
+        }
+        if (array_key_exists('intro_video_url', $data)) {
+            $video = trim((string) ($data['intro_video_url'] ?? ''));
+            $data['intro_video_url'] = $video !== '' ? $video : null;
+        }
 
         $this->processCoursePriceData($data, $course);
         $this->validateSalePrice($course, $data);
@@ -1145,6 +1167,23 @@ final class InstructorCourseService
                 $categoryIds
             );
         });
+    }
+
+    private function cleanCourseHtmlDescription(?string $desc): ?string
+    {
+        if ($desc === null) {
+            return null;
+        }
+
+        // Clean trailing empty paragraphs/divs/breaks
+        $cleaned = preg_replace('/(?:<div>\s*<br\s*\/?>\s*<\/div>|<p>\s*<br\s*\/?>\s*<\/p>|<br\s*\/?>\s*)+$/i', '', trim($desc));
+        $plain = trim(strip_tags((string) $cleaned));
+
+        if ($plain === '' && !str_contains((string) $cleaned, '<img')) {
+            return null;
+        }
+
+        return strip_tags((string) $cleaned, '<p><br><h1><h2><h3><h4><h5><h6><strong><b><em><i><u><s><strike><ul><ol><li><blockquote><a><div><span>');
     }
 
     private function normalizeArrayOrStringList(mixed $val): ?array
