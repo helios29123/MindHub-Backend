@@ -17,7 +17,9 @@ class PendingCourseResource extends JsonResource
                     'status' => $this->instructor?->status,
                 ];
             }),
-            'category_name' => $this->categories->first()?->name ?? 'N/A',
+            'category_name' => $this->categories->first()?->name ?? 'Chưa phân loại (Cần gán danh mục)',
+            'category_unassigned' => $this->categories->isEmpty(),
+            'has_category' => $this->categories->isNotEmpty(),
             'categories' => $this->whenLoaded('categories', function () {
                 return $this->categories->map(function ($cat) {
                     return [

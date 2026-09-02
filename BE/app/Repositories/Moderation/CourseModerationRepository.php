@@ -25,8 +25,16 @@ class CourseModerationRepository
             ]);
 
         $status = $filters['status'] ?? null;
-        if (in_array($status, ['pending_review', 'approved', 'rejected', 'published'], true)) {
-            $query->where('status', $status);
+        if ($status === 'pending' || $status === 'pending_review') {
+            $query->where('status', 'pending_review');
+        } elseif ($status === 'approved') {
+            $query->whereIn('status', ['approved', 'published']);
+        } elseif ($status === 'published') {
+            $query->where('status', 'published');
+        } elseif ($status === 'rejected') {
+            $query->where('status', 'rejected');
+        } elseif ($status === 'hidden') {
+            $query->where('status', 'hidden');
         } else {
             $query->whereIn('status', ['pending_review', 'approved', 'rejected', 'published']);
         }

@@ -26,7 +26,7 @@ class PendingCourseQueryRequest extends FormRequest
                 'title_asc',
                 'title_desc',
             ])],
-            'status' => ['sometimes', 'nullable', 'string', Rule::in(['pending_review', 'approved', 'rejected', 'published'])],
+            'status' => ['sometimes', 'nullable', 'string', Rule::in(['pending_review', 'pending', 'approved', 'rejected', 'published', 'all'])],
             'reviewed_date' => ['sometimes', 'nullable', 'string', Rule::in(['today'])],
         ];
     }
