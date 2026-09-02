@@ -296,7 +296,42 @@ class CatalogCourseRepository
                     ->whereColumn('enrollments.course_id', 'courses.id')
                     ->whereIn('enrollments.status', ['active', 'completed'])
                     ->selectRaw('COUNT(enrollments.id)');
-            }, 'enrollments_count');
+            }, 'enrollments_count')
+            ->selectSub(function ($query) {
+                $query->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->whereIn('enrollments.status', ['active', 'completed'])
+                    ->selectRaw('COALESCE(AVG(enrollments.progress_percent), 0)');
+            }, 'average_progress_percent')
+            ->selectSub(function ($query) {
+                $query->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->where('enrollments.status', 'completed')
+                    ->selectRaw('COUNT(enrollments.id)');
+            }, 'completed_enrollments_count');
+
+        $userId = auth('sanctum')->id() ?? auth()->id();
+        if ($userId) {
+            $query->selectSub(function ($sub) use ($userId) {
+                $sub->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->where('enrollments.user_id', $userId)
+                    ->whereIn('enrollments.status', ['active', 'completed'])
+                    ->select('enrollments.progress_percent')
+                    ->limit(1);
+            }, 'user_progress_percent');
+
+            $query->selectSub(function ($sub) use ($userId) {
+                $sub->from('enrollments')
+                    ->whereColumn('enrollments.course_id', 'courses.id')
+                    ->where('enrollments.user_id', $userId)
+                    ->whereIn('enrollments.status', ['active', 'completed'])
+                    ->selectRaw('1')
+                    ->limit(1);
+            }, 'is_enrolled');
+        }
+
+        return $query;
     }
 
     private function applySort(Builder $query, ?string $sort): void
