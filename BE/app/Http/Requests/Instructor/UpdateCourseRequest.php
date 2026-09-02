@@ -16,6 +16,7 @@ final class UpdateCourseRequest extends FormRequest
     public function rules(): array
     {
         $courseId = $this->route('id');
+        $minPrice = (int) config('course.min_price', 50000);
 
         return [
             'id' => ['prohibited'],
@@ -40,13 +41,13 @@ final class UpdateCourseRequest extends FormRequest
             'thumbnail_url' => ['sometimes', 'nullable', 'string', 'max:500'],
             'intro_video_url' => ['sometimes', 'nullable', 'string', 'max:500'],
             'original_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
-            'price' => ['sometimes', 'numeric', 'min:0'],
+            'price' => ['sometimes', 'numeric', 'min:' . $minPrice],
             'has_discount' => ['sometimes', 'nullable', 'boolean'],
             'sale_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'course_level' => ['sometimes', Rule::in(['beginner', 'intermediate', 'advanced', 'all_levels'])],
             'language' => ['sometimes', 'nullable', 'string', 'max:20'],
-            'requirements' => ['sometimes', 'nullable', 'string'],
-            'outcomes' => ['sometimes', 'nullable', 'string'],
+            'requirements' => ['sometimes', 'nullable'],
+            'outcomes' => ['sometimes', 'nullable'],
             'category_ids' => ['sometimes', 'array'],
             'category_ids.*' => [
                 'integer',
@@ -90,6 +91,8 @@ final class UpdateCourseRequest extends FormRequest
 
     public function messages(): array
     {
+        $minPriceFormatted = number_format((int) config('course.min_price', 50000), 0, ',', '.') . 'đ';
+
         return [
             'instructor_id.prohibited' => 'Không được truyền instructor_id.',
             'status.prohibited' => 'Không được sửa status trực tiếp.',
@@ -100,7 +103,7 @@ final class UpdateCourseRequest extends FormRequest
             'slug.unique' => 'Slug khóa học đã tồn tại.',
             'slug.alpha_dash' => 'Slug chỉ được chứa chữ, số, dấu gạch ngang và gạch dưới.',
             'price.numeric' => 'Giá gốc khóa học phải là số.',
-            'price.min' => 'Giá gốc khóa học không được âm.',
+            'price.min' => "Giá bán của khóa học tối thiểu là {$minPriceFormatted}.",
             'sale_price.numeric' => 'Giá khuyến mãi phải là số.',
             'sale_price.min' => 'Giá khuyến mãi không được âm.',
             'level.in' => 'Cấp độ khóa học không hợp lệ.',

@@ -38,13 +38,23 @@ final class InstructorCourseDraftRequest extends FormRequest
             'thumbnail_url' => ['nullable', 'string', 'max:500'],
             'intro_video_url' => ['nullable', 'string', 'max:500'],
             'original_price' => ['nullable', 'numeric', 'min:0'],
-            'price' => ['nullable', 'numeric', 'min:0'],
+            'price' => [
+                'nullable',
+                'numeric',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $minPrice = (int) config('course.min_price', 50000);
+                    if ($value !== null && $value !== '' && (float) $value > 0 && (float) $value < $minPrice) {
+                        $minPriceFormatted = number_format($minPrice, 0, ',', '.') . 'đ';
+                        $fail("Giá bán của khóa học tối thiểu là {$minPriceFormatted}.");
+                    }
+                },
+            ],
             'has_discount' => ['nullable', 'boolean'],
             'sale_price' => ['nullable', 'numeric', 'min:0'],
             'course_level' => ['nullable', Rule::in(['beginner', 'intermediate', 'advanced', 'all_levels'])],
             'language' => ['nullable', 'string', 'max:20'],
-            'requirements' => ['nullable', 'string'],
-            'outcomes' => ['nullable', 'string'],
+            'requirements' => ['nullable'],
+            'outcomes' => ['nullable'],
             'category_ids' => ['nullable', 'array'],
             'category_ids.*' => [
                 'integer',

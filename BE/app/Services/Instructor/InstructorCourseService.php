@@ -526,30 +526,53 @@ final class InstructorCourseService
             throw new BusinessException('Giá khóa học không được âm.', 422);
         }
 
+        $minPrice = (float) config('course.min_price', 50000);
+        $maxDiscountPercent = (float) config('course.max_discount_percentage', 70);
+
+        if ($price > 0 && $price < $minPrice) {
+            $minPriceFormatted = number_format($minPrice, 0, ',', '.') . 'đ';
+            throw new BusinessException("Giá bán của khóa học tối thiểu là {$minPriceFormatted}.", 422);
+        }
+
+        $hasSalePriceInput = array_key_exists('sale_price', $data) && $data['sale_price'] !== null && $data['sale_price'] !== '';
+        $hasDiscount = !empty($data['has_discount']);
+
+        if ($hasSalePriceInput || $hasDiscount) {
+            $rawSalePrice = array_key_exists('sale_price', $data) ? (float) $data['sale_price'] : $price;
+            if ($rawSalePrice > $price) {
+                throw new BusinessException('Giá khuyến mãi không được lớn hơn giá gốc.', 422);
+            }
+            if ($rawSalePrice < 0) {
+                throw new BusinessException('Giá khuyến mãi không được âm.', 422);
+            }
+            // Quy định sàn: Khóa học được giảm tối đa max_discount_percentage
+            $maxDiscountAmount = round($price * ($maxDiscountPercent / 100));
+            $minAllowedSalePrice = $price - $maxDiscountAmount;
+            if ($rawSalePrice < $minAllowedSalePrice) {
+                throw new BusinessException("Theo quy định của sàn, khóa học được giảm tối đa {$maxDiscountPercent}%.", 422);
+            }
+            $salePrice = $rawSalePrice;
+        } else {
+            if ($existingCourse !== null) {
+                $shadowCourse = clone $existingCourse;
+                $shadowCourse->setAttribute('price', $price);
+                $quote = app(\App\Services\Marketing\CouponPricingService::class)
+                    ->quoteCurrentCourse($shadowCourse);
+                $salePrice = (float) $quote['sale_price'];
+            } else {
+                $salePrice = $price;
+            }
+        }
+
         unset(
             $data['original_price'],
-            $data['has_discount'],
-            $data['sale_price']
+            $data['has_discount']
         );
 
         if ($hasPriceInput || $existingCourse === null) {
             $data['price'] = $price;
         }
-
-        if ($existingCourse === null) {
-            // Course mới chưa thể có campaign.
-            $data['sale_price'] = $price;
-            return;
-        }
-
-        // sale_price là field do Backend/campaign quản lý, không nhận trực tiếp từ request.
-        $shadowCourse = clone $existingCourse;
-        $shadowCourse->setAttribute('price', $price);
-
-        $quote = app(\App\Services\Marketing\CouponPricingService::class)
-            ->quoteCurrentCourse($shadowCourse);
-
-        $data['sale_price'] = (float) $quote['sale_price'];
+        $data['sale_price'] = $salePrice;
     }
 
     private function validateSalePrice(Course $course, array $data): void
@@ -1006,6 +1029,13 @@ final class InstructorCourseService
 
             $slugSource = $data['slug'] ?? ($title . '-' . uniqid());
 
+            if (array_key_exists('requirements', $data)) {
+                $data['requirements'] = $this->normalizeArrayOrStringList($data['requirements']);
+            }
+            if (array_key_exists('outcomes', $data)) {
+                $data['outcomes'] = $this->normalizeArrayOrStringList($data['outcomes']);
+            }
+
             $courseData = array_merge($data, [
                 'instructor_id' => $instructor->id,
                 'title' => $title,
@@ -1098,6 +1128,13 @@ final class InstructorCourseService
             unset($data['slug']);
         }
 
+        if (array_key_exists('requirements', $data)) {
+            $data['requirements'] = $this->normalizeArrayOrStringList($data['requirements']);
+        }
+        if (array_key_exists('outcomes', $data)) {
+            $data['outcomes'] = $this->normalizeArrayOrStringList($data['outcomes']);
+        }
+
         $this->processCoursePriceData($data, $course);
         $this->validateSalePrice($course, $data);
 
@@ -1108,6 +1145,25 @@ final class InstructorCourseService
                 $categoryIds
             );
         });
+    }
+
+    private function normalizeArrayOrStringList(mixed $val): ?array
+    {
+        if ($val === null) {
+            return null;
+        }
+        if (is_array($val)) {
+            return array_values(array_filter(array_map('strval', $val)));
+        }
+        if (is_string($val)) {
+            $decoded = json_decode($val, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return array_values(array_filter(array_map('strval', $decoded)));
+            }
+            $lines = preg_split('/\r\n|\r|\n/', $val);
+            return array_values(array_filter(array_map('trim', $lines)));
+        }
+        return [];
     }
 
     private function makeUniqueCourseSlug(string $source, ?int $ignoreCourseId = null): string
