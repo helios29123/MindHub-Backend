@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use App\Exceptions\BusinessException;
 use App\Mail\VerifyEmailMail;
 use App\Models\Notification;
+use App\Models\PayoutAccount;
 use App\Models\Session;
 use App\Models\User;
 use App\Repositories\Instructor\InstructorProfileRepository;
@@ -96,40 +97,126 @@ class AuthService
 
     public function registerInstructor(array $registerData): array
     {
-        $this->ensureEmailAndPhoneAreUnique(
-            $registerData['email'],
-            $registerData['phone'] ?? null
-        );
+        $email = strtolower(trim((string) $registerData['email']));
+        $existingUser = $this->userRepository->findByEmail($email);
 
-        return DB::transaction(function () use ($registerData) {
-            $user = $this->userRepository->create([
-                'full_name' => $registerData['full_name'],
-                'email' => $registerData['email'],
-                'phone' => $registerData['phone'] ?? null,
-                'password_hash' => Hash::make($registerData['password']),
-                'role' => User::ROLE_INSTRUCTOR,
-                'status' => User::STATUS_INACTIVE,
-                'locked' => false,
-                'locked_reason' => null,
-                'email_verified_at' => null,
-            ]);
+        $isRejectedResubmit = false;
+        if ($existingUser) {
+            $latestPayout = PayoutAccount::where('user_id', $existingUser->id)->orderByDesc('id')->first();
+            if ($existingUser->role === User::ROLE_INSTRUCTOR && $latestPayout?->status === 'disabled') {
+                $isRejectedResubmit = true;
+            } else {
+                throw new BusinessException('Email đã được sử dụng.', 409, [
+                    'email' => ['Email đã được sử dụng. Vui lòng sử dụng email mới để đăng ký Giảng viên.'],
+                ]);
+            }
+        }
 
-            $this->instructorProfileRepository->create([
-                'user_id' => $user->id,
-                'bio' => $registerData['bio'] ?? null,
-                'expertise' => $registerData['expertise'] ?? null,
-                'experience_years' => $registerData['experience_years'] ?? 0,
-                'level' => $registerData['level'] ?? null,
-            ]);
+        if (! $isRejectedResubmit) {
+            $this->ensureEmailAndPhoneAreUnique(
+                $email,
+                $registerData['phone'] ?? null
+            );
+        }
 
-            $this->payoutAccountRepository->create([
-                'user_id' => $user->id,
-                'provider' => $registerData['bank_provider'] ?? 'Chưa liên kết',
-                'account_number' => $registerData['bank_account_number'] ?? 'CHUA_CO',
-                'account_name' => $registerData['bank_account_name'] ?? $user->full_name,
-                'status' => 'pending_verification',
-                'is_default' => false,
-            ]);
+        return DB::transaction(function () use ($registerData, $email, $existingUser, $isRejectedResubmit) {
+            if ($isRejectedResubmit && $existingUser) {
+                $user = $existingUser;
+                $user->full_name = $registerData['full_name'];
+                if (! empty($registerData['phone'])) {
+                    $user->phone = $registerData['phone'];
+                }
+                if (! empty($registerData['password'])) {
+                    $user->password_hash = Hash::make($registerData['password']);
+                }
+                $user->status = User::STATUS_INACTIVE;
+                $user->save();
+
+                $profile = $this->instructorProfileRepository->findProfileByUserId((int) $user->id);
+                if ($profile) {
+                    $profile->update([
+                        'bio' => $registerData['bio'] ?? $profile->bio,
+                        'expertise' => $registerData['expertise'] ?? $profile->expertise,
+                        'experience_years' => $registerData['experience_years'] ?? $profile->experience_years,
+                        'level' => $registerData['level'] ?? $profile->level,
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    $this->instructorProfileRepository->create([
+                        'user_id' => $user->id,
+                        'bio' => $registerData['bio'] ?? null,
+                        'expertise' => $registerData['expertise'] ?? null,
+                        'experience_years' => $registerData['experience_years'] ?? 0,
+                        'level' => $registerData['level'] ?? null,
+                    ]);
+                }
+
+                $payout = PayoutAccount::where('user_id', $user->id)->orderByDesc('id')->first();
+                if ($payout) {
+                    $payout->update([
+                        'provider' => $registerData['bank_provider'] ?? $payout->provider,
+                        'account_number' => $registerData['bank_account_number'] ?? $payout->account_number,
+                        'account_name' => $registerData['bank_account_name'] ?? $user->full_name,
+                        'status' => 'pending_verification',
+                        'is_default' => false,
+                        'disabled_at' => null,
+                        'verified_at' => null,
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    $this->payoutAccountRepository->create([
+                        'user_id' => $user->id,
+                        'provider' => $registerData['bank_provider'] ?? 'Chưa liên kết',
+                        'account_number' => $registerData['bank_account_number'] ?? 'CHUA_CO',
+                        'account_name' => $registerData['bank_account_name'] ?? $user->full_name,
+                        'status' => 'pending_verification',
+                        'is_default' => false,
+                    ]);
+                }
+
+                try {
+                    $admins = User::where('role', 'admin')->get();
+                    foreach ($admins as $admin) {
+                        Notification::create([
+                            'user_id' => $admin->id,
+                            'type' => 'instructor_upgrade_request',
+                            'title' => 'Giảng viên nộp lại hồ sơ',
+                            'message' => "Giảng viên {$user->full_name} ({$user->email}) đã cập nhật và nộp lại hồ sơ xét duyệt.",
+                            'action_url' => '/admin/instructor-upgrades',
+                            'channel' => 'web',
+                        ]);
+                    }
+                } catch (\Throwable $e) {}
+            } else {
+                $user = $this->userRepository->create([
+                    'full_name' => $registerData['full_name'],
+                    'email' => $email,
+                    'phone' => $registerData['phone'] ?? null,
+                    'password_hash' => Hash::make($registerData['password']),
+                    'role' => User::ROLE_INSTRUCTOR,
+                    'status' => User::STATUS_INACTIVE,
+                    'locked' => false,
+                    'locked_reason' => null,
+                    'email_verified_at' => null,
+                ]);
+
+                $this->instructorProfileRepository->create([
+                    'user_id' => $user->id,
+                    'bio' => $registerData['bio'] ?? null,
+                    'expertise' => $registerData['expertise'] ?? null,
+                    'experience_years' => $registerData['experience_years'] ?? 0,
+                    'level' => $registerData['level'] ?? null,
+                ]);
+
+                $this->payoutAccountRepository->create([
+                    'user_id' => $user->id,
+                    'provider' => $registerData['bank_provider'] ?? 'Chưa liên kết',
+                    'account_number' => $registerData['bank_account_number'] ?? 'CHUA_CO',
+                    'account_name' => $registerData['bank_account_name'] ?? $user->full_name,
+                    'status' => 'pending_verification',
+                    'is_default' => false,
+                ]);
+            }
 
             $otpCode = $this->otpService->generate((int) $user->id, 'email_verification', 3600);
             $verifyUrl = $this->sendVerifyEmail($user, $otpCode);
@@ -138,7 +225,10 @@ class AuthService
                 'user' => $user->refresh(),
                 'verify_url' => config('app.debug') ? $verifyUrl : null,
                 'otp_code' => $otpCode,
-                'note' => 'Tài khoản giảng viên đã được tạo. Vui lòng nhập mã OTP để xác thực tài khoản và số điện thoại.',
+                'is_resubmission' => $isRejectedResubmit,
+                'note' => $isRejectedResubmit 
+                    ? 'Hồ sơ đã được nộp lại thành công. Vui lòng nhập mã OTP để xác thực tài khoản.'
+                    : 'Tài khoản giảng viên đã được tạo. Vui lòng nhập mã OTP để xác thực tài khoản và số điện thoại.',
             ];
         });
     }

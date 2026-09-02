@@ -8,10 +8,32 @@ class RegisterInstructorRequest extends BaseApiRequest
 {
     public function rules(): array
     {
+        $inputEmail = strtolower(trim((string) $this->input('email')));
+        $existingUser = !empty($inputEmail) ? \App\Models\User::where('email', $inputEmail)->first() : null;
+
+        $isRejectedResubmit = false;
+        if ($existingUser && $existingUser->role === \App\Models\User::ROLE_INSTRUCTOR) {
+            $latestPayout = \App\Models\PayoutAccount::where('user_id', $existingUser->id)->orderByDesc('id')->first();
+            if ($latestPayout?->status === 'disabled') {
+                $isRejectedResubmit = true;
+            }
+        }
+
+        $emailRules = ['required', 'string', 'email', 'max:255'];
+        $phoneRules = ['required', 'string', 'regex:/^(0|\+84)[1-9][0-9]{8}$/'];
+
+        if ($isRejectedResubmit && $existingUser) {
+            $emailRules[] = \Illuminate\Validation\Rule::unique('users', 'email')->ignore($existingUser->id);
+            $phoneRules[] = \Illuminate\Validation\Rule::unique('users', 'phone')->ignore($existingUser->id);
+        } else {
+            $emailRules[] = 'unique:users,email';
+            $phoneRules[] = 'unique:users,phone';
+        }
+
         return [
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'phone' => ['required', 'string', 'regex:/^(0|\+84)[1-9][0-9]{8}$/', 'unique:users,phone'],
+            'email' => $emailRules,
+            'phone' => $phoneRules,
             'password' => ['required', 'string', 'min:8', 'confirmed'],
 
             // Thông tin hồ sơ giảng viên

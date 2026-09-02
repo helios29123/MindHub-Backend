@@ -26,7 +26,7 @@ class InstructorUpgradeRejectedMail extends Mailable
         $reasonText = e($this->reason ?: 'Hồ sơ chưa đáp ứng đủ tiêu chuẩn xét duyệt hiện tại của nền tảng.');
 
         $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
-        $resubmitUrl = "{$frontendUrl}/become-instructor";
+        $resubmitUrl = "{$frontendUrl}/become-instructor?email=" . urlencode($this->applicant->email);
 
         $logoFile = base_path('mindhub.jpg');
         if (!file_exists($logoFile)) {
