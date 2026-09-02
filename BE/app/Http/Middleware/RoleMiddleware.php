@@ -21,7 +21,22 @@ final class RoleMiddleware
             );
         }
 
-        if (! in_array($user->role, $roles, true)) {
+        $allowedRoles = [];
+        foreach ($roles as $roleGroup) {
+            foreach (explode(',', $roleGroup) as $role) {
+                $trimmed = trim($role);
+                if ($trimmed !== '') {
+                    $allowedRoles[] = $trimmed;
+                    if ($trimmed === 'learner') {
+                        $allowedRoles[] = 'student';
+                    } elseif ($trimmed === 'student') {
+                        $allowedRoles[] = 'learner';
+                    }
+                }
+            }
+        }
+
+        if (! in_array((string) $user->role, $allowedRoles, true)) {
             return ApiResponse::error(
                 'Bạn không có quyền thực hiện thao tác này.',
                 [],

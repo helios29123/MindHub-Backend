@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 | Instructor được mua khóa học của giảng viên khác.
 | Instructor không được mua khóa học của chính mình, rule này xử lý trong service.
 */
-Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructor'])
+Route::middleware(['auth.session', 'active.user', 'role:learner'])
     ->group(function (): void {
         Route::post('/orders', [PaymentController::class, 'storeOrder']);
 
@@ -34,9 +34,8 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructo
 |--------------------------------------------------------------------------
 | Payment create URL (VNPAY & SePay VietQR)
 |--------------------------------------------------------------------------
-| learner/member/instructor đều được tạo thông tin thanh toán cho order của chính mình.
 */
-Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructor'])
+Route::middleware(['auth.session', 'active.user', 'role:learner'])
     ->group(function (): void {
         Route::post('/payments/vnpay/create', [PaymentController::class, 'createVnpayPayment']);
         Route::post('/payments/sepay/create', [PaymentController::class, 'createSepayPayment']);

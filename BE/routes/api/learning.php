@@ -1,10 +1,8 @@
 <?php
 use App\Http\Controllers\LearningController;
 use Illuminate\Support\Facades\Route;
-Route::middleware(['auth.session', 'active.user'])->group(function (): void {
+Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function (): void {
     Route::get('/learn/lessons/{id}/check-access', [LearningController::class, 'canAccessLesson'])->whereNumber('id');
-});
-Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructor,admin'])->group(function (): void {
     Route::get('/me/courses', [LearningController::class, 'myCourses']);
     Route::get('/learn/lessons/{id}', [LearningController::class, 'showLesson'])->whereNumber('id');
     Route::get('/learn/lessons/{id}/video-url', [LearningController::class, 'signedLessonVideoUrl'])
@@ -26,8 +24,6 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,member,instructo
     Route::post('/learn/lessons/{id}/notes', [LearningController::class, 'createLessonNote'])->whereNumber('id');
     Route::put('/learn/notes/{id}', [LearningController::class, 'updateLessonNote'])->whereNumber('id');
     Route::delete('/learn/notes/{id}', [LearningController::class, 'deleteLessonNote'])->whereNumber('id');
-});
-Route::middleware(['auth.session', 'active.user'])->group(function () {
     Route::get('/me/streak', [LearningController::class, 'streak']);
     Route::get('/me/learning-dashboard', [LearningController::class, 'dashboard']);
     Route::get('/me/activity-calendar', [LearningController::class, 'activityCalendar']);

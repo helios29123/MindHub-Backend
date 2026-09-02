@@ -27,8 +27,10 @@ Route::middleware(['auth.session', 'active.user', 'role:learner,instructor,admin
 
 use App\Http\Controllers\UserNotificationController;
 
-Route::get('/notifications', [UserNotificationController::class, 'index']);
-Route::patch('/notifications/read-all', [UserNotificationController::class, 'readAll']);
-Route::delete('/notifications/clear-all', [UserNotificationController::class, 'clearAll']);
-Route::patch('/notifications/{id}/read', [UserNotificationController::class, 'read'])->where('id', '[0-9]+');
-Route::delete('/notifications/{id}', [UserNotificationController::class, 'destroy'])->where('id', '[0-9]+');
+Route::middleware(['auth.session', 'active.user', 'role:learner'])->group(function (): void {
+    Route::get('/notifications', [UserNotificationController::class, 'index']);
+    Route::patch('/notifications/read-all', [UserNotificationController::class, 'readAll']);
+    Route::delete('/notifications/clear-all', [UserNotificationController::class, 'clearAll']);
+    Route::patch('/notifications/{id}/read', [UserNotificationController::class, 'read'])->where('id', '[0-9]+');
+    Route::delete('/notifications/{id}', [UserNotificationController::class, 'destroy'])->where('id', '[0-9]+');
+});
