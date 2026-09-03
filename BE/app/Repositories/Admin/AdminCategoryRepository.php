@@ -44,7 +44,7 @@ final class AdminCategoryRepository
 
         $this->applySort($query, $filters);
 
-        return $query->paginate(min((int) ($filters['per_page'] ?? 20), 100))
+        return $query->paginate(min((int) ($filters['per_page'] ?? 20), 500))
             ->appends($filters);
     }
 

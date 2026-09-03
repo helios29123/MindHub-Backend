@@ -179,8 +179,7 @@ class AdminModerationController extends Controller
                 ]
             );
 
-            $course->category_id = $category->id;
-            $course->save();
+            $course->categories()->sync([$category->id]);
 
             return ApiResponse::success([
                 'course_id' => $course->id,
@@ -192,8 +191,7 @@ class AdminModerationController extends Controller
             $categoryId = (int) $request->input('category_id');
             $category = \App\Models\Category::findOrFail($categoryId);
 
-            $course->category_id = $category->id;
-            $course->save();
+            $course->categories()->sync([$category->id]);
 
             return ApiResponse::success([
                 'course_id' => $course->id,

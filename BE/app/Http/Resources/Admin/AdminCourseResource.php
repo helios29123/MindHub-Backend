@@ -73,6 +73,13 @@ class AdminCourseResource extends JsonResource
                 ];
             }),
 
+            'category_name' => $this->relationLoaded('categories') ? $this->categories->first()?->name : $this->categories()->first()?->name,
+            'category' => ($firstCat = $this->relationLoaded('categories') ? $this->categories->first() : $this->categories()->first()) ? [
+                'id' => $firstCat->id,
+                'name' => $firstCat->name,
+                'slug' => $firstCat->slug,
+            ] : null,
+
             'categories' => $this->whenLoaded('categories', function () {
                 return $this->categories->map(function ($category) {
                     return [

@@ -15,7 +15,7 @@ final class CategoryQueryRequest extends FormRequest
     {
         return [
             'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:active,inactive,all'],
             'type' => ['nullable', 'in:root,child'],
