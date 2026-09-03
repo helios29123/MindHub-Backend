@@ -15,3 +15,8 @@ require __DIR__ . '/api/payment.php';
 require __DIR__ . '/api/learning.php';
 
 require __DIR__ . '/api/report.php';
+
+use App\Http\Controllers\Webhook\BunnyWebhookController;
+use Illuminate\Support\Facades\Route;
+
+Route::post('/webhooks/bunny/video-encoded', [BunnyWebhookController::class, 'handle']);

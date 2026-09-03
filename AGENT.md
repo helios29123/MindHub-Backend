@@ -86,3 +86,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   2. **Quyết định kỹ thuật & Thiết kế**: Lý do lựa chọn giải pháp kỹ thuật, thiết kế DB, tối ưu hóa (eager loading, hasManyThrough), cơ chế validation, kiểm soát lỗi.
   3. **Các file đã chỉnh sửa & tạo mới**: Liệt kê các tệp đã tạo hoặc chỉnh sửa dưới dạng markdown links.
   4. **Trạng thái & Việc còn dở**: Xác nhận hoàn thành hoặc lưu ý những phần việc chưa làm xong để các Agent tiếp theo tiếp quản.
+## 6. Project Specific Rules
+
+- IMPORTANT: For frontend work, always use the `FE-minhub` directory inside `MindHub-Frontend` (e.g. `/home/kiran/src/MindHub/MindHub-Frontend/FE-minhub`). The root `MindHub-Frontend/src` directory is deprecated and should not be used.
