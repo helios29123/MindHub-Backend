@@ -375,7 +375,7 @@ class AdminService
 
     public function getCourse(int $id): \App\Models\Course
     {
-        $course = \App\Models\Course::with(['instructor', 'categories', 'sections.lessons'])->find($id);
+        $course = \App\Models\Course::with(['instructor', 'categories', 'sections.lessons.assets'])->find($id);
 
         if (!$course) {
             throw new BusinessException('Không tìm thấy dữ liệu.', 404);
