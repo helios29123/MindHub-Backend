@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             CommissionRuleSeeder::class,
             CatalogCatDatabaseSeeder::class,
+            FullCourseCatalogAndVideoSeeder::class,
             CourseVideoSeeder::class,
             BannersTableSeeder::class,
             ApprovedInstructorTestSeeder::class,
