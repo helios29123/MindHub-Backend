@@ -75,15 +75,16 @@ jobs:
       - name: Configure Testing Database
         run: |
           echo "" >> .env
-          echo "DB_CONNECTION=mariadb" >> .env
+          echo "DB_CONNECTION=mysql" >> .env
           echo "DB_HOST=127.0.0.1" >> .env
           echo "DB_PORT=3306" >> .env
           echo "DB_DATABASE=test" >> .env
           echo "DB_USERNAME=root" >> .env
           echo "DB_PASSWORD=" >> .env
+          cp .env .env.testing
 
-      - name: Run Migrations and Seed Database
-        run: php artisan migrate:fresh --seed --env=testing
+      - name: Run Migrations
+        run: php artisan migrate:fresh --force
 
       - name: Execute Pest / PHPUnit Tests
         run: php -d memory_limit=-1 ./vendor/bin/pest
