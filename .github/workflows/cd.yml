@@ -34,17 +34,16 @@ jobs:
       - name: Deploy to Production Server via SSH
         id: ssh_deploy
         uses: appleboy/ssh-action@v1.2.0
-        continue-on-error: true
         env:
           FRESH_DB: ${{ inputs.fresh_database || false }}
           RUN_SEEDS: ${{ inputs.run_seeders != false }}
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
+          host: ${{ (secrets.SSH_HOST == 'mindhub.io.vn' || secrets.SSH_HOST == 'https://mindhub.io.vn') && '62.171.157.22' || secrets.SSH_HOST || '62.171.157.22' }}
+          username: ${{ secrets.SSH_USER == 'xam' && 'root' || secrets.SSH_USER || 'root' }}
           key: ${{ secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          script_stop: false
+          script_stop: true
           envs: GITHUB_SHA,GITHUB_REF_NAME,FRESH_DB,RUN_SEEDS
           script: |
             echo "=========================================================="
@@ -131,15 +130,3 @@ jobs:
             echo "=========================================================="
             echo "✅ [MindHub Backend] Triển khai thành công lên Server!"
             echo "=========================================================="
-
-      - name: Deploy Backend via FTP (Dự phòng nếu SSH không chạy)
-        if: steps.ssh_deploy.outcome != 'success'
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        continue-on-error: true
-        with:
-          server: ${{ secrets.FTP_SERVER || secrets.SSH_HOST || '62.171.157.22' }}
-          username: ${{ secrets.FTP_USERNAME || secrets.SSH_USER || 'xam' }}
-          password: ${{ secrets.FTP_PASSWORD || secrets.SSH_PASSWORD || 'EJmW5bmmihX6XBNK' }}
-          server-dir: /default/BE/
-          local-dir: ./BE/
-          dangerous-clean-slate: false
