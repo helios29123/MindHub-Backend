@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             CatalogCatDatabaseSeeder::class,
             CourseVideoSeeder::class,
             BannersTableSeeder::class,
+            ApprovedInstructorTestSeeder::class,
         ]);
     }
 }
