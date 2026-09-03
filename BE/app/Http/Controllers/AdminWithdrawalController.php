@@ -160,7 +160,7 @@ final class AdminWithdrawalController extends Controller
                 'rejected_at' => $item->status === WithdrawRequest::STATUS_REJECTED ? $this->formatDate($item->updated_at) : null,
                 'provider_payout_id' => $item->provider_payout_id,
                 'payout_provider' => $item->payout_provider,
-                'payout_mode' => in_array($item->status, [WithdrawRequest::STATUS_PAID, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_FAILED])
+                'payout_mode' => $item->status === WithdrawRequest::STATUS_PAID
                     ? ($item->payout_provider === 'manual' ? 'manual' : 'auto')
                     : null,
                 'payout_snapshot' => [
@@ -299,7 +299,7 @@ final class AdminWithdrawalController extends Controller
             'rejected_at' => $withdrawal->status === WithdrawRequest::STATUS_REJECTED ? $this->formatDate($withdrawal->updated_at) : null,
             'provider_payout_id' => $withdrawal->provider_payout_id,
             'payout_provider' => $withdrawal->payout_provider,
-            'payout_mode' => in_array($withdrawal->status, [WithdrawRequest::STATUS_PAID, WithdrawRequest::STATUS_PROCESSING, WithdrawRequest::STATUS_MANUAL_REQUIRED, WithdrawRequest::STATUS_FAILED])
+            'payout_mode' => $withdrawal->status === WithdrawRequest::STATUS_PAID
                 ? ($withdrawal->payout_provider === 'manual' ? 'manual' : 'auto')
                 : null,
             'rejected_reason' => $withdrawal->rejected_reason,
