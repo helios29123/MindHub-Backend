@@ -244,13 +244,20 @@ class PaymentService
                 ->first();
 
             if (! $order) {
-                preg_match('/MH\d+/i', $content, $matches);
-                if (! empty($matches[0])) {
-                    $order = DB::table('orders')
-                        ->where('order_code', $matches[0])
-                        ->orWhere('provider_transaction_id', $matches[0])
-                        ->lockForUpdate()
-                        ->first();
+                $normalizedContent = strtoupper((string) preg_replace('/[^a-zA-Z0-9]/', '', $content));
+                $candidates = DB::table('orders')
+                    ->where('status', '!=', Order::STATUS_PAID)
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($candidates as $candidate) {
+                    $normCode = strtoupper((string) preg_replace('/[^a-zA-Z0-9]/', '', (string) $candidate->order_code));
+                    $normTxn = strtoupper((string) preg_replace('/[^a-zA-Z0-9]/', '', (string) $candidate->provider_transaction_id));
+                    if (($normCode !== '' && str_contains($normalizedContent, $normCode))
+                        || ($normTxn !== '' && str_contains($normalizedContent, $normTxn))) {
+                        $order = $candidate;
+                        break;
+                    }
                 }
             }
 
@@ -469,6 +476,13 @@ $order = $query->first();
         if ($apiToken !== '' && $authHeader !== '') {
             $token = trim(str_ireplace(['Bearer ', 'Apikey '], '', $authHeader));
             if (hash_equals($apiToken, $token)) {
+                return;
+            }
+        }
+
+        $apiKeyHeader = (string) (request()->header('X-Api-Key') ?? request()->header('X-API-KEY') ?? request()->header('apikey'));
+        if ($apiToken !== '' && $apiKeyHeader !== '') {
+            if (hash_equals($apiToken, trim($apiKeyHeader))) {
                 return;
             }
         }
