@@ -1,8 +1,9 @@
 name: CD - Deploy Backend to Server
+run-name: 🚀 CD Deploy Backend (${{ github.ref_name }}) - ${{ github.event.head_commit.message || 'Manual' }}
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "develop", "main" ]
   workflow_dispatch:
     inputs:
       fresh_database:
@@ -27,9 +28,16 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Deploy to Production Server via SSH
+        id: ssh_deploy
         uses: appleboy/ssh-action@v1.2.0
         continue-on-error: true
+        env:
+          FRESH_DB: ${{ inputs.fresh_database || false }}
+          RUN_SEEDS: ${{ inputs.run_seeders != false }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -38,12 +46,9 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script_stop: false
           envs: GITHUB_SHA,GITHUB_REF_NAME,FRESH_DB,RUN_SEEDS
-        env:
-          FRESH_DB: ${{ inputs.fresh_database || false }}
-          RUN_SEEDS: ${{ inputs.run_seeders != false }}
           script: |
             echo "=========================================================="
-            echo "🚀 [MindHub Backend] Bắt đầu triển khai tự động..."
+            echo "🚀 [MindHub Backend] Bắt đầu triển khai tự động qua SSH..."
             echo "📅 Thời gian: $(date '+%Y-%m-%d %H:%M:%S')"
             echo "🔖 Nhánh triển khai: ${GITHUB_REF_NAME:-develop}"
             echo "=========================================================="
@@ -127,7 +132,8 @@ jobs:
             echo "✅ [MindHub Backend] Triển khai thành công lên Server!"
             echo "=========================================================="
 
-      - name: Deploy Backend via FTP
+      - name: Deploy Backend via FTP (Dự phòng nếu SSH không chạy)
+        if: steps.ssh_deploy.outcome != 'success'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         continue-on-error: true
         with:
