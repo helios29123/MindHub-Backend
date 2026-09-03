@@ -302,7 +302,7 @@ final class InstructorCourseService
             }
             if (!$this->courseCanBeSubmitted($course)) {
                 throw new BusinessException(
-                    "Khóa học chưa đủ điều kiện để gửi duyệt. Vui lòng hoàn thiện thông tin cơ bản, danh mục, chương học và bài học.",
+                    "Khóa học chưa đủ điều kiện để gửi duyệt. Vui lòng hoàn thiện: Tiêu đề, mô tả, ảnh bìa (thumbnail), video giới thiệu (intro video), ít nhất 1 chương học, 1 bài học hoàn chỉnh và ít nhất 1 bài học được bật Học thử miễn phí (Preview).",
                     422,
                 );
             }
@@ -328,7 +328,7 @@ final class InstructorCourseService
                         'type' => 'course_submitted',
                         'title' => 'Yêu cầu duyệt khóa học mới',
                         'message' => "Giảng viên {$instructor->full_name} đã gửi yêu cầu duyệt khóa học: {$updatedCourse->title}",
-                        'action_url' => '/admin/courses',
+                        'action_url' => '/admin/course-reviews?open_course_id=' . $updatedCourse->id,
                         'channel' => 'web',
                     ]);
                 }
@@ -374,6 +374,8 @@ final class InstructorCourseService
                 "description",
                 "course_level",
                 "language",
+                "thumbnail_url",
+                "intro_video_url",
             ]
             as $requiredField
         ) {
@@ -381,9 +383,13 @@ final class InstructorCourseService
                 return false;
             }
         }
-        if ($course->categories->isEmpty()) {
+
+        // Giá tối thiểu theo quy định sàn
+        $minPrice = (float) config('course.min_price', 50000);
+        if ($course->price === null || (float) $course->price < $minPrice) {
             return false;
         }
+
         if ($course->sections->isEmpty()) {
             return false;
         }
@@ -394,15 +400,36 @@ final class InstructorCourseService
             return false;
         }
 
+        $hasPreviewLesson = false;
+
         foreach ($course->sections as $section) {
             foreach ($section->lessons as $lesson) {
-                if (strtolower((string) $lesson->lesson_type) === 'video') {
+                if ((bool) $lesson->is_preview) {
+                    $hasPreviewLesson = true;
+                }
+                $type = strtolower((string) ($lesson->lesson_type ?? 'video'));
+                if ($type === 'video') {
                     $videoUrl = trim((string) ($lesson->video_url ?? ''));
                     if ($videoUrl === '' || str_starts_with($videoUrl, 'blob:')) {
                         return false;
                     }
+                } elseif ($type === 'text') {
+                    if (trim((string) ($lesson->content ?? '')) === '') {
+                        return false;
+                    }
+                } elseif ($type === 'document') {
+                    $hasAssets = $lesson->assets()->exists();
+                    $hasContent = trim((string) ($lesson->content ?? '')) !== '';
+                    $hasUrl = trim((string) ($lesson->video_url ?? '')) !== '';
+                    if (!$hasAssets && !$hasContent && !$hasUrl) {
+                        return false;
+                    }
                 }
             }
+        }
+
+        if (!$hasPreviewLesson) {
+            return false;
         }
 
         return true;

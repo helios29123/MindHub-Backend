@@ -144,4 +144,63 @@ class AdminModerationController extends Controller
             return ApiResponse::error($e->getMessage() ?: 'Không tìm thấy dữ liệu.', [], 404);
         }
     }
+
+    public function aiSuggestCategory(\Illuminate\Http\Request $request, int $courseId, \App\Services\AI\DeepSeekService $deepSeekService): JsonResponse
+    {
+        $course = \App\Models\Course::findOrFail($courseId);
+        $suggestion = $deepSeekService->suggestCategoryForCourse($course);
+
+        return ApiResponse::success(
+            $suggestion,
+            'AI phân tích và gợi ý danh mục thành công.'
+        );
+    }
+
+    public function aiApplyCategory(\Illuminate\Http\Request $request, int $courseId): JsonResponse
+    {
+        $course = \App\Models\Course::findOrFail($courseId);
+        $type = $request->input('type', 'existing');
+
+        if ($type === 'create_new') {
+            $name = trim((string) $request->input('name'));
+            $slug = trim((string) $request->input('slug')) ?: \Illuminate\Support\Str::slug($name);
+            $description = (string) $request->input('description', '');
+
+            if (empty($name)) {
+                return ApiResponse::error('Tên danh mục không được để trống.', [], 422);
+            }
+
+            $category = \App\Models\Category::firstOrCreate(
+                ['slug' => $slug],
+                [
+                    'name' => $name,
+                    'description' => $description,
+                    'status' => 'active',
+                ]
+            );
+
+            $course->category_id = $category->id;
+            $course->save();
+
+            return ApiResponse::success([
+                'course_id' => $course->id,
+                'category_id' => $category->id,
+                'category_name' => $category->name,
+                'created_new' => true,
+            ], 'Tạo mới và gán danh mục thành công.');
+        } else {
+            $categoryId = (int) $request->input('category_id');
+            $category = \App\Models\Category::findOrFail($categoryId);
+
+            $course->category_id = $category->id;
+            $course->save();
+
+            return ApiResponse::success([
+                'course_id' => $course->id,
+                'category_id' => $category->id,
+                'category_name' => $category->name,
+                'created_new' => false,
+            ], 'Gán danh mục cho khóa học thành công.');
+        }
+    }
 }

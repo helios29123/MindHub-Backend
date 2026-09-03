@@ -646,7 +646,7 @@ final class InstructorCourseController extends Controller
         $type = $request->input('type', 'course_media');
 
         $path = $file->store('instructor/uploads/' . $type, 'public');
-        $url = Storage::disk('public')->url($path);
+        $url = Storage::url($path);
 
         return ApiResponse::success([
             'url' => $url,
@@ -655,5 +655,38 @@ final class InstructorCourseController extends Controller
             'mime_type' => $file->getClientMimeType(),
             'size' => $file->getSize(),
         ], 'Tải lên tập tin thành công.', 201);
+    }
+
+    public function getLessonTypes(): JsonResponse
+    {
+        return ApiResponse::success([
+            [
+                'key' => 'video',
+                'name' => 'Video bài giảng',
+                'description' => 'Tải lên video MP4/MOV hoặc liên kết bài giảng',
+                'icon' => 'video',
+                'file_accept' => 'video/mp4,video/quicktime,video/webm',
+                'hint' => 'Video bài học với thời lượng rõ ràng',
+                'requires_media' => true,
+            ],
+            [
+                'key' => 'document',
+                'name' => 'Tài liệu học tập (Doc/PDF/Slide)',
+                'description' => 'Đính kèm tài liệu học tập, PDF, Slide bài giảng',
+                'icon' => 'file-text',
+                'file_accept' => '.pdf,.doc,.docx,.ppt,.pptx,.zip',
+                'hint' => 'File tài liệu tham khảo cho học viên',
+                'requires_media' => true,
+            ],
+            [
+                'key' => 'text',
+                'name' => 'Bài đọc lý thuyết (Text)',
+                'description' => 'Nội dung bài viết hướng dẫn chi tiết qua văn bản',
+                'icon' => 'align-left',
+                'file_accept' => null,
+                'hint' => 'Bài viết tài liệu, ghi chú học tập',
+                'requires_media' => false,
+            ],
+        ], 'Lấy danh sách loại bài học thành công.');
     }
 }

@@ -36,8 +36,8 @@ class CourseChecklistService
         $items = [
             [
                 'key' => 'title',
-                'label' => 'Tên khóa học',
-                'passed' => ! $this->blank($course->title),
+                'label' => 'Tên khóa học (>= 10 ký tự)',
+                'passed' => ! $this->blank($course->title) && mb_strlen(trim((string) $course->title)) >= 10,
                 'route_step' => 1,
             ],
             [
@@ -48,64 +48,58 @@ class CourseChecklistService
             ],
             [
                 'key' => 'description',
-                'label' => 'Mô tả chi tiết khóa học',
-                'passed' => ! $this->blank($course->description),
-                'route_step' => 1,
-            ],
-            [
-                'key' => 'thumbnail',
-                'label' => 'Ảnh đại diện (thumbnail)',
-                'passed' => ! $this->blank($course->thumbnail_url),
-                'route_step' => 1,
-            ],
-            [
-                'key' => 'category',
-                'label' => 'Danh mục khóa học',
-                'passed' => $categories->isNotEmpty(),
+                'label' => 'Mô tả chi tiết khóa học (>= 20 ký tự)',
+                'passed' => ! $this->blank($course->description) && mb_strlen(trim((string) $course->description)) >= 20,
                 'route_step' => 1,
             ],
             [
                 'key' => 'price',
-                'label' => 'Giá khóa học',
-                'passed' => $course->price !== null && (float) $course->price >= 0,
-                'route_step' => 1,
+                'label' => 'Giá bán hợp lệ (tối thiểu 50.000đ)',
+                'passed' => $course->price !== null && (float) $course->price >= 50000,
+                'route_step' => 2,
+            ],
+            [
+                'key' => 'thumbnail',
+                'label' => 'Ảnh đại diện khóa học (Thumbnail)',
+                'passed' => ! $this->blank($course->thumbnail_url),
+                'route_step' => 3,
+            ],
+            [
+                'key' => 'intro_video',
+                'label' => 'Video trailer giới thiệu (Intro Video)',
+                'passed' => ! $this->blank($course->intro_video_url),
+                'route_step' => 3,
             ],
             [
                 'key' => 'section',
                 'label' => 'Chương học (Section)',
                 'passed' => $sections->isNotEmpty(),
-                'route_step' => 2,
-            ],
-            [
-                'key' => 'published_section',
-                'label' => 'Xuất bản chương học',
-                'passed' => $sections->where('status', 'published')->isNotEmpty(),
-                'route_step' => 2,
+                'route_step' => 4,
             ],
             [
                 'key' => 'lesson',
                 'label' => 'Bài học',
                 'passed' => $lessons->isNotEmpty(),
-                'route_step' => 2,
-            ],
-            [
-                'key' => 'published_lesson',
-                'label' => 'Xuất bản bài học',
-                'passed' => $lessons->where('status', 'published')->isNotEmpty(),
-                'route_step' => 2,
+                'route_step' => 4,
             ],
             [
                 'key' => 'lesson_media',
-                'label' => 'Nội dung/Video bài học',
-                'passed' => $lessons->where('status', 'published')->filter(function ($l) use ($lessons) {
+                'label' => 'Nội dung bài học hoàn chỉnh',
+                'passed' => $lessons->isNotEmpty() && $lessons->every(function ($l) {
                     $lType = strtolower((string) ($l->lesson_type ?? 'video'));
                     if ($lType === 'video') {
                         $vUrl = (string) ($l->video_url ?? '');
                         return ! $this->blank($vUrl) && ! str_starts_with($vUrl, 'blob:');
                     }
                     return ! $this->blank($l->content ?? '');
-                })->isNotEmpty() || $lessons->isEmpty(),
-                'route_step' => 2,
+                }),
+                'route_step' => 4,
+            ],
+            [
+                'key' => 'preview_lesson',
+                'label' => 'Học thử miễn phí (Preview)',
+                'passed' => $lessons->where('is_preview', 1)->isNotEmpty(),
+                'route_step' => 4,
             ],
         ];
 

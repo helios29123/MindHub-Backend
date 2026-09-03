@@ -45,4 +45,9 @@ return [
         'url' => env('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
         'return_url' => env('VNPAY_RETURN_URL'),
     ],
+    'deepseek' => [
+        'api_key' => env('DEEPSEEK_API_KEY'),
+        'api_url' => env('DEEPSEEK_API_URL', 'https://api.deepseek.com/v1/chat/completions'),
+        'model' => env('DEEPSEEK_MODEL', 'deepseek-v4-flash'),
+    ],
 ];

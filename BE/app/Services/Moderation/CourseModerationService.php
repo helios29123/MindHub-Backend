@@ -18,7 +18,7 @@ class CourseModerationService
     }
     public function approveCourse(int $courseId, int $adminId): Course
     {
-        return DB::transaction(function () use ($courseId, $adminId): Course {
+        $freshCourse = DB::transaction(function () use ($courseId, $adminId): Course {
             $course = Course::query()
                 ->with('instructor')
                 ->whereKey($courseId)
@@ -40,19 +40,44 @@ class CourseModerationService
                 'published_at' => now(),
             ])->save();
 
-            $freshCourse = $course->fresh(['instructor', 'categories']);
+            $fresh = $course->fresh(['instructor', 'categories']);
 
-            if (! $freshCourse) {
+            if (! $fresh) {
                 throw new ModelNotFoundException();
             }
 
-            return $freshCourse;
+            return $fresh;
         });
+
+        // Gửi Thông báo web & Email cho Giảng viên
+        try {
+            $instructor = $freshCourse->instructor;
+            if ($instructor) {
+                \App\Models\Notification::create([
+                    'user_id' => $instructor->id,
+                    'type' => 'course_approved',
+                    'title' => 'Khóa học của bạn đã được phê duyệt!',
+                    'message' => "Chúc mừng! Khóa học \"{$freshCourse->title}\" đã được phê duyệt và xuất bản chính thức trên MindHub.",
+                    'action_url' => "/courses/" . ($freshCourse->slug ?: $freshCourse->id),
+                    'channel' => 'web',
+                ]);
+
+                if (!empty($instructor->email)) {
+                    \Illuminate\Support\Facades\Mail::to($instructor->email)->send(
+                        new \App\Mail\CourseApprovedNotificationMail($instructor, $freshCourse)
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to send course approval notification/email: ' . $e->getMessage());
+        }
+
+        return $freshCourse;
     }
 
     public function rejectCourse(int $courseId, string $reason, int $adminId): Course
     {
-        return DB::transaction(function () use ($courseId, $reason, $adminId): Course {
+        $freshCourse = DB::transaction(function () use ($courseId, $reason, $adminId): Course {
             $course = Course::query()
                 ->with('instructor')
                 ->whereKey($courseId)
@@ -74,14 +99,39 @@ class CourseModerationService
                 'published_at' => null,
             ])->save();
 
-            $freshCourse = $course->fresh(['instructor', 'categories']);
+            $fresh = $course->fresh(['instructor', 'categories']);
 
-            if (! $freshCourse) {
+            if (! $fresh) {
                 throw new ModelNotFoundException();
             }
 
-            return $freshCourse;
+            return $fresh;
         });
+
+        // Gửi Thông báo web & Email cho Giảng viên kèm lý do từ chối
+        try {
+            $instructor = $freshCourse->instructor;
+            if ($instructor) {
+                \App\Models\Notification::create([
+                    'user_id' => $instructor->id,
+                    'type' => 'course_rejected',
+                    'title' => 'Khóa học của bạn cần được điều chỉnh',
+                    'message' => "Khóa học \"{$freshCourse->title}\" chưa đạt tiêu chuẩn phê duyệt. Lý do: " . trim($reason),
+                    'action_url' => "/instructor/courses/{$freshCourse->id}/edit",
+                    'channel' => 'web',
+                ]);
+
+                if (!empty($instructor->email)) {
+                    \Illuminate\Support\Facades\Mail::to($instructor->email)->send(
+                        new \App\Mail\CourseRejectedNotificationMail($instructor, $freshCourse, trim($reason))
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to send course rejection notification/email: ' . $e->getMessage());
+        }
+
+        return $freshCourse;
     }
 
 }

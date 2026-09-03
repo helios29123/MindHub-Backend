@@ -31,6 +31,7 @@ Route::middleware(['auth.session', 'active.user', 'role:instructor'])
 |--------------------------------------------------------------------------
 | Nội dung mô tả cũ bị lỗi mã hóa, đã được chuẩn hóa lại.
 */
+        Route::get('/lesson-types', [InstructorCourseController::class, 'getLessonTypes']);
         Route::post('/courses/draft', [InstructorCourseController::class, 'storeDraft']);
         Route::post('/courses', [InstructorCourseController::class, 'store']);
         Route::post('/media/upload', [InstructorCourseController::class, 'uploadMedia']);

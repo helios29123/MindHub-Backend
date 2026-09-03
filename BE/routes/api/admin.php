@@ -55,6 +55,12 @@ Route::middleware(['auth.session', 'active.user', 'role:admin'])
         Route::patch('/courses/{courseId}/reject', [AdminModerationController::class, 'rejectCourse'])
             ->whereNumber('courseId');
 
+        Route::post('/courses/{courseId}/ai-suggest-category', [AdminModerationController::class, 'aiSuggestCategory'])
+            ->whereNumber('courseId');
+
+        Route::post('/courses/{courseId}/ai-apply-category', [AdminModerationController::class, 'aiApplyCategory'])
+            ->whereNumber('courseId');
+
         Route::get('/moderation/items', [AdminModerationController::class, 'moderationItems']);
         Route::get('/moderation/items/{targetType}/{id}', [AdminModerationController::class, 'moderationItemDetail'])
             ->whereIn('targetType', ['comment', 'review'])

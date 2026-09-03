@@ -139,68 +139,122 @@ class AdminCourseResource extends JsonResource
         $warnings = [];
         $passed = true;
 
-        // Check 1: Course Info
-        $titleLen = mb_strlen($course->title);
-        $descLen = mb_strlen($course->description);
+        // Check 1: Thông tin cơ bản (Tiêu đề, mô tả)
+        $titleLen = mb_strlen(trim((string) $course->title));
+        $descLen = mb_strlen(trim((string) $course->description));
+        $shortDescLen = mb_strlen(trim((string) $course->short_description));
         $infoPassed = $titleLen >= 10 && $descLen >= 20;
         $checks[] = [
             'name' => 'Thông tin cơ bản',
-            'message' => $infoPassed ? 'Đầy đủ tiêu đề và mô tả chi tiết.' : 'Thiếu tiêu đề hoặc mô tả quá ngắn.',
+            'message' => $infoPassed ? 'Đầy đủ tiêu đề, mô tả ngắn và mô tả chi tiết.' : 'Tiêu đề (tối thiểu 10 ký tự) hoặc mô tả quá ngắn.',
             'passed' => $infoPassed
         ];
         if (!$infoPassed) {
             $passed = false;
-            $missingItems[] = 'Tiêu đề phải >= 10 ký tự, mô tả >= 20 ký tự.';
+            $missingItems[] = 'Tiêu đề khóa học cần >= 10 ký tự, mô tả chi tiết >= 20 ký tự.';
         }
 
-        // Check 2: Price
-        $pricePassed = $course->price > 0;
+        // Check 2: Hình ảnh & Video giới thiệu (Thumbnail & Intro Video)
+        $hasThumb = !empty(trim((string) $course->thumbnail_url));
+        $hasIntroVideo = !empty(trim((string) $course->intro_video_url));
+        $mediaPassed = $hasThumb && $hasIntroVideo;
+        $checks[] = [
+            'name' => 'Hình ảnh & Video giới thiệu',
+            'message' => $mediaPassed
+                ? 'Đã có ảnh bìa đại diện và video trailer giới thiệu khóa học.'
+                : (!$hasThumb && !$hasIntroVideo
+                    ? 'Chưa có ảnh bìa (thumbnail) và video trailer giới thiệu.'
+                    : (!$hasThumb ? 'Chưa tải lên ảnh bìa (thumbnail).' : 'Chưa tải lên video trailer giới thiệu.')),
+            'passed' => $mediaPassed
+        ];
+        if (!$hasThumb) {
+            $passed = false;
+            $missingItems[] = 'Bắt buộc tải lên ảnh bìa đại diện khóa học (Thumbnail).';
+        }
+        if (!$hasIntroVideo) {
+            $passed = false;
+            $missingItems[] = 'Bắt buộc tải lên video trailer giới thiệu khóa học (Intro Video).';
+        }
+
+        // Check 3: Giá bán hợp lệ theo sàn (>= 50.000 đ)
+        $minPrice = (float) config('course.min_price', 50000);
+        $price = (float) ($course->price ?? 0);
+        $pricePassed = $price >= $minPrice;
         $checks[] = [
             'name' => 'Giá bán hợp lệ',
-            'message' => $pricePassed ? 'Giá bán hợp lệ.' : 'Giá bán chưa được thiết lập.',
+            'message' => $pricePassed ? 'Giá bán hợp lệ (' . number_format($price, 0, ',', '.') . 'đ).' : 'Giá bán phải đạt tối thiểu ' . number_format($minPrice, 0, ',', '.') . 'đ theo quy định sàn.',
             'passed' => $pricePassed
         ];
         if (!$pricePassed) {
             $passed = false;
-            $missingItems[] = 'Giá bán phải lớn hơn 0đ.';
+            $missingItems[] = 'Giá bán phải tối thiểu ' . number_format($minPrice, 0, ',', '.') . 'đ theo quy định của sàn.';
         }
 
-        // Check 3: Curriculum (Sections and lessons)
+        // Check 4: Cấu trúc chương trình học (Chương & Bài học)
         $sectionsCount = $course->sections()->count();
-        $lessonsCount = \Illuminate\Support\Facades\DB::table('lessons')
+        $lessons = \Illuminate\Support\Facades\DB::table('lessons')
             ->where('course_id', $course->id)
-            
-            ->count();
+            ->get();
+        $lessonsCount = $lessons->count();
         
         $curriculumPassed = $sectionsCount >= 1 && $lessonsCount >= 1;
         $checks[] = [
             'name' => 'Chương trình học',
-            'message' => $curriculumPassed ? "Có {$sectionsCount} chương và {$lessonsCount} bài học." : 'Chưa có chương hoặc bài học.',
+            'message' => $curriculumPassed ? "Có {$sectionsCount} chương và {$lessonsCount} bài học." : 'Yêu cầu tối thiểu 1 chương và 1 bài học.',
             'passed' => $curriculumPassed
         ];
         if (!$curriculumPassed) {
             $passed = false;
-            $missingItems[] = 'Yêu cầu có tối thiểu 1 chương và 1 bài học.';
+            $missingItems[] = 'Khóa học phải có tối thiểu 1 chương học và 1 bài học.';
         }
 
-        // Check 4: Videos
-        $lessonsWithoutVideo = \Illuminate\Support\Facades\DB::table('lessons')
-            ->where('course_id', $course->id)
-            ->whereNull('video_url')
-            
-            ->count();
-        
-        $videoPassed = $lessonsCount > 0 && $lessonsWithoutVideo === 0;
+        // Check 5: Nội dung từng bài học theo phân loại (Video / Tài liệu / Bài đọc)
+        $invalidLessonsCount = 0;
+        foreach ($lessons as $l) {
+            $lType = strtolower((string) ($l->lesson_type ?? 'video'));
+            if ($lType === 'video') {
+                $vUrl = trim((string) ($l->video_url ?? ''));
+                if ($vUrl === '' || str_starts_with($vUrl, 'blob:')) {
+                    $invalidLessonsCount++;
+                }
+            } elseif ($lType === 'text') {
+                if (trim((string) ($l->content ?? '')) === '') {
+                    $invalidLessonsCount++;
+                }
+            } elseif ($lType === 'document') {
+                $hasAsset = \Illuminate\Support\Facades\DB::table('lesson_assets')->where('lesson_id', $l->id)->exists();
+                $hasContent = trim((string) ($l->content ?? '')) !== '';
+                $hasUrl = trim((string) ($l->video_url ?? '')) !== '';
+                if (!$hasAsset && !$hasContent && !$hasUrl) {
+                    $invalidLessonsCount++;
+                }
+            }
+        }
+        $contentPassed = $lessonsCount > 0 && $invalidLessonsCount === 0;
         $checks[] = [
-            'name' => 'Video bài giảng',
-            'message' => $videoPassed ? 'Tất cả bài học đều có video.' : ($lessonsWithoutVideo > 0 ? "Có {$lessonsWithoutVideo} bài học chưa có video." : 'Không có bài học để kiểm tra video.'),
-            'passed' => $videoPassed
+            'name' => 'Nội dung bài học',
+            'message' => $contentPassed ? 'Tất cả bài học đều có nội dung/video/tài liệu hoàn chỉnh.' : ($invalidLessonsCount > 0 ? "Có {$invalidLessonsCount} bài học chưa hoàn thiện nội dung hoặc thiếu file/video." : 'Chưa có bài học để kiểm tra nội dung.'),
+            'passed' => $contentPassed
         ];
-        if ($lessonsWithoutVideo > 0) {
-            $warnings[] = "Có {$lessonsWithoutVideo} bài học chưa upload video bài giảng.";
+        if ($invalidLessonsCount > 0) {
+            $passed = false;
+            $missingItems[] = "Có {$invalidLessonsCount} bài học chưa hoàn thiện nội dung (thiếu video, tài liệu hoặc nội dung bài viết).";
         }
 
-        $summary = $passed ? 'Khóa học đạt đủ điều kiện phê duyệt.' : 'Khóa học chưa đủ điều kiện phê duyệt, vui lòng kiểm tra lại.';
+        // Check 6: Học thử miễn phí (Preview)
+        $previewLessonsCount = $lessons->where('is_preview', 1)->count();
+        $previewPassed = $previewLessonsCount >= 1;
+        $checks[] = [
+            'name' => 'Học thử miễn phí (Preview)',
+            'message' => $previewPassed ? "Có {$previewLessonsCount} bài học được bật chế độ học thử miễn phí." : 'Chưa có bài học nào được bật Học thử miễn phí (Preview).',
+            'passed' => $previewPassed
+        ];
+        if (!$previewPassed) {
+            $passed = false;
+            $missingItems[] = 'Khóa học phải có ít nhất 1 bài học được bật "Học thử miễn phí (Preview)".';
+        }
+
+        $summary = $passed ? 'Khóa học đạt đủ điều kiện phê duyệt.' : 'Khóa học chưa đủ điều kiện phê duyệt, vui lòng kiểm tra lại các mục chưa đạt.';
 
         return [
             'passed' => $passed,
