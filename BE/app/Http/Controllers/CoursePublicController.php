@@ -590,10 +590,12 @@ class CoursePublicController extends Controller
         foreach ($previewLessons as $lesson) {
             $course = $lesson->course;
             $rawVideo = $lesson->video_url;
-            if (empty($rawVideo) || str_contains($rawVideo, 'gtv-videos-bucket') || (!str_starts_with($rawVideo, 'http://') && !str_starts_with($rawVideo, 'https://'))) {
-                $videoUrl = $defaultVideos[$idx % count($defaultVideos)];
-            } else {
+            if (!empty($lesson->video_id)) {
+                $videoUrl = 'https://iframe.mediadelivery.net/embed/724015/' . $lesson->video_id . '?autoplay=true&loop=false&muted=false&preload=true&responsive=true';
+            } elseif (!empty($rawVideo) && (str_starts_with($rawVideo, 'http://') || str_starts_with($rawVideo, 'https://')) && !str_contains($rawVideo, 'gtv-videos-bucket')) {
                 $videoUrl = $rawVideo;
+            } else {
+                $videoUrl = $defaultVideos[$idx % count($defaultVideos)];
             }
 
             $items[] = [
