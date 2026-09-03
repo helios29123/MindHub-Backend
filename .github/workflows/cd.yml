@@ -31,6 +31,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check Port 22 Reachability
+        run: |
+          echo "Kiểm tra kết nối trực tiếp cổng 22 tới máy chủ 62.171.157.22..."
+          nc -zv -w 5 62.171.157.22 22
+
       - name: Deploy to Production Server via SSH
         id: ssh_deploy
         uses: appleboy/ssh-action@v1.2.0
@@ -38,11 +43,10 @@ jobs:
           FRESH_DB: ${{ inputs.fresh_database || false }}
           RUN_SEEDS: ${{ inputs.run_seeders != false }}
         with:
-          host: ${{ secrets.SSH_HOST || '62.171.157.22' }}
-          username: ${{ secrets.SSH_USER || 'root' }}
+          host: 62.171.157.22
+          username: root
           key: ${{ secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          port: 22
           script_stop: true
           envs: GITHUB_SHA,GITHUB_REF_NAME,FRESH_DB,RUN_SEEDS
           script: |
@@ -52,46 +56,17 @@ jobs:
             echo "🔖 Nhánh triển khai: ${GITHUB_REF_NAME:-develop}"
             echo "=========================================================="
 
-            # Xác định thư mục dự án trên máy chủ
-            DEPLOY_PATH="${{ secrets.SERVER_BE_PATH }}"
-            if [ -z "$DEPLOY_PATH" ]; then
-              if [ -d "/www/wwwroot/default/BE" ]; then
-                DEPLOY_PATH="/www/wwwroot/default/BE"
-              elif [ -d "/var/www/MindHub-Backend/BE" ]; then
-                DEPLOY_PATH="/var/www/MindHub-Backend/BE"
-              elif [ -d "$HOME/MindHub/MindHub-Backend/BE" ]; then
-                DEPLOY_PATH="$HOME/MindHub/MindHub-Backend/BE"
-              elif [ -d "$HOME/MindHub-Backend/BE" ]; then
-                DEPLOY_PATH="$HOME/MindHub-Backend/BE"
-              elif [ -d "/var/www/mindhub-backend" ]; then
-                DEPLOY_PATH="/var/www/mindhub-backend"
-              else
-                DEPLOY_PATH="/var/www/html/BE"
-              fi
-            fi
-
+            DEPLOY_PATH="/www/wwwroot/default"
             echo "📂 Thư mục triển khai: $DEPLOY_PATH"
-            if [ ! -d "$DEPLOY_PATH" ]; then
-              echo "❌ Thư mục $DEPLOY_PATH không tồn tại trên server! Vui lòng kiểm tra lại cấu hình SERVER_BE_PATH."
-              exit 1
-            fi
-
             cd "$DEPLOY_PATH"
             TARGET_BRANCH="${GITHUB_REF_NAME:-develop}"
 
-            # Di chuyển về thư mục gốc chứa .git nếu repository bao trùm cả folder BE/
-            if [ ! -d ".git" ] && [ -d "../.git" ]; then
-              cd ..
-              echo "📥 Đang kéo code mới nhất từ nhánh $TARGET_BRANCH..."
-              git fetch origin "$TARGET_BRANCH"
-              git reset --hard "origin/$TARGET_BRANCH"
-              cd BE || true
-            elif [ -d ".git" ]; then
-              echo "📥 Đang kéo code mới nhất từ nhánh $TARGET_BRANCH..."
-              git fetch origin "$TARGET_BRANCH"
-              git reset --hard "origin/$TARGET_BRANCH"
-            fi
+            echo "📥 Đang kéo code mới nhất từ nhánh $TARGET_BRANCH..."
+            git config --global --add safe.directory '*'
+            git fetch origin "$TARGET_BRANCH"
+            git reset --hard "origin/$TARGET_BRANCH"
 
+            cd BE
             echo "📦 Cài đặt Composer Dependencies (Production mode)..."
             composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 
