@@ -15,7 +15,12 @@ final class InstructorPayoutAccountController extends Controller
     public function index(InstructorPayoutAccountIndexRequest $request): JsonResponse
     {
         $instructorId = (int) $request->user()->id;
-        $status = $request->validated()['status'] ?? 'active';
+        $rawStatus = $request->validated()['status'] ?? 'verified';
+        $status = match ($rawStatus) {
+            'active' => PayoutAccount::STATUS_VERIFIED,
+            'inactive' => PayoutAccount::STATUS_DISABLED,
+            default => $rawStatus,
+        };
 
         $accounts = PayoutAccount::where('user_id', $instructorId)
             ->where('status', $status)
@@ -32,13 +37,13 @@ final class InstructorPayoutAccountController extends Controller
         $instructorId = (int) $request->user()->id;
 
         $account = PayoutAccount::where('user_id', $instructorId)
-            ->where('status', 'active')
+            ->where('status', PayoutAccount::STATUS_VERIFIED)
             ->where('is_default', true)
             ->first();
 
         if (!$account) {
             $account = PayoutAccount::where('user_id', $instructorId)
-                ->where('status', 'active')
+                ->where('status', PayoutAccount::STATUS_VERIFIED)
                 ->first();
         }
 
@@ -79,8 +84,8 @@ final class InstructorPayoutAccountController extends Controller
             'account_name' => 'required|string|max:100',
         ]);
 
-        $hasActive = PayoutAccount::where('user_id', $instructorId)
-            ->where('status', 'active')
+        $hasVerified = PayoutAccount::where('user_id', $instructorId)
+            ->where('status', PayoutAccount::STATUS_VERIFIED)
             ->exists();
 
         $account = PayoutAccount::create([
@@ -88,9 +93,9 @@ final class InstructorPayoutAccountController extends Controller
             'provider' => $request->input('provider'),
             'account_number' => $request->input('account_number'),
             'account_name' => $request->input('account_name'),
-            'status' => 'active',
-            'connected_at' => now(),
-            'is_default' => !$hasActive,
+            'status' => PayoutAccount::STATUS_VERIFIED,
+            'verified_at' => now(),
+            'is_default' => !$hasVerified,
         ]);
 
         return ApiResponse::success(
@@ -130,7 +135,7 @@ final class InstructorPayoutAccountController extends Controller
         $instructorId = (int) $request->user()->id;
         $account = PayoutAccount::where('id', $id)
             ->where('user_id', $instructorId)
-            ->where('status', 'active')
+            ->where('status', PayoutAccount::STATUS_VERIFIED)
             ->first();
 
         if (!$account) {
@@ -159,8 +164,9 @@ final class InstructorPayoutAccountController extends Controller
             return ApiResponse::error('Không tìm thấy tài khoản nhận tiền.', [], 404);
         }
 
-        $account->status = 'inactive';
+        $account->status = PayoutAccount::STATUS_DISABLED;
         $account->disabled_at = now();
+        $account->is_default = false;
         $account->save();
 
         return ApiResponse::success(
@@ -326,22 +332,23 @@ final class InstructorPayoutAccountController extends Controller
                         'provider' => $payload['provider'],
                         'account_number' => $payload['account_number'],
                         'account_name' => $payload['account_name'],
-                        'status' => 'active',
+                        'status' => PayoutAccount::STATUS_VERIFIED,
                         'is_default' => true,
-                        'connected_at' => now(),
+                        'verified_at' => now(),
+                        'disabled_at' => null,
                     ]);
                     return $existing;
                 }
             }
 
-            // Create new active default payout account
+            // Create new verified default payout account
             return PayoutAccount::create([
                 'user_id' => $instructorId,
                 'provider' => $payload['provider'],
                 'account_number' => $payload['account_number'],
                 'account_name' => $payload['account_name'],
-                'status' => 'active',
-                'connected_at' => now(),
+                'status' => PayoutAccount::STATUS_VERIFIED,
+                'verified_at' => now(),
                 'is_default' => true,
             ]);
         });

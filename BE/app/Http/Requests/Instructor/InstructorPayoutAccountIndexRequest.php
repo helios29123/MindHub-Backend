@@ -10,7 +10,7 @@ final class InstructorPayoutAccountIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['nullable', 'in:active,inactive'],
+            'status' => ['nullable', 'string', 'in:active,inactive,verified,disabled,pending_verification'],
         ];
     }
     public function messages(): array

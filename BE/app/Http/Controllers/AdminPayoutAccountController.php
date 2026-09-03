@@ -86,9 +86,8 @@ class AdminPayoutAccountController extends Controller
         $summary = [
             'total_accounts' => $totalAccounts,
             'pending_verification_count' => $statusCounts['pending_verification'] ?? 0,
-            'active_count' => $statusCounts['active'] ?? 0,
-            'rejected_count' => $statusCounts['rejected'] ?? 0,
-            'inactive_count' => $statusCounts['inactive'] ?? 0,
+            'verified_count' => $statusCounts['verified'] ?? ($statusCounts['active'] ?? 0),
+            'disabled_count' => $statusCounts['disabled'] ?? ($statusCounts['inactive'] ?? 0),
         ];
 
         // Sort and Paginate
@@ -105,9 +104,7 @@ class AdminPayoutAccountController extends Controller
             unset($data['account_number']);
 
             // Format dates
-            $data['connected_at'] = $this->formatDate($item->connected_at);
-            $data['approved_at'] = $this->formatDate($item->approved_at);
-            $data['rejected_at'] = $this->formatDate($item->rejected_at);
+            $data['verified_at'] = $this->formatDate($item->verified_at);
             $data['disabled_at'] = $this->formatDate($item->disabled_at);
             $data['created_at'] = $this->formatDate($item->created_at);
             $data['updated_at'] = $this->formatDate($item->updated_at);
@@ -274,8 +271,8 @@ class AdminPayoutAccountController extends Controller
         }
 
         $account->status = PayoutAccount::STATUS_VERIFIED;
-        $account->approved_at = now();
-        $account->connected_at = now();
+        $account->verified_at = now();
+        $account->disabled_at = null;
         $account->save();
 
         return response()->json([
@@ -289,10 +286,6 @@ class AdminPayoutAccountController extends Controller
      */
     public function reject(Request $request, int $id): JsonResponse
     {
-        $request->validate([
-            'reason' => ['nullable', 'string', 'max:1000'],
-        ]);
-
         $account = PayoutAccount::find($id);
 
         if (!$account) {
@@ -310,10 +303,8 @@ class AdminPayoutAccountController extends Controller
         }
 
         $account->status = PayoutAccount::STATUS_DISABLED;
-        $account->rejected_at = now();
-        if ($request->filled('reason')) {
-            $account->reject_reason = $request->input('reason');
-        }
+        $account->disabled_at = now();
+        $account->is_default = false;
         $account->save();
 
         return response()->json([

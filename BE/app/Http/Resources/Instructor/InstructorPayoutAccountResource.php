@@ -29,10 +29,9 @@ final class InstructorPayoutAccountResource extends JsonResource
     private function statusLabel(?string $status): string
     {
         return match ($status) {
-            'active' => 'Đang hoạt động',
-            'inactive' => 'Đã tắt',
-            'pending' => 'Chờ xác minh',
-            'rejected' => 'Bị từ chối',
+            'verified', 'active' => 'Đã xác thực',
+            'disabled', 'inactive' => 'Đã vô hiệu hóa',
+            'pending_verification', 'pending' => 'Chờ xác minh',
             default => 'Không xác định',
         };
     }
