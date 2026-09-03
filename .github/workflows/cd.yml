@@ -2,7 +2,7 @@ name: CD - Deploy Backend to Server
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "develop" ]
   workflow_dispatch:
     inputs:
       fresh_database:
