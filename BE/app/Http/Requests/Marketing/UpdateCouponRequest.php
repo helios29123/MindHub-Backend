@@ -37,7 +37,7 @@ class UpdateCouponRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'code.prohibited' => 'Mã campaign do hệ thống tự sinh và không được sửa.',
+            'code.prohibited' => 'Không được phép thay đổi mã campaign sau khi đã tạo.',
             'status.in' => 'Instructor chỉ được tắt campaign hiện tại.',
         ];
     }

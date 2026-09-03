@@ -111,7 +111,7 @@ class CouponService
             }
 
             $payload['status'] = $this->initialStatus($payload['start_at'] ?? null, $payload['end_at'] ?? null);
-            $payload['code'] = $this->generateCode($course, $payload);
+            $payload['code'] = strtoupper(trim((string) $data['code']));
             $payload['used_count'] = 0;
 
             $coupon = $this->couponRepository->create($payload);
@@ -339,30 +339,5 @@ class CouponService
         }
     }
 
-    private function generateCode(Course $course, array $payload): string
-    {
-        $coursePart = Str::upper(Str::slug((string) $course->title, ''));
-        $coursePart = substr($coursePart !== '' ? $coursePart : 'COURSE', 0, 12);
-        $date = now()->format('dmy');
 
-        if ($payload['campaign_type'] === Coupon::CAMPAIGN_TRIAL) {
-            $offer = 'FREE';
-        } elseif (($payload['discount_type'] ?? null) === Coupon::TYPE_PERCENT) {
-            $offer = 'P' . (int) round((float) $payload['discount_value']);
-        } else {
-            $value = (int) round((float) $payload['discount_value']);
-            $offer = $value >= 1000 && $value % 1000 === 0
-                ? 'F' . ((int) ($value / 1000)) . 'K'
-                : 'F' . $value;
-        }
-
-        for ($i = 0; $i < 20; $i++) {
-            $candidate = "MH-{$coursePart}-{$offer}-{$date}-" . Str::upper(Str::random(4));
-            if (!Coupon::query()->where('code', $candidate)->exists()) {
-                return $candidate;
-            }
-        }
-
-        throw new BusinessException('Không thể sinh mã campaign duy nhất, vui lòng thử lại.', 500);
-    }
 }
