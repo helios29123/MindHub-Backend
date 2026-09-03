@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Category;
 use App\Repositories\Instructor\InstructorCourseRepository;
 use App\Repositories\Instructor\InstructorLessonRepository;
+use App\Services\Bunny\BunnyStreamService;
 use App\Support\FileUpload;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
@@ -27,6 +28,7 @@ final class InstructorCourseService
         private readonly InstructorCourseRepository $instructorCourseRepository,
         private readonly InstructorLessonRepository $instructorLessonRepository,
         private readonly FileUpload $fileUpload,
+        private readonly BunnyStreamService $bunnyStreamService,
     ) {}
 
     public function createCourse(User $instructor, array $validatedData): Course
@@ -106,13 +108,25 @@ final class InstructorCourseService
             );
             $this->assertSectionBelongsToCourse($section, $course);
             $lessonType = $validatedData["lesson_type"];
+            
+            $cloneVideoData = function(?string $url) {
+                if ($url && str_contains($url, 'iframe.mediadelivery.net/embed/')) {
+                    $parts = explode('/', parse_url($url, PHP_URL_PATH));
+                    $videoId = end($parts);
+                    return ['url' => null, 'id' => $videoId, 'status' => 'processing'];
+                }
+                return ['url' => $url, 'id' => null, 'status' => null];
+            };
+
             $lessonData = [
                 "course_id" => $course->id,
                 "course_section_id" => $section->id,
                 "title" => $validatedData["title"],
                 "lesson_type" => $lessonType,
                 "content" => $validatedData["content"] ?? null,
-                "video_url" => $validatedData["video_url"] ?? null,
+                "video_url" => $cloneVideoData($validatedData["video_url"] ?? null)['url'],
+                "video_id" => $cloneVideoData($validatedData["video_url"] ?? null)['id'],
+                "video_status" => $cloneVideoData($validatedData["video_url"] ?? null)['status'],
                 "video_duration_seconds" =>
                 $validatedData["video_duration_seconds"] ?? 0,
                 "is_preview" => $validatedData["is_preview"] ?? false,
@@ -181,7 +195,22 @@ final class InstructorCourseService
                 as $field
             ) {
                 if (array_key_exists($field, $validatedData)) {
-                    $lessonData[$field] = $validatedData[$field];
+                    if ($field === 'video_url') {
+                        $url = $validatedData['video_url'];
+                        if ($url && str_contains($url, 'iframe.mediadelivery.net/embed/')) {
+                            $parts = explode('/', parse_url($url, PHP_URL_PATH));
+                            $videoId = end($parts);
+                            $lessonData['video_id'] = $videoId;
+                            $lessonData['video_url'] = null;
+                            $lessonData['video_status'] = 'processing';
+                        } else {
+                            $lessonData[$field] = $url;
+                            $lessonData['video_id'] = null;
+                            $lessonData['video_status'] = null;
+                        }
+                    } else {
+                        $lessonData[$field] = $validatedData[$field];
+                    }
                 }
             }
             if ($lessonType === "text") {
@@ -207,8 +236,17 @@ final class InstructorCourseService
             if ($course && $this->courseHasEnrollments((int) $course->id)) {
                 throw new BusinessException('Không thể xóa bài học vì khóa học đã có học viên đăng ký. Vui lòng ẩn khóa học hoặc ẩn bài học thay vì xóa.', 422);
             }
-            
+            $videoId = $lesson->video_id;
+
             $this->instructorLessonRepository->delete($lesson);
+
+            if ($videoId) {
+                try {
+                    $this->bunnyStreamService->deleteVideo($videoId);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Failed to delete Bunny video on lesson delete', ['video_id' => $videoId, 'error' => $e->getMessage()]);
+                }
+            }
         });
     }
 
@@ -250,17 +288,28 @@ final class InstructorCourseService
             $video,
         ): Lesson {
             $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
-            $videoUrl = $this->fileUpload->uploadLessonVideo(
-                $video,
-                $lesson->id,
-            );
-            return $this->instructorLessonRepository
-                ->updateVideo(
-                    $lesson,
-                    $videoUrl,
-                    $validatedData["video_duration_seconds"] ?? null,
-                )
-                ->load(["course", "section", "assets"]);
+            
+            // 1. Get or create collection
+            $collectionName = \Illuminate\Support\Str::slug($instructor->full_name . '-' . $lesson->course->title);
+            $collectionId = $this->bunnyStreamService->getOrCreateCollection($collectionName);
+            
+            // 2. Create video object on Bunny
+            $videoTitle = $lesson->title;
+            $videoId = $this->bunnyStreamService->createVideo($videoTitle, $collectionId);
+            
+            // 3. Upload file to Bunny (Backend Proxy)
+            $this->bunnyStreamService->uploadVideo($videoId, $video->getRealPath());
+
+            // 4. Update local DB
+            $lesson->video_id = $videoId;
+            $lesson->video_url = null; // Clear local URL
+            $lesson->video_status = 'processing';
+            if (isset($validatedData['video_duration_seconds'])) {
+                $lesson->video_duration_seconds = $validatedData['video_duration_seconds'];
+            }
+            $lesson->save();
+
+            return $lesson->load(["course", "section", "assets"]);
         });
     }
 
@@ -424,7 +473,12 @@ final class InstructorCourseService
                 $type = strtolower((string) ($lesson->lesson_type ?? 'video'));
                 if ($type === 'video') {
                     $videoUrl = trim((string) ($lesson->video_url ?? ''));
-                    if ($videoUrl === '' || str_starts_with($videoUrl, 'blob:')) {
+                    $videoId = trim((string) ($lesson->video_id ?? ''));
+                    
+                    if (
+                        ($videoUrl === '' || str_starts_with($videoUrl, 'blob:')) &&
+                        $videoId === ''
+                    ) {
                         return false;
                     }
                 } elseif ($type === 'text') {

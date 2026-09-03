@@ -636,6 +636,7 @@ final class InstructorCourseController extends Controller
                 }
             ],
             'type' => ['nullable', 'string'],
+            'course_id' => ['nullable', 'string'],
         ], [
             'file.required' => 'Vui lòng chọn tập tin để tải lên.',
             'file.file' => 'Tập tin không hợp lệ.',
@@ -644,9 +645,44 @@ final class InstructorCourseController extends Controller
 
         $file = $request->file('file');
         $type = $request->input('type', 'course_media');
+        $courseId = $request->input('course_id');
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        $isVideo = in_array($ext, ['mp4', 'mov', 'webm'], true);
+        $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
 
-        $path = $file->store('instructor/uploads/' . $type, 'public');
-        $url = Storage::url($path);
+        if ($isVideo) {
+            $bunnyService = app(\App\Services\Bunny\BunnyStreamService::class);
+            $instructor = $request->user();
+            
+            $collectionName = 'Intro-Videos-' . date('Y-m'); // Default
+            
+            if ($type === 'lesson_video' && $courseId) {
+                $course = \App\Models\Course::find($courseId);
+                if ($course) {
+                    $collectionName = \Illuminate\Support\Str::slug($instructor->full_name . '-' . $course->title);
+                } else {
+                    $collectionName = \Illuminate\Support\Str::slug($instructor->full_name . '-Uploads');
+                }
+            } else if ($type === 'lesson_video') {
+                $collectionName = \Illuminate\Support\Str::slug($instructor->full_name . '-Uploads');
+            }
+
+            $collectionId = $bunnyService->getOrCreateCollection($collectionName);
+            $videoId = $bunnyService->createVideo($file->getClientOriginalName(), $collectionId);
+            $bunnyService->uploadVideo($videoId, $file->getRealPath());
+            
+            $libraryId = config('bunny.stream.library_id', '724015');
+            $url = "https://iframe.mediadelivery.net/embed/{$libraryId}/{$videoId}";
+            $path = $url;
+        } elseif ($isImage) {
+            $cloudinaryService = app(\App\Services\Storage\CloudinaryService::class);
+            $result = $cloudinaryService->uploadImage($file, 'course_media');
+            $url = $result['url'];
+            $path = $url;
+        } else {
+            $path = $file->store('instructor/uploads/' . $type, 'public');
+            $url = Storage::url($path);
+        }
 
         return ApiResponse::success([
             'url' => $url,

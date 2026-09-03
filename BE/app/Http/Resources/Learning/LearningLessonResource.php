@@ -9,7 +9,7 @@ class LearningLessonResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $hasVideo = $this->lesson_type === 'video' && !empty($this->video_url);
+        $hasVideo = $this->lesson_type === 'video' && (!empty($this->video_url) || !empty($this->video_id));
 
         return [
             'id' => $this->id,

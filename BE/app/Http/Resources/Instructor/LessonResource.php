@@ -10,7 +10,7 @@ class LessonResource extends JsonResource
     public function toArray(Request $request): array
     {
         $hasAccess = $this->resource->is_preview || ($this->additional['has_access'] ?? false);
-        $hasVideo = $this->lesson_type === 'video' && !empty($this->video_url);
+        $hasVideo = $this->lesson_type === 'video' && (!empty($this->video_url) || !empty($this->video_id));
 
         return [
             'id' => $this->id,
