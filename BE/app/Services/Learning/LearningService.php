@@ -117,8 +117,19 @@ class LearningService
             ->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])
             ->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
         if (! $enrollment) throw new \App\Exceptions\BusinessException('Bạn chưa có quyền học hoặc quyền học đã hết hạn.',403);
-        $sec=max(0,(int)$data['current_second']);
-        if ($lesson->video_duration_seconds>0 && $sec>(int)$lesson->video_duration_seconds) throw new \App\Exceptions\BusinessException('Tiến độ video không hợp lệ.',422);
+        
+        $sec = max(0, (int)$data['current_second']);
+        $clientDuration = isset($data['duration_second']) ? (int)$data['duration_second'] : 0;
+        
+        // Sync or adapt real video duration from client if reported
+        if ($clientDuration > 0 && ((int)$lesson->video_duration_seconds <= 0 || abs((int)$lesson->video_duration_seconds - $clientDuration) > 10)) {
+            $lesson->update(['video_duration_seconds' => $clientDuration]);
+            $lesson->video_duration_seconds = $clientDuration;
+        } elseif ($sec > (int)$lesson->video_duration_seconds && $sec > 0) {
+            $lesson->update(['video_duration_seconds' => $sec]);
+            $lesson->video_duration_seconds = $sec;
+        }
+
         $userTz = $data['timezone'] ?? $user->timezone ?? 'Asia/Ho_Chi_Minh';
         if (!empty($data['timezone']) && $user->timezone !== $data['timezone']) {
             $user->update(['timezone' => $data['timezone']]);
@@ -145,13 +156,13 @@ class LearningService
             }
         }
 
-        $vp=\App\Models\VideoProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['current_second'=>0]);
+        $vp = \App\Models\VideoProgress::firstOrCreate(['enrollment_id' => $enrollment->id, 'lesson_id' => $lessonId], ['current_second' => 0]);
         $oldSec = (int)$vp->current_second;
         $newSec = max($oldSec, $sec);
         $vp->update(['current_second' => $newSec]);
         if ($sec > $oldSec) {
             $diff = $sec - $oldSec;
-            if ($diff > 0 && $diff <= 30) {
+            if ($diff > 0 && $diff <= 60) {
                 DB::table('learning_daily_activity')->upsert(
                     [
                         'enrollment_id' => $enrollment->id,
@@ -164,14 +175,44 @@ class LearningService
                     ['video_learning_seconds' => DB::raw('learning_daily_activity.video_learning_seconds + ' . $diff), 'updated_at' => now()]
                 );
                 
-                $progress=\App\Models\LessonProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
+                $progress = \App\Models\LessonProgress::firstOrCreate(['enrollment_id' => $enrollment->id, 'lesson_id' => $lessonId], ['status' => 'in_progress', 'started_at' => now(), 'last_accessed_at' => now(), 'learning_duration_seconds' => 0]);
                 $progress->increment('learning_duration_seconds', $diff);
             }
         }
-        $progress=\App\Models\LessonProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
-        if ($progress->status==='not_started') $progress->update(['status'=>'in_progress','started_at'=>$progress->started_at??now()]);
-        $progress->update(['last_accessed_at'=>now()]); $enrollment->update(['last_accessed_at'=>now()]);
-        return ['course'=>$lesson->course,'lesson'=>$lesson,'progress'=>$progress->fresh(),'current_second'=>(int)$vp->fresh()->current_second];
+        
+        $progress = \App\Models\LessonProgress::firstOrCreate(['enrollment_id' => $enrollment->id, 'lesson_id' => $lessonId], ['status' => 'in_progress', 'started_at' => now(), 'last_accessed_at' => now(), 'learning_duration_seconds' => 0]);
+        if ($progress->status === 'not_started') {
+            $progress->update(['status' => 'in_progress', 'started_at' => $progress->started_at ?? now()]);
+        }
+        
+        $isCompletedReq = !empty($data['is_completed']);
+        $duration = (int) $lesson->video_duration_seconds;
+        $isAutoCompleted = $isCompletedReq || ($duration > 0 && $newSec >= ($duration * 0.9));
+        
+        if ($isAutoCompleted && $progress->status !== 'completed') {
+            $progress->update([
+                'status' => 'completed',
+                'completed_at' => $progress->completed_at ?? now(),
+                'last_accessed_at' => now()
+            ]);
+            
+            // Sync course enrollment progress percent
+            $ids = \App\Models\Lesson::query()->where('course_id', $lesson->course_id)->where('status', 'published')->whereHas('section', fn($q) => $q->where('status', 'published'))->pluck('id');
+            $total = $ids->count();
+            $done = \App\Models\LessonProgress::query()->where('enrollment_id', $enrollment->id)->whereIn('lesson_id', $ids)->where('status', 'completed')->count();
+            $percent = $total > 0 ? round(($done / $total) * 100, 2) : 0.00;
+            $u = ['progress_percent' => $percent, 'last_accessed_at' => now()];
+            if ($total > 0 && $done === $total && $enrollment->status !== Enrollment::STATUS_COMPLETED) {
+                $u['status'] = Enrollment::STATUS_COMPLETED;
+                $u['completed_at'] = now();
+            }
+            $enrollment->update($u);
+        } else {
+            $progress->update(['last_accessed_at' => now()]);
+            $enrollment->update(['last_accessed_at' => now()]);
+        }
+        
+        return ['course' => $lesson->course, 'lesson' => $lesson, 'progress' => $progress->fresh(), 'current_second' => (int)$vp->fresh()->current_second];
     }
 
     /**
@@ -228,20 +269,20 @@ class LearningService
             if(!$p) $p=\App\Models\LessonProgress::create(['enrollment_id'=>$e->id,'lesson_id'=>$lesson->id,'status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
             $completed=(bool)($data['completed']??true);
             if($completed && $p->status!=='completed'){
-                if((!$p->started_at || $p->started_at->diffInSeconds(now())<5))
-                    throw new \App\Exceptions\BusinessException('Bạn cần mở nội dung ít nhất 5 giây trước khi hoàn thành.',422);
-
-                if($lesson->lesson_type === 'video') {
+                if ($lesson->lesson_type === 'video') {
                     $vp = \App\Models\VideoProgress::query()->where('enrollment_id', $e->id)->where('lesson_id', $lesson->id)->first();
                     $duration = (int) $lesson->video_duration_seconds;
-                    if ($vp && $duration > 0 && (int)$vp->current_second < $duration * 0.9) {
-                        throw new \App\Exceptions\BusinessException('Bạn cần xem ít nhất 90% thời lượng video trước khi hoàn thành.', 422);
+                    if ($vp && (int)$vp->current_second > 0) {
+                        // Sync duration if video was actually shorter
+                        if ($duration <= 0 || (int)$vp->current_second > $duration) {
+                            $lesson->update(['video_duration_seconds' => (int)$vp->current_second]);
+                        }
                     }
                 }
 
                 $p->update(['status'=>'completed','started_at'=>$p->started_at??now(),'completed_at'=>now(),'last_accessed_at'=>now()]);
-            } elseif(!$completed && $p->status!=='completed') {
-                $p->update(['status'=>'in_progress','started_at'=>$p->started_at??now(),'last_accessed_at'=>now()]);
+            } elseif(!$completed && $p->status==='completed') {
+                $p->update(['status'=>'in_progress','completed_at'=>null,'last_accessed_at'=>now()]);
             }
             $ids=\App\Models\Lesson::query()->where('course_id',$lesson->course_id)->where('status','published')->whereHas('section',fn($q)=>$q->where('status','published'))->pluck('id');
             $total=$ids->count(); $done=\App\Models\LessonProgress::query()->where('enrollment_id',$e->id)->whereIn('lesson_id',$ids)->where('status','completed')->count();

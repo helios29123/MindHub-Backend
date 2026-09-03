@@ -14,14 +14,37 @@ class SaveVideoProgressRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $current = $this->input('current_second');
+        $duration = $this->input('duration_second');
+
+        $merge = [];
+        if ($current !== null && is_numeric($current)) {
+            $merge['current_second'] = (int) round((float) $current);
+        }
+        if ($duration !== null && is_numeric($duration)) {
+            $merge['duration_second'] = (int) round((float) $duration);
+        }
+        if ($this->input('force_date') === '' || $this->input('force_date') === null) {
+            $merge['force_date'] = null;
+        }
+        if ($this->input('timezone') === '' || $this->input('timezone') === null) {
+            $merge['timezone'] = null;
+        }
+        if (!empty($merge)) {
+            $this->merge($merge);
+        }
+    }
+
     public function rules(): array
     {
         return [
             'current_second' => ['required', 'integer', 'min:0'],
             'duration_second' => ['nullable', 'integer', 'min:1'],
             'is_completed' => ['nullable', 'boolean'],
-            'force_date' => ['nullable', 'date_format:Y-m-d'],
-            'timezone' => ['nullable', 'string', 'timezone:all'],
+            'force_date' => ['nullable', 'string'],
+            'timezone' => ['nullable', 'string'],
         ];
     }
 

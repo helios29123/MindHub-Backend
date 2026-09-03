@@ -76,12 +76,10 @@ class OrderService
             // Đồng bộ cache hiển thị sale_price, nhưng snapshot Order luôn lấy quote realtime này.
             $course->forceFill(['sale_price' => $quote['sale_price']])->saveQuietly();
 
-            if (($quote['campaign_type'] ?? null) === Coupon::CAMPAIGN_TRIAL) {
-                if (! $coupon) {
-                    throw new BusinessException('Campaign học thử không hợp lệ.', 409);
-                }
+            $amount = (int) $quote['sale_price'];
 
-                return $this->createTrialOrder(
+            if (($quote['campaign_type'] ?? null) === Coupon::CAMPAIGN_TRIAL || $amount <= 0) {
+                return $this->createTrialOrFreeOrder(
                     $course,
                     $coupon,
                     (int) $commissionRule->id,
@@ -90,20 +88,12 @@ class OrderService
                 );
             }
 
-            $amount = (int) $quote['sale_price'];
             $minimumPayable = (int) config('order.minimum_payable_amount', 10000);
 
             if ($amount > 0 && $amount < $minimumPayable) {
                 throw new BusinessException(
                     "Giá sau giảm phải là 0đ hoặc từ {$minimumPayable}đ trở lên.",
                     422
-                );
-            }
-
-            if ($amount <= 0) {
-                throw new BusinessException(
-                    'Giá 0đ chỉ hợp lệ với campaign_type=trial.',
-                    409
                 );
             }
 
@@ -195,27 +185,27 @@ class OrderService
         });
     }
 
-    private function createTrialOrder(
+    private function createTrialOrFreeOrder(
         Course $course,
-        Coupon $coupon,
+        ?Coupon $coupon,
         int $commissionRuleId,
         int $userId,
         array $quote
     ): object {
-        // Idempotency + "mỗi learner chỉ trial course 1 lần":
-        // request lặp lại trả lại trial order cũ, không cấp thêm quyền/không tăng used_count.
-        $existingTrialOrder = DB::table('orders')
+        $isTrialCoupon = $coupon && ($quote['campaign_type'] ?? null) === Coupon::CAMPAIGN_TRIAL;
+
+        // Idempotency: request lặp lại trả lại order cũ
+        $existingOrder = DB::table('orders')
             ->where('user_id', $userId)
             ->where('course_id', $course->id)
             ->where('status', Order::STATUS_PAID)
             ->where('payment_status', Order::PAYMENT_PAID)
             ->where('amount', 0)
-            ->where('payment_method', 'coupon_trial')
             ->lockForUpdate()
             ->first();
 
-        if ($existingTrialOrder) {
-            return $existingTrialOrder;
+        if ($existingOrder) {
+            return $existingOrder;
         }
 
         $existingEnrollment = Enrollment::query()
@@ -232,32 +222,37 @@ class OrderService
             throw new BusinessException('Bạn đã từng học thử khóa học này.', 409);
         }
 
-        if (
-            $coupon->usage_limit === null
-            || (int) $coupon->usage_limit < 1
-            || (int) $coupon->usage_limit > (int) config('coupon.trial_max_uses', 15)
-        ) {
-            throw new BusinessException('Giới hạn lượt học thử không hợp lệ.', 409);
+        if ($isTrialCoupon && $coupon) {
+            if (
+                $coupon->usage_limit === null
+                || (int) $coupon->usage_limit < 1
+                || (int) $coupon->usage_limit > (int) config('coupon.trial_max_uses', 1000)
+            ) {
+                throw new BusinessException('Giới hạn lượt học thử không hợp lệ.', 409);
+            }
+
+            if ((int) $coupon->used_count >= (int) $coupon->usage_limit) {
+                $coupon->forceFill(['status' => Coupon::STATUS_USED_UP])->save();
+                $this->couponPricing->syncCourseSalePrice($course->refresh());
+                throw new BusinessException('Campaign học thử đã hết lượt.', 409);
+            }
         }
 
-        if ((int) $coupon->used_count >= (int) $coupon->usage_limit) {
-            $coupon->forceFill(['status' => Coupon::STATUS_USED_UP])->save();
-            $this->couponPricing->syncCourseSalePrice($course->refresh());
-            throw new BusinessException('Campaign học thử đã hết lượt.', 409);
-        }
+        $paymentMethod = $isTrialCoupon ? 'coupon_trial' : 'free';
+        $expiresAt = $isTrialCoupon ? now()->addDays((int) config('coupon.trial_access_days', 7)) : null;
 
         $orderId = DB::table('orders')->insertGetId([
             'order_code' => $this->generateOrderCode(),
             'user_id' => $userId,
             'course_id' => $course->id,
-            'coupon_id' => $coupon->id,
+            'coupon_id' => $coupon?->id,
             'commission_rule_id' => $commissionRuleId,
             'status' => Order::STATUS_PAID,
             'payment_status' => Order::PAYMENT_PAID,
             'price_snapshot' => (int) $quote['price'],
             'discount_amount' => (int) $quote['price'],
             'amount' => 0,
-            'payment_method' => 'coupon_trial',
+            'payment_method' => $paymentMethod,
             'provider_transaction_id' => null,
             'paid_at' => now(),
             'expires_at' => null,
@@ -274,28 +269,30 @@ class OrderService
             'status' => Enrollment::STATUS_ACTIVE,
             'progress_percent' => 0,
             'enrolled_at' => now(),
-            'expires_at' => now()->addDays((int) config('coupon.trial_access_days', 7)),
+            'expires_at' => $expiresAt,
             'completed_at' => null,
             'last_accessed_at' => null,
         ]);
 
-        $nextUsedCount = (int) $coupon->used_count + 1;
-        $nextStatus = $nextUsedCount >= (int) $coupon->usage_limit
-            ? Coupon::STATUS_USED_UP
-            : Coupon::STATUS_ACTIVE;
+        if ($isTrialCoupon && $coupon) {
+            $nextUsedCount = (int) $coupon->used_count + 1;
+            $nextStatus = $nextUsedCount >= (int) $coupon->usage_limit
+                ? Coupon::STATUS_USED_UP
+                : Coupon::STATUS_ACTIVE;
 
-        $coupon->forceFill([
-            'used_count' => $nextUsedCount,
-            'status' => $nextStatus,
-        ])->save();
+            $coupon->forceFill([
+                'used_count' => $nextUsedCount,
+                'status' => $nextStatus,
+            ])->save();
+
+            // Nếu lượt vừa rồi làm used_up thì sale_price phải quay lại price ngay.
+            $this->couponPricing->syncCourseSalePrice($course->refresh());
+        }
 
         DB::table('wishlist')
             ->where('user_id', $userId)
             ->where('course_id', $course->id)
             ->delete();
-
-        // Nếu lượt vừa rồi làm used_up thì sale_price phải quay lại price ngay.
-        $this->couponPricing->syncCourseSalePrice($course->refresh());
 
         return DB::table('orders')->where('id', $orderId)->first();
     }
