@@ -431,14 +431,32 @@ final class AdminWithdrawalController extends Controller
                 return ['status' => 404, 'message' => 'Không tìm thấy yêu cầu rút tiền.'];
             }
 
-            if ($withdrawal->status !== WithdrawRequest::STATUS_MANUAL_REQUIRED) {
-                return ['status' => 422, 'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Cần xử lý thủ công.'];
+            // Nếu đã được Webhook đối soát và thanh toán trước đó
+            if ($withdrawal->status === WithdrawRequest::STATUS_PAID) {
+                return [
+                    'status' => 200,
+                    'message' => 'Yêu cầu rút tiền đã được xác nhận thanh toán trước đó.',
+                    'withdrawal' => $withdrawal,
+                ];
             }
 
+            if (! in_array($withdrawal->status, [
+                WithdrawRequest::STATUS_APPROVED,
+                WithdrawRequest::STATUS_PENDING,
+                WithdrawRequest::STATUS_PROCESSING,
+                WithdrawRequest::STATUS_MANUAL_REQUIRED,
+            ], true)) {
+                return ['status' => 422, 'message' => 'Không thể hoàn tất yêu cầu ở trạng thái ' . $withdrawal->status];
+            }
+
+            $withdrawal->status = WithdrawRequest::STATUS_PAID;
+            $withdrawal->paid_at = now();
+            $withdrawal->processed_at = now();
+            $withdrawal->provider_payout_id = $request->input('provider_payout_id');
             if (empty($withdrawal->payout_provider)) {
                 $withdrawal->payout_provider = 'manual';
-                $withdrawal->save();
             }
+            $withdrawal->save();
 
             return ['status' => 200, 'withdrawal' => $withdrawal];
         });
@@ -450,11 +468,10 @@ final class AdminWithdrawalController extends Controller
             ], $result['status']);
         }
 
-        $this->payoutService->finalizeSuccess($result['withdrawal'], $request->input('provider_payout_id'));
-
         return response()->json([
             'success' => true,
-            'message' => 'Đánh dấu hoàn tất thanh toán thành công.',
+            'message' => $result['message'] ?? 'Đánh dấu hoàn tất thanh toán thành công.',
+            'data' => $result['withdrawal'],
         ]);
     }
 
