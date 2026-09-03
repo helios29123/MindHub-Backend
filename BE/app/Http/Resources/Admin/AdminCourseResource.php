@@ -223,38 +223,6 @@ class AdminCourseResource extends JsonResource
             $missingItems[] = 'Khóa học phải có tối thiểu 1 chương học và 1 bài học.';
         }
 
-        // Check 5: Nội dung từng bài học theo phân loại (Video / Tài liệu / Bài đọc)
-        $invalidLessonsCount = 0;
-        foreach ($lessons as $l) {
-            $lType = strtolower((string) ($l->lesson_type ?? 'video'));
-            if ($lType === 'video') {
-                $vUrl = trim((string) ($l->video_url ?? ''));
-                if ($vUrl === '' || str_starts_with($vUrl, 'blob:')) {
-                    $invalidLessonsCount++;
-                }
-            } elseif ($lType === 'text') {
-                if (trim((string) ($l->content ?? '')) === '') {
-                    $invalidLessonsCount++;
-                }
-            } elseif ($lType === 'document') {
-                $hasAsset = \Illuminate\Support\Facades\DB::table('lesson_assets')->where('lesson_id', $l->id)->exists();
-                $hasContent = trim((string) ($l->content ?? '')) !== '';
-                $hasUrl = trim((string) ($l->video_url ?? '')) !== '';
-                if (!$hasAsset && !$hasContent && !$hasUrl) {
-                    $invalidLessonsCount++;
-                }
-            }
-        }
-        $contentPassed = $lessonsCount > 0 && $invalidLessonsCount === 0;
-        $checks[] = [
-            'name' => 'Nội dung bài học',
-            'message' => $contentPassed ? 'Tất cả bài học đều có nội dung/video/tài liệu hoàn chỉnh.' : ($invalidLessonsCount > 0 ? "Có {$invalidLessonsCount} bài học chưa hoàn thiện nội dung hoặc thiếu file/video." : 'Chưa có bài học để kiểm tra nội dung.'),
-            'passed' => $contentPassed
-        ];
-        if ($invalidLessonsCount > 0) {
-            $passed = false;
-            $missingItems[] = "Có {$invalidLessonsCount} bài học chưa hoàn thiện nội dung (thiếu video, tài liệu hoặc nội dung bài viết).";
-        }
 
         // Check 6: Học thử miễn phí (Preview)
         $previewLessonsCount = $lessons->where('is_preview', 1)->count();
