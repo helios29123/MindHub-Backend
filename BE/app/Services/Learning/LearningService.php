@@ -147,7 +147,8 @@ class LearningService
 
         $vp=\App\Models\VideoProgress::firstOrCreate(['enrollment_id'=>$enrollment->id,'lesson_id'=>$lessonId],['current_second'=>0]);
         $oldSec = (int)$vp->current_second;
-        $vp->update(['current_second' => $sec]);
+        $newSec = max($oldSec, $sec);
+        $vp->update(['current_second' => $newSec]);
         if ($sec > $oldSec) {
             $diff = $sec - $oldSec;
             if ($diff > 0 && $diff <= 30) {
@@ -227,18 +228,14 @@ class LearningService
             if(!$p) $p=\App\Models\LessonProgress::create(['enrollment_id'=>$e->id,'lesson_id'=>$lesson->id,'status'=>'in_progress','started_at'=>now(),'last_accessed_at'=>now(),'learning_duration_seconds'=>0]);
             $completed=(bool)($data['completed']??true);
             if($completed && $p->status!=='completed'){
-                if(in_array($lesson->lesson_type,['text','document'],true) && (!$p->started_at || $p->started_at->diffInSeconds(now())<5))
+                if((!$p->started_at || $p->started_at->diffInSeconds(now())<5))
                     throw new \App\Exceptions\BusinessException('Bạn cần mở nội dung ít nhất 5 giây trước khi hoàn thành.',422);
 
                 if($lesson->lesson_type === 'video') {
                     $vp = \App\Models\VideoProgress::query()->where('enrollment_id', $e->id)->where('lesson_id', $lesson->id)->first();
                     $duration = (int) $lesson->video_duration_seconds;
-                    $current = (int) ($vp?->current_second ?? 0);
-                    
-                    if ($duration > 0 && $current < $duration * 0.9) {
+                    if ($vp && $duration > 0 && (int)$vp->current_second < $duration * 0.9) {
                         throw new \App\Exceptions\BusinessException('Bạn cần xem ít nhất 90% thời lượng video trước khi hoàn thành.', 422);
-                    } elseif ($duration === 0 && (!$p->started_at || $p->started_at->diffInSeconds(now()) < 5)) {
-                        throw new \App\Exceptions\BusinessException('Bạn cần mở nội dung ít nhất 5 giây trước khi hoàn thành.', 422);
                     }
                 }
 
@@ -440,9 +437,10 @@ class LearningService
 
     public function getLearningStreak(?User $user = null): array
     {
-        $today = now()->format('Y-m-d');
+        $userTz = request()->query('timezone') ?? $user?->timezone ?? 'Asia/Ho_Chi_Minh';
+        $today = now()->setTimezone($userTz)->format('Y-m-d');
         if (! $user) {
-            $startOfWeek = now()->startOfWeek(\Carbon\Carbon::MONDAY);
+            $startOfWeek = now()->setTimezone($userTz)->startOfWeek(\Carbon\Carbon::MONDAY);
             $weekDays = [];
             $dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
             for ($i = 0; $i < 7; $i++) {
@@ -453,6 +451,8 @@ class LearningService
                     'active' => false,
                     'isToday' => ($dStr === $today),
                     'is_today' => ($dStr === $today),
+                    'learning_seconds' => 0,
+                    'learning_time' => '0 phút',
                 ];
             }
             return [
@@ -474,33 +474,54 @@ class LearningService
         }
 
         $progressDates = [];
-        if (Schema::hasTable('lesson_progress') && Schema::hasTable('lessons')) {
-            $progressDates = DB::table('lesson_progress as lp')
+        $dailyLearningSecondsMap = [];
+
+        if (Schema::hasTable('lesson_progress') && Schema::hasTable('lessons') && Schema::hasTable('enrollments')) {
+            $rawRecords = DB::table('lesson_progress as lp')
                 ->join('lessons as l', 'l.id', '=', 'lp.lesson_id')
                 ->join('enrollments as e', 'e.id', '=', 'lp.enrollment_id')
                 ->where('e.user_id', $user->id)
                 ->where('l.lesson_type', 'video')
                 ->where('lp.status', 'completed')
-                ->select(DB::raw('DISTINCT DATE(COALESCE(lp.completed_at, lp.last_accessed_at, lp.updated_at)) as d'))
-                ->pluck('d')
-                ->filter()
-                ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
-                ->toArray();
+                ->select('lp.completed_at', 'lp.last_accessed_at', 'lp.updated_at')
+                ->get();
+
+            foreach ($rawRecords as $rec) {
+                $rawTime = $rec->completed_at ?? $rec->last_accessed_at ?? $rec->updated_at;
+                if ($rawTime) {
+                    $localDate = Carbon::parse($rawTime)->setTimezone($userTz)->format('Y-m-d');
+                    $progressDates[] = $localDate;
+                }
+            }
+        }
+
+        if (Schema::hasTable('learning_daily_activity') && Schema::hasTable('enrollments')) {
+            $activities = DB::table('learning_daily_activity as lda')
+                ->join('enrollments as e', 'e.id', '=', 'lda.enrollment_id')
+                ->where('e.user_id', $user->id)
+                ->select('lda.activity_date', 'lda.video_learning_seconds')
+                ->get();
+
+            foreach ($activities as $act) {
+                $d = Carbon::parse($act->activity_date)->format('Y-m-d');
+                $sec = (int) ($act->video_learning_seconds ?? 0);
+                $dailyLearningSecondsMap[$d] = ($dailyLearningSecondsMap[$d] ?? 0) + $sec;
+            }
         }
 
         $allDatesSet = array_unique(array_filter($progressDates));
         rsort($allDatesSet);
-        $yesterday = now()->subDay()->format('Y-m-d');
+        $yesterday = now()->setTimezone($userTz)->subDay()->format('Y-m-d');
 
         $currentStreak = 0;
-        $checkDate = now();
+        $checkDate = now()->setTimezone($userTz);
         $isTodayActive = in_array($today, $allDatesSet, true);
         $isYesterdayActive = in_array($yesterday, $allDatesSet, true);
 
         $isMaintaining = $isTodayActive || $isYesterdayActive;
 
         if (!$isTodayActive && $isYesterdayActive) {
-            $checkDate = now()->subDay();
+            $checkDate = now()->setTimezone($userTz)->subDay();
         }
 
         if ($isMaintaining) {
@@ -537,7 +558,7 @@ class LearningService
         }
         $totalActiveDays = count($allDatesSet);
 
-        $startOfWeek = now()->startOfWeek(\Carbon\Carbon::MONDAY);
+        $startOfWeek = now()->setTimezone($userTz)->startOfWeek(\Carbon\Carbon::MONDAY);
         $weekDays = [];
         $dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
         $completedDaysCount = 0;
@@ -552,12 +573,19 @@ class LearningService
                 $completedDaysCount++;
             }
 
+            $daySec = $dailyLearningSecondsMap[$dStr] ?? 0;
+            $learningTimeFormatted = $daySec >= 60 
+                ? (floor($daySec / 60) . ' phút ' . ($daySec % 60 > 0 ? ($daySec % 60) . 's' : ''))
+                : ($daySec > 0 ? $daySec . ' giây' : ($isActive ? 'Đã hoàn thành bài học' : '0 phút'));
+
             $weekDays[] = [
                 'day' => $dayLabels[$i],
                 'date' => $dStr,
                 'active' => $isActive,
                 'isToday' => $isToday,
                 'is_today' => $isToday,
+                'learning_seconds' => $daySec,
+                'learning_time' => trim($learningTimeFormatted),
             ];
         }
 

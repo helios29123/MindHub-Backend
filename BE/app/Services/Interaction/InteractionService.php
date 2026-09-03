@@ -29,14 +29,14 @@ class InteractionService
             throw new BusinessException('Nội dung chưa khả dụng.', 403);
         }
 
-        // 2. Kiểm tra learner có enrollment active/completed
+        // 2. Kiểm tra learner có enrollment active/completed hoặc là giảng viên/admin
         $enrollment = Enrollment::where('user_id', $user->id)
             ->where('course_id', $lesson->course_id)
             ->whereIn('status', ['active', 'completed'])
             ->where(function ($query) { $query->whereNull('expires_at')->orWhere('expires_at', '>', now()); })
             ->first();
 
-        if (!$enrollment) {
+        if (!$enrollment && (int)$course->instructor_id !== (int)$user->id && $user->role !== 'admin' && (float)$course->price != 0) {
             throw new BusinessException('Bạn chưa có quyền truy cập nội dung này.', 403);
         }
 
@@ -55,7 +55,16 @@ class InteractionService
         if(!$user->isActive()) throw new BusinessException('Tài khoản hiện không thể dùng Q&A.',403);
         $lesson=Lesson::with(['course','section'])->find($lessonId); if(!$lesson || !$lesson->course || $lesson->course->status!=='published' || $lesson->status!=='published') throw new BusinessException('Nội dung chưa khả dụng.',403);
         $e=Enrollment::query()->where('user_id',$user->id)->where('course_id',$lesson->course_id)->whereIn('status',[Enrollment::STATUS_ACTIVE,Enrollment::STATUS_COMPLETED])->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now()))->first();
-        if(!$e) throw new BusinessException('Bạn không còn quyền tạo Q&A.',403);
+        if(!$e) {
+            if ((int)$lesson->course->instructor_id === (int)$user->id || $user->role === 'admin' || (float)$lesson->course->price == 0) {
+                $e = Enrollment::firstOrCreate(
+                    ['user_id' => $user->id, 'course_id' => $lesson->course_id],
+                    ['status' => Enrollment::STATUS_ACTIVE, 'enrolled_at' => now()]
+                );
+            } else {
+                throw new BusinessException('Bạn không còn quyền tạo Q&A.',403);
+            }
+        }
         $parent=$data['parent_id']??null; if($parent!==null && !Comment::query()->whereKey($parent)->where('lesson_id',$lessonId)->whereNull('parent_id')->where('status','visible')->exists()) throw new BusinessException('Chỉ được reply câu hỏi gốc đang hiển thị.',422);
         return Comment::create(['parent_id'=>$parent,'enrollment_id'=>$e->id,'user_id'=>$user->id,'lesson_id'=>$lessonId,'content'=>$data['content'],'status'=>'visible','is_official'=>false])->load('user');
     }

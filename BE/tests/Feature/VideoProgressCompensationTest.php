@@ -304,12 +304,12 @@ final class VideoProgressCompensationTest extends TestCase
 
         $response->assertStatus(200);
 
-        // Vị trí tua lùi được lưu thành 80s
+        // Vị trí không đi lùi (giữ nguyên 100s)
         $videoProgress = DB::table('video_progress')
             ->where('enrollment_id', $this->enrollmentId)
             ->where('lesson_id', $this->lessonId)
             ->first();
-        $this->assertEquals(80, (int) $videoProgress->current_second);
+        $this->assertEquals(100, (int) $videoProgress->current_second);
 
         // Giây học không bị thay đổi
         $dailyActivity = DB::table('learning_daily_activity')
