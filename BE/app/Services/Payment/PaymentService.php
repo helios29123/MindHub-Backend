@@ -224,9 +224,9 @@ class PaymentService
     {
         $this->assertSepayWebhookSignature();
 
-        $content = (string) ($payload['content'] ?? '');
-        $transferAmount = (float) ($payload['transferAmount'] ?? 0);
-        $referenceCode = (string) ($payload['referenceCode'] ?? $payload['id'] ?? '');
+        $content = (string) ($payload['content'] ?? $payload['description'] ?? $payload['memo'] ?? $payload['subAccount'] ?? '');
+        $transferAmount = (float) ($payload['transferAmount'] ?? $payload['amount'] ?? 0);
+        $referenceCode = (string) ($payload['referenceCode'] ?? $payload['id'] ?? $payload['transaction_id'] ?? $payload['code'] ?? '');
 
         if (empty($content)) {
             return ['success' => false, 'message' => 'Nội dung chuyển khoản trống.'];
@@ -461,23 +461,39 @@ $order = $query->first();
 
     private function assertSepayWebhookSignature(): void
     {
+        $apiToken = (string) config('sepay.api_token');
         $secret = (string) config('sepay.webhook_secret');
 
-        if ($secret === '') {
-            throw new BusinessException('Cấu hình SePay Webhook chưa đầy đủ.', 500);
+        // 1. Check Bearer / ApiKey Authorization header (SePay & GPM)
+        $authHeader = (string) request()->header('Authorization');
+        if ($apiToken !== '' && $authHeader !== '') {
+            $token = trim(str_ireplace(['Bearer ', 'Apikey '], '', $authHeader));
+            if (hash_equals($apiToken, $token)) {
+                return;
+            }
         }
 
+        // 2. Check X-SePay-Signature header if webhook_secret is configured
         $signature = (string) request()->header('X-SePay-Signature');
-
-        if ($signature === '') {
-            throw new BusinessException('Thiếu chữ ký xác thực SePay Webhook.', 401);
+        if ($secret !== '' && $signature !== '') {
+            $expected = hash_hmac('sha256', request()->getContent(), $secret);
+            if (hash_equals($expected, $signature)) {
+                return;
+            }
         }
 
-        $expected = hash_hmac('sha256', request()->getContent(), $secret);
-
-        if (! hash_equals($expected, $signature)) {
-            throw new BusinessException('Xác thực SePay Webhook thất bại. Chữ ký không hợp lệ.', 401);
+        // 3. In non-production, allow token query or body param, or bypass if not configured
+        if (config('app.env') !== 'production') {
+            $providedKey = request()->input('api_key') ?? request()->input('token');
+            if ($apiToken !== '' && $providedKey && hash_equals($apiToken, (string) $providedKey)) {
+                return;
+            }
+            if ($secret === '') {
+                return;
+            }
         }
+
+        throw new BusinessException('Xác thực Webhook thanh toán thất bại. Thiếu chữ ký hoặc API key không hợp lệ.', 401);
     }
 
     private function getOrderAmount(object $order): float

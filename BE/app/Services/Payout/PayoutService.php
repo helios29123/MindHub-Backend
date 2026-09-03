@@ -47,6 +47,15 @@ class PayoutService
 
             $withdrawal->save();
 
+            if ($status === 'MANUAL_REQUIRED') {
+                $withdrawal->status = WithdrawRequest::STATUS_MANUAL_REQUIRED;
+                $withdrawal->payout_mode = 'manual';
+                $withdrawal->failure_reason = (string) ($response['message'] ?? 'Yêu cầu rút tiền cần xử lý thủ công.');
+                $withdrawal->processed_at = now();
+                $withdrawal->save();
+                return;
+            }
+
             if ($status === 'SUCCESS') {
                 $this->finalizeSuccess($withdrawal, $providerPayoutId);
                 return;

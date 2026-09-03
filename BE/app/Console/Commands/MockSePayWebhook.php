@@ -60,8 +60,8 @@ class MockSePayWebhook extends Command
             'accumulated' => $amount,
             'code' => 'MOCK' . time(),
             'referenceCode' => 'REF' . time(),
-            'description' => "MIND {$orderId}",
-            'content' => "MIND {$orderId}",
+            'description' => $order->order_code ?? "ORD-{$orderId}",
+            'content' => $order->order_code ?? "ORD-{$orderId}",
         ];
 
         $rawBody = json_encode($payload);
