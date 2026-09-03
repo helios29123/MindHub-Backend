@@ -578,8 +578,10 @@ class CoursePublicController extends Controller
             ->get();
 
         $defaultVideos = [
-            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+            'https://mindhub.io.vn/videos/laravel-rest-api/laravel-rest-api-01-rest-api-la-gi-trong-laravel.mp4',
+            'https://mindhub.io.vn/videos/ai-learning/ai-learning-01-ai-trong-hoc-tap-la-gi.mp4',
+            'https://mindhub.io.vn/videos/deploy-vps-aapanel/react-elearning-01-react-la-gi-va-vi-sao-dung-cho-e-learning.mp4',
+            'https://vjs.zencdn.net/v/oceans.mp4',
             'https://www.w3schools.com/html/mov_bbb.mp4'
         ];
 
@@ -588,7 +590,7 @@ class CoursePublicController extends Controller
         foreach ($previewLessons as $lesson) {
             $course = $lesson->course;
             $rawVideo = $lesson->video_url;
-            if (empty($rawVideo) || (!str_starts_with($rawVideo, 'http://') && !str_starts_with($rawVideo, 'https://'))) {
+            if (empty($rawVideo) || str_contains($rawVideo, 'gtv-videos-bucket') || (!str_starts_with($rawVideo, 'http://') && !str_starts_with($rawVideo, 'https://'))) {
                 $videoUrl = $defaultVideos[$idx % count($defaultVideos)];
             } else {
                 $videoUrl = $rawVideo;
@@ -608,11 +610,6 @@ class CoursePublicController extends Controller
 
         if (count($items) === 0) {
             $courses = \App\Models\Course::where('status', 'published')->with('instructor')->take(6)->get();
-            $defaultVideos = [
-                'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-                'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-                'https://www.w3schools.com/html/mov_bbb.mp4'
-            ];
             $idx = 0;
             foreach ($courses as $c) {
                 $items[] = [
