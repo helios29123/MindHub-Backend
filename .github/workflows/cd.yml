@@ -67,6 +67,9 @@ jobs:
             git reset --hard "origin/$TARGET_BRANCH"
 
             cd BE
+            # Dọn dẹp file rác gây lỗi xung đột PSR-4 autoloader
+            rm -f app/Models/CommissionRole.php || true
+
             echo "📦 Cài đặt Composer Dependencies (Production mode)..."
             composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 
