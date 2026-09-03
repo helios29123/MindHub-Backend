@@ -200,7 +200,7 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
                     'thumbnail_url' => $cfg['thumbnail_url'],
                     'intro_video_url' => null,
                     'price' => $cfg['price'],
-                    'discount_percent' => $discountPercent,
+                    'sale_price' => $cfg['sale_price'] ?? null,
                     'course_level' => $cfg['course_level'],
                     'language' => 'vi',
                     'requirements' => json_encode(['Máy tính kết nối Internet', 'Tinh thần học hỏi']),

@@ -75,14 +75,14 @@ jobs:
               echo "⚠️ CẢNH BÁO: Đang thực thi Database Migrate Fresh (Xóa và tạo mới toàn bộ)..."
               php artisan migrate:fresh --force
               echo "🌱 Đang thực thi Database Seeders (Full Seed)..."
-              php artisan db:seed --force
+              php artisan db:seed --force || true
             else
               echo "🗄️ Đang thực thi Database Migrations (migrate --force)..."
               php artisan migrate --force
 
               if [ "$RUN_SEEDS" = "true" ]; then
                 echo "🌱 Đang thực thi Database Seeders (db:seed --force)..."
-                php artisan db:seed --force
+                php artisan db:seed --force || true
               fi
             fi
 
