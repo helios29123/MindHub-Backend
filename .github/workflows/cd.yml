@@ -4,6 +4,17 @@ on:
   push:
     branches: [ "main", "develop" ]
   workflow_dispatch:
+    inputs:
+      fresh_database:
+        description: 'Chạy migrate:fresh --seed (CẢNH BÁO: Xóa toàn bộ DB và seed lại từ đầu)'
+        required: false
+        default: false
+        type: boolean
+      run_seeders:
+        description: 'Chạy Database Seeders (db:seed --force)'
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
   group: cd-backend-${{ github.ref }}
@@ -25,7 +36,10 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script_stop: true
-          envs: GITHUB_SHA,GITHUB_REF_NAME
+          envs: GITHUB_SHA,GITHUB_REF_NAME,FRESH_DB,RUN_SEEDS
+        env:
+          FRESH_DB: ${{ inputs.fresh_database || false }}
+          RUN_SEEDS: ${{ inputs.run_seeders != false }}
           script: |
             echo "=========================================================="
             echo "🚀 [MindHub Backend] Bắt đầu triển khai tự động..."
@@ -76,11 +90,21 @@ jobs:
             echo "📦 Cài đặt Composer Dependencies (Production mode)..."
             composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 
-            echo "🗄️ Đang thực thi Database Migrations..."
-            php artisan migrate --force
+            # Thực thi Migration & Seeder
+            if [ "$FRESH_DB" = "true" ]; then
+              echo "⚠️ CẢNH BÁO: Đang thực thi Database Migrate Fresh (Xóa và tạo mới toàn bộ)..."
+              php artisan migrate:fresh --force
+              echo "🌱 Đang thực thi Database Seeders (Full Seed)..."
+              php artisan db:seed --force
+            else
+              echo "🗄️ Đang thực thi Database Migrations (migrate --force)..."
+              php artisan migrate --force
 
-            echo "🌱 Đang thực thi Database Seeders..."
-            php artisan db:seed --force
+              if [ "$RUN_SEEDS" = "true" ]; then
+                echo "🌱 Đang thực thi Database Seeders (db:seed --force)..."
+                php artisan db:seed --force
+              fi
+            fi
 
             echo "🧹 Xóa cache và tối ưu hóa hệ thống (Optimize & Cache)..."
             php artisan optimize:clear
@@ -93,6 +117,10 @@ jobs:
 
             echo "🔄 Khởi động lại Queue Workers (nếu có)..."
             php artisan queue:restart || true
+
+            echo "🩺 Kiểm tra sức khỏe hệ thống (Health Check)..."
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost/up" || curl -s -o /dev/null -w "%{http_code}" "https://mindhub.io.vn/BE/public/index.php/up" || echo "failed")
+            echo "Mã HTTP phản hồi: $HTTP_STATUS"
 
             echo "=========================================================="
             echo "✅ [MindHub Backend] Triển khai thành công lên Server!"
