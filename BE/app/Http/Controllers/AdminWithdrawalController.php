@@ -365,12 +365,14 @@ final class AdminWithdrawalController extends Controller
 
         $withdrawal = $result['withdrawal'];
 
-        // Initiate Payout Process
-        $this->payoutService->process($withdrawal);
-
         return response()->json([
             'success' => true,
             'message' => 'Duyệt yêu cầu rút tiền thành công. Trạng thái: ' . $withdrawal->status,
+            'data' => [
+                'id' => $withdrawal->id,
+                'status' => $withdrawal->status,
+                'withdrawal_code' => 'WD-' . $withdrawal->id,
+            ],
         ]);
     }
 

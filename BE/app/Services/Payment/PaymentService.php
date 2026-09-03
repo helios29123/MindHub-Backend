@@ -5,6 +5,7 @@ namespace App\Services\Payment;
 use App\Models\Coupon;
 use App\Exceptions\BusinessException;
 use App\Models\Order;
+use App\Models\WithdrawRequest;
 use App\Services\Payment\Contracts\PaymentGatewayInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -224,14 +225,21 @@ class PaymentService
     {
         $this->assertSepayWebhookSignature();
 
-        $content = (string) ($payload['content'] ?? $payload['description'] ?? $payload['memo'] ?? $payload['subAccount'] ?? '');
-        $transferAmount = (float) ($payload['transferAmount'] ?? $payload['amount'] ?? 0);
+        $content = (string) ($payload['content'] ?? $payload['description'] ?? $payload['memo'] ?? $payload['subAccount'] ?? $payload['transactionContent'] ?? '');
+        $transferAmount = (float) ($payload['transferAmount'] ?? $payload['amount'] ?? $payload['amountOut'] ?? $payload['amountIn'] ?? 0);
         $referenceCode = (string) ($payload['referenceCode'] ?? $payload['id'] ?? $payload['transaction_id'] ?? $payload['code'] ?? '');
 
         if (empty($content)) {
             return ['success' => false, 'message' => 'Nội dung chuyển khoản trống.'];
         }
 
+        // 1. Kiểm tra đối soát giao dịch rút tiền của Giảng viên (Biến động OUT hoặc nội dung chứa mã WD)
+        $withdrawalResult = $this->handleWithdrawalWebhook($payload, $content, $transferAmount, $referenceCode);
+        if ($withdrawalResult !== null) {
+            return $withdrawalResult;
+        }
+
+        // 2. Đối soát giao dịch mua khóa học của Học viên (Biến động IN)
         return DB::transaction(function () use ($content, $transferAmount, $referenceCode): array {
             $order = DB::table('orders')
                 ->where('status', '!=', Order::STATUS_PAID)
@@ -287,6 +295,70 @@ class PaymentService
                 'message' => 'Xử lý thanh toán SePay thành công.',
                 'order_id' => $order->id,
                 'order_code' => $order->order_code ?? null,
+            ];
+        });
+    }
+
+    /**
+     * Tự động đối soát giao dịch rút tiền khi MB Bank / GPM gửi biến động tiền ra (OUT)
+     */
+    public function handleWithdrawalWebhook(array $payload, string $content, float $transferAmount, string $referenceCode): ?array
+    {
+        $transferType = strtolower((string) ($payload['transferType'] ?? ''));
+        $amountOut = (float) ($payload['amountOut'] ?? 0);
+        $isOut = $transferType === 'out' || $amountOut > 0;
+
+        // Trích xuất mã Withdrawal từ nội dung (Ví dụ: RUTTIEN WD-123, RUTTIEN 123, WD-123, WD123, WDR-123)
+        $withdrawalId = null;
+        if (preg_match('/(?:RUTTIEN|WDR|WD)[^0-9]*(\d+)/i', $content, $matches)) {
+            $withdrawalId = (int) $matches[1];
+        } elseif ($isOut && preg_match('/(\d+)/', $content, $matches)) {
+            $withdrawalId = (int) $matches[1];
+        }
+
+        if (! $withdrawalId) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($withdrawalId, $transferAmount, $referenceCode, $payload): ?array {
+            $withdrawal = WithdrawRequest::whereKey($withdrawalId)->lockForUpdate()->first();
+
+            if (! $withdrawal) {
+                return null; // Không khớp WithdrawRequest nào, để luồng fallback sang tìm Order
+            }
+
+            // Nếu yêu cầu rút tiền đã được hoàn tất trước đó (Idempotent)
+            if ($withdrawal->status === WithdrawRequest::STATUS_PAID) {
+                return [
+                    'success' => true,
+                    'message' => 'Yêu cầu rút tiền #' . $withdrawal->id . ' đã được xác nhận thanh toán trước đó.',
+                    'withdrawal_id' => $withdrawal->id,
+                    'status' => $withdrawal->status,
+                ];
+            }
+
+            $effectiveAmount = abs($transferAmount);
+            if ($effectiveAmount > 0 && abs($effectiveAmount - (float) $withdrawal->amount) > 0.01) {
+                throw new BusinessException('Số tiền chuyển (' . number_format($effectiveAmount, 0, ',', '.') . ' đ) không khớp với yêu cầu rút tiền #' . $withdrawal->id . ' (' . number_format((float) $withdrawal->amount, 0, ',', '.') . ' đ).', 422);
+            }
+
+            $withdrawal->status = WithdrawRequest::STATUS_PAID;
+            $withdrawal->paid_at = now();
+            $withdrawal->processed_at = now();
+            if ($referenceCode !== '') {
+                $withdrawal->provider_payout_id = $referenceCode;
+            }
+            $withdrawal->payout_provider = 'mbbank';
+            $withdrawal->save();
+
+            return [
+                'success' => true,
+                'message' => 'Đối soát và xác nhận thanh toán rút tiền thành công cho yêu cầu #' . $withdrawal->id,
+                'withdrawal_id' => $withdrawal->id,
+                'withdrawal_code' => 'WD-' . $withdrawal->id,
+                'amount' => (float) $withdrawal->amount,
+                'status' => $withdrawal->status,
+                'provider_payout_id' => $withdrawal->provider_payout_id,
             ];
         });
     }
@@ -507,7 +579,7 @@ $order = $query->first();
             }
         }
 
-        throw new BusinessException('Xác thực Webhook thanh toán thất bại. Thiếu chữ ký hoặc API key không hợp lệ.', 401);
+        throw new BusinessException('Thiếu chữ ký xác thực SePay Webhook.', 401);
     }
 
     private function getOrderAmount(object $order): float
