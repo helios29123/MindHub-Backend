@@ -1136,9 +1136,7 @@ final class InstructorCourseService
             throw new BusinessException('Không tìm thấy khóa học hoặc bạn không có quyền cập nhật.', 404);
         }
 
-        if (!in_array($course->status, ['draft', 'rejected'], true)) {
-            throw new BusinessException('Chỉ được lưu nháp khóa học đang hoàn thiện hoặc bị từ chối.', 409);
-        }
+
 
         $categoryIds = null;
 
