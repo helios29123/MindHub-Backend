@@ -83,19 +83,6 @@ class CourseChecklistService
                 'route_step' => 4,
             ],
             [
-                'key' => 'lesson_media',
-                'label' => 'Nội dung bài học hoàn chỉnh',
-                'passed' => $lessons->isNotEmpty() && $lessons->every(function ($l) {
-                    $lType = strtolower((string) ($l->lesson_type ?? 'video'));
-                    if ($lType === 'video') {
-                        $vUrl = (string) ($l->video_url ?? '');
-                        return ! $this->blank($vUrl) && ! str_starts_with($vUrl, 'blob:');
-                    }
-                    return ! $this->blank($l->content ?? '');
-                }),
-                'route_step' => 4,
-            ],
-            [
                 'key' => 'preview_lesson',
                 'label' => 'Học thử miễn phí (Preview)',
                 'passed' => $lessons->where('is_preview', 1)->isNotEmpty(),

@@ -109,14 +109,24 @@ final class InstructorCourseService
             $this->assertSectionBelongsToCourse($section, $course);
             $lessonType = $validatedData["lesson_type"];
             
-            $cloneVideoData = function(?string $url) {
-                if ($url && str_contains($url, 'iframe.mediadelivery.net/embed/')) {
-                    $parts = explode('/', parse_url($url, PHP_URL_PATH));
-                    $videoId = end($parts);
-                    return ['url' => null, 'id' => $videoId, 'status' => 'processing'];
-                }
-                return ['url' => $url, 'id' => null, 'status' => null];
-            };
+            $videoUrl = $validatedData["video_url"] ?? null;
+            $videoId = null;
+            if ($videoUrl && str_contains($videoUrl, 'iframe.mediadelivery.net/embed/')) {
+                $parts = explode('/', parse_url($videoUrl, PHP_URL_PATH));
+                $videoId = end($parts) ?: null;
+            }
+
+            $targetSortOrder = isset($validatedData["sort_order"]) && (int)$validatedData["sort_order"] > 0
+                ? (int)$validatedData["sort_order"]
+                : $this->instructorLessonRepository->getNextSortOrder($section->id);
+
+            $orderExists = \App\Models\Lesson::query()
+                ->where('course_section_id', $section->id)
+                ->where('sort_order', $targetSortOrder)
+                ->exists();
+            if ($orderExists) {
+                $targetSortOrder = $this->instructorLessonRepository->getNextSortOrder($section->id);
+            }
 
             $lessonData = [
                 "course_id" => $course->id,
@@ -124,21 +134,17 @@ final class InstructorCourseService
                 "title" => $validatedData["title"],
                 "lesson_type" => $lessonType,
                 "content" => $validatedData["content"] ?? null,
-                "video_url" => $cloneVideoData($validatedData["video_url"] ?? null)['url'],
-                "video_id" => $cloneVideoData($validatedData["video_url"] ?? null)['id'],
-                "video_status" => $cloneVideoData($validatedData["video_url"] ?? null)['status'],
+                "video_url" => $videoUrl,
+                "video_id" => $videoId,
                 "video_duration_seconds" =>
                 $validatedData["video_duration_seconds"] ?? 0,
                 "is_preview" => $validatedData["is_preview"] ?? false,
                 "status" => $validatedData["status"] ?? "draft",
-                "sort_order" =>
-                $validatedData["sort_order"] ??
-                    $this->instructorLessonRepository->getNextSortOrder(
-                        $section->id,
-                    ),
+                "sort_order" => $targetSortOrder,
             ];
             if ($lessonType === "text") {
                 $lessonData["video_url"] = null;
+                $lessonData["video_id"] = null;
                 $lessonData["video_duration_seconds"] = 0;
             }
             return $this->instructorLessonRepository
@@ -197,17 +203,13 @@ final class InstructorCourseService
                 if (array_key_exists($field, $validatedData)) {
                     if ($field === 'video_url') {
                         $url = $validatedData['video_url'];
+                        $videoId = null;
                         if ($url && str_contains($url, 'iframe.mediadelivery.net/embed/')) {
                             $parts = explode('/', parse_url($url, PHP_URL_PATH));
-                            $videoId = end($parts);
-                            $lessonData['video_id'] = $videoId;
-                            $lessonData['video_url'] = null;
-                            $lessonData['video_status'] = 'processing';
-                        } else {
-                            $lessonData[$field] = $url;
-                            $lessonData['video_id'] = null;
-                            $lessonData['video_status'] = null;
+                            $videoId = end($parts) ?: null;
                         }
+                        $lessonData['video_url'] = $url;
+                        $lessonData['video_id'] = $videoId;
                     } else {
                         $lessonData[$field] = $validatedData[$field];
                     }
@@ -469,29 +471,6 @@ final class InstructorCourseService
             foreach ($section->lessons as $lesson) {
                 if ((bool) $lesson->is_preview) {
                     $hasPreviewLesson = true;
-                }
-                $type = strtolower((string) ($lesson->lesson_type ?? 'video'));
-                if ($type === 'video') {
-                    $videoUrl = trim((string) ($lesson->video_url ?? ''));
-                    $videoId = trim((string) ($lesson->video_id ?? ''));
-                    
-                    if (
-                        ($videoUrl === '' || str_starts_with($videoUrl, 'blob:')) &&
-                        $videoId === ''
-                    ) {
-                        return false;
-                    }
-                } elseif ($type === 'text') {
-                    if (trim((string) ($lesson->content ?? '')) === '') {
-                        return false;
-                    }
-                } elseif ($type === 'document') {
-                    $hasAssets = $lesson->assets()->exists();
-                    $hasContent = trim((string) ($lesson->content ?? '')) !== '';
-                    $hasUrl = trim((string) ($lesson->video_url ?? '')) !== '';
-                    if (!$hasAssets && !$hasContent && !$hasUrl) {
-                        return false;
-                    }
                 }
             }
         }
