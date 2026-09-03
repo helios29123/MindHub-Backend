@@ -74,4 +74,9 @@ class WithdrawRequest extends Model
             'revenue_id'
         )->withPivot(['allocated_amount', 'created_at']);
     }
+
+    public function allocatedRevenues(): BelongsToMany
+    {
+        return $this->revenues();
+    }
 }
