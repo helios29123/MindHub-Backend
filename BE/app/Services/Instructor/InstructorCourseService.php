@@ -99,6 +99,8 @@ final class InstructorCourseService
                 (int) $validatedData["course_id"],
                 $instructor,
             );
+            $this->assertCourseIsMutable($course);
+            
             $section = $this->findSectionOrFail(
                 (int) $validatedData["course_section_id"],
             );
@@ -156,6 +158,8 @@ final class InstructorCourseService
                 $targetCourseId,
                 $instructor,
             );
+            $this->assertCourseIsMutable($course);
+            
             $section = $this->findSectionOrFail($targetSectionId);
             $this->assertSectionBelongsToCourse($section, $course);
             $lessonType = $validatedData["lesson_type"] ?? $lesson->lesson_type;
@@ -194,6 +198,16 @@ final class InstructorCourseService
     {
         DB::transaction(function () use ($instructor, $lessonId): void {
             $lesson = $this->findOwnedLessonOrFail($instructor, $lessonId);
+            $course = $lesson->course;
+            
+            if ($course && $course->status === 'published') {
+                $this->assertCourseIsMutable($course);
+            }
+            
+            if ($course && $this->courseHasEnrollments((int) $course->id)) {
+                throw new BusinessException('Không thể xóa bài học vì khóa học đã có học viên đăng ký. Vui lòng ẩn khóa học hoặc ẩn bài học thay vì xóa.', 422);
+            }
+            
             $this->instructorLessonRepository->delete($lesson);
         });
     }
@@ -502,6 +516,8 @@ final class InstructorCourseService
         if (!$course) {
             throw new BusinessException("Không tìm thấy khóa học.", 404);
         }
+        
+        $this->assertCourseIsMutable($course);
 
         if ((int) $course->instructor_id !== (int) $instructorId) {
             throw new BusinessException(
@@ -1299,4 +1315,18 @@ final class InstructorCourseService
         });
     }
 
+    private function assertCourseIsMutable(Course $course): void
+    {
+        if ($course->status === 'published') {
+            throw new BusinessException('Không thể chỉnh sửa nội dung khóa học đã xuất bản. Vui lòng gỡ khóa học xuống trước khi chỉnh sửa.', 422);
+        }
+    }
+    
+    private function courseHasEnrollments(int $courseId): bool
+    {
+        return DB::table('enrollments')
+            ->where('course_id', $courseId)
+            ->whereIn('status', ['active', 'completed'])
+            ->exists();
+    }
 }

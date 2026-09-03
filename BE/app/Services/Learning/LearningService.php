@@ -229,6 +229,19 @@ class LearningService
             if($completed && $p->status!=='completed'){
                 if(in_array($lesson->lesson_type,['text','document'],true) && (!$p->started_at || $p->started_at->diffInSeconds(now())<5))
                     throw new \App\Exceptions\BusinessException('Bạn cần mở nội dung ít nhất 5 giây trước khi hoàn thành.',422);
+
+                if($lesson->lesson_type === 'video') {
+                    $vp = \App\Models\VideoProgress::query()->where('enrollment_id', $e->id)->where('lesson_id', $lesson->id)->first();
+                    $duration = (int) $lesson->video_duration_seconds;
+                    $current = (int) ($vp?->current_second ?? 0);
+                    
+                    if ($duration > 0 && $current < $duration * 0.9) {
+                        throw new \App\Exceptions\BusinessException('Bạn cần xem ít nhất 90% thời lượng video trước khi hoàn thành.', 422);
+                    } elseif ($duration === 0 && (!$p->started_at || $p->started_at->diffInSeconds(now()) < 5)) {
+                        throw new \App\Exceptions\BusinessException('Bạn cần mở nội dung ít nhất 5 giây trước khi hoàn thành.', 422);
+                    }
+                }
+
                 $p->update(['status'=>'completed','started_at'=>$p->started_at??now(),'completed_at'=>now(),'last_accessed_at'=>now()]);
             } elseif(!$completed && $p->status!=='completed') {
                 $p->update(['status'=>'in_progress','started_at'=>$p->started_at??now(),'last_accessed_at'=>now()]);

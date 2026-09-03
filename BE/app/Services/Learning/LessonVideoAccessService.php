@@ -27,15 +27,21 @@ final class LessonVideoAccessService
         if (!empty($lesson->video_id)) {
             $libraryId = (string) config('bunny.stream.library_id', '724015');
             $hostname = (string) config('bunny.stream.cdn_hostname', 'vz-725f19ee-511.b-cdn.net');
-            $embedUrl = "https://iframe.mediadelivery.net/embed/{$libraryId}/{$lesson->video_id}?autoplay=true&loop=false&muted=false&preload=true&responsive=true";
-            $hlsUrl = "https://{$hostname}/{$lesson->video_id}/playlist.m3u8";
-            $expiresAt = now()->addSeconds($ttlSeconds);
+            $securityKey = (string) config('bunny.stream.token_key', '');
+            
+            $expiresAt = time() + $ttlSeconds;
+            $token = hash('sha256', $securityKey . $lesson->video_id . $expiresAt);
+            
+            $embedUrl = "https://iframe.mediadelivery.net/embed/{$libraryId}/{$lesson->video_id}?token={$token}&expires={$expiresAt}&autoplay=true&loop=false&muted=false&preload=true&responsive=true";
+            $hlsUrl = "https://{$hostname}/{$lesson->video_id}/playlist.m3u8?token={$token}&expires={$expiresAt}";
+            
+            $expiresAtDate = now()->addSeconds($ttlSeconds);
             return [
                 'stream_url' => $embedUrl,
                 'embed_url' => $embedUrl,
                 'hls_url' => $hlsUrl,
                 'expires_in' => $ttlSeconds,
-                'expires_at' => $expiresAt->toIso8601String(),
+                'expires_at' => $expiresAtDate->toIso8601String(),
             ];
         }
         $this->resolveExistingPrivateVideoPath($lesson);

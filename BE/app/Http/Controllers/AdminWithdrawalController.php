@@ -338,25 +338,32 @@ final class AdminWithdrawalController extends Controller
      */
     public function approve(int $id): JsonResponse
     {
-        $withdrawal = WithdrawRequest::find($id);
+        $result = DB::transaction(function () use ($id) {
+            $withdrawal = WithdrawRequest::whereKey($id)->lockForUpdate()->first();
 
-        if (! $withdrawal) {
+            if (! $withdrawal) {
+                return ['status' => 404, 'message' => 'Không tìm thấy yêu cầu rút tiền.'];
+            }
+
+            if ($withdrawal->status !== WithdrawRequest::STATUS_PENDING) {
+                return ['status' => 422, 'message' => 'Chỉ có thể duyệt yêu cầu rút tiền ở trạng thái Chờ duyệt.'];
+            }
+
+            $withdrawal->status = WithdrawRequest::STATUS_APPROVED;
+            $withdrawal->approved_at = now();
+            $withdrawal->save();
+
+            return ['status' => 200, 'withdrawal' => $withdrawal];
+        });
+
+        if ($result['status'] !== 200) {
             return response()->json([
                 'success' => false,
-                'message' => 'Không tìm thấy yêu cầu rút tiền.',
-            ], 404);
+                'message' => $result['message'],
+            ], $result['status']);
         }
 
-        if ($withdrawal->status !== WithdrawRequest::STATUS_PENDING) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Chỉ có thể duyệt yêu cầu rút tiền ở trạng thái Chờ duyệt.',
-            ], 422);
-        }
-
-        $withdrawal->status = WithdrawRequest::STATUS_APPROVED;
-        $withdrawal->approved_at = now();
-        $withdrawal->save();
+        $withdrawal = $result['withdrawal'];
 
         // Initiate Payout Process
         $this->payoutService->process($withdrawal);
@@ -376,27 +383,32 @@ final class AdminWithdrawalController extends Controller
             'reason' => ['required', 'string', 'max:1000'],
         ]);
 
-        $withdrawal = WithdrawRequest::find($id);
+        $result = DB::transaction(function () use ($id, $request) {
+            $withdrawal = WithdrawRequest::whereKey($id)->lockForUpdate()->first();
 
-        if (! $withdrawal) {
+            if (! $withdrawal) {
+                return ['status' => 404, 'message' => 'Không tìm thấy yêu cầu rút tiền.'];
+            }
+
+            if ($withdrawal->status !== WithdrawRequest::STATUS_PENDING) {
+                return ['status' => 422, 'message' => 'Chỉ có thể từ chối yêu cầu rút tiền ở trạng thái Chờ duyệt.'];
+            }
+
+            $withdrawal->status = WithdrawRequest::STATUS_REJECTED;
+            $withdrawal->rejected_reason = $request->input('reason');
+            $withdrawal->save();
+
+            return ['status' => 200, 'withdrawal' => $withdrawal];
+        });
+
+        if ($result['status'] !== 200) {
             return response()->json([
                 'success' => false,
-                'message' => 'Không tìm thấy yêu cầu rút tiền.',
-            ], 404);
+                'message' => $result['message'],
+            ], $result['status']);
         }
 
-        if ($withdrawal->status !== WithdrawRequest::STATUS_PENDING) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Chỉ có thể từ chối yêu cầu rút tiền ở trạng thái Chờ duyệt.',
-            ], 422);
-        }
-
-        $withdrawal->status = WithdrawRequest::STATUS_REJECTED;
-        $withdrawal->rejected_reason = $request->input('reason');
-        $withdrawal->save();
-
-        $this->earlyWithdrawalService->releaseAllocations($withdrawal);
+        $this->earlyWithdrawalService->releaseAllocations($result['withdrawal']);
 
         return response()->json([
             'success' => true,
@@ -404,36 +416,39 @@ final class AdminWithdrawalController extends Controller
         ]);
     }
 
-    /**
-     * PATCH /api/admin/withdrawals/{id}/mark-paid
-     */
     public function markPaid(Request $request, int $id): JsonResponse
     {
         $request->validate([
             'provider_payout_id' => ['required', 'string', 'max:255'],
         ]);
 
-        $withdrawal = WithdrawRequest::find($id);
+        $result = DB::transaction(function () use ($id, $request) {
+            $withdrawal = WithdrawRequest::whereKey($id)->lockForUpdate()->first();
 
-        if (! $withdrawal) {
+            if (! $withdrawal) {
+                return ['status' => 404, 'message' => 'Không tìm thấy yêu cầu rút tiền.'];
+            }
+
+            if ($withdrawal->status !== WithdrawRequest::STATUS_MANUAL_REQUIRED) {
+                return ['status' => 422, 'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Cần xử lý thủ công.'];
+            }
+
+            if (empty($withdrawal->payout_provider)) {
+                $withdrawal->payout_provider = 'manual';
+                $withdrawal->save();
+            }
+
+            return ['status' => 200, 'withdrawal' => $withdrawal];
+        });
+
+        if ($result['status'] !== 200) {
             return response()->json([
                 'success' => false,
-                'message' => 'Không tìm thấy yêu cầu rút tiền.',
-            ], 404);
+                'message' => $result['message'],
+            ], $result['status']);
         }
 
-        if ($withdrawal->status !== WithdrawRequest::STATUS_MANUAL_REQUIRED) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Chỉ có thể hoàn tất thanh toán cho yêu cầu ở trạng thái Cần xử lý thủ công.',
-            ], 422);
-        }
-        if (empty($withdrawal->payout_provider)) {
-            $withdrawal->payout_provider = 'manual';
-            $withdrawal->save();
-        }
-
-        $this->payoutService->finalizeSuccess($withdrawal, $request->input('provider_payout_id'));
+        $this->payoutService->finalizeSuccess($result['withdrawal'], $request->input('provider_payout_id'));
 
         return response()->json([
             'success' => true,
@@ -450,27 +465,32 @@ final class AdminWithdrawalController extends Controller
             'reason' => ['required', 'string', 'max:1000'],
         ]);
 
-        $withdrawal = WithdrawRequest::find($id);
+        $result = DB::transaction(function () use ($id, $request) {
+            $withdrawal = WithdrawRequest::whereKey($id)->lockForUpdate()->first();
 
-        if (! $withdrawal) {
+            if (! $withdrawal) {
+                return ['status' => 404, 'message' => 'Không tìm thấy yêu cầu rút tiền.'];
+            }
+
+            if ($withdrawal->status !== WithdrawRequest::STATUS_MANUAL_REQUIRED) {
+                return ['status' => 422, 'message' => 'Chỉ có thể đánh dấu thất bại cho yêu cầu ở trạng thái Cần xử lý thủ công.'];
+            }
+
+            $withdrawal->status = WithdrawRequest::STATUS_FAILED;
+            $withdrawal->failure_reason = $request->input('reason');
+            $withdrawal->save();
+
+            return ['status' => 200, 'withdrawal' => $withdrawal];
+        });
+
+        if ($result['status'] !== 200) {
             return response()->json([
                 'success' => false,
-                'message' => 'Không tìm thấy yêu cầu rút tiền.',
-            ], 404);
+                'message' => $result['message'],
+            ], $result['status']);
         }
 
-        if ($withdrawal->status !== WithdrawRequest::STATUS_MANUAL_REQUIRED) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Chỉ có thể đánh dấu thất bại cho yêu cầu ở trạng thái Cần xử lý thủ công.',
-            ], 422);
-        }
-
-        $withdrawal->status = WithdrawRequest::STATUS_FAILED;
-        $withdrawal->failure_reason = $request->input('reason');
-        $withdrawal->save();
-
-        $this->earlyWithdrawalService->releaseAllocations($withdrawal);
+        $this->earlyWithdrawalService->releaseAllocations($result['withdrawal']);
 
         return response()->json([
             'success' => true,
