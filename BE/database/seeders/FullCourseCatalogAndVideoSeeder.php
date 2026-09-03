@@ -210,7 +210,7 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
             if ($catId) {
                 DB::table('course_categories')->updateOrInsert(
                     ['course_id' => $course->id, 'category_id' => $catId],
-                    ['created_at' => now(), 'updated_at' => now()]
+                    []
                 );
             }
 
@@ -219,30 +219,36 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
             CourseSection::where('course_id', $course->id)->delete();
 
             // Create main section
-            $section = CourseSection::create([
-                'course_id' => $course->id,
-                'title' => 'Chương trình giảng dạy chi tiết',
-                'description' => 'Danh sách video bài giảng thực hành của khóa học.',
-                'sort_order' => 1,
-                'status' => CourseSection::STATUS_PUBLISHED,
-            ]);
+            $section = CourseSection::firstOrCreate(
+                [
+                    'course_id' => $course->id,
+                    'title' => 'Chương trình giảng dạy chi tiết',
+                ],
+                [
+                    'description' => 'Danh sách video bài giảng thực hành của khóa học.',
+                    'sort_order' => 1,
+                    'status' => CourseSection::STATUS_PUBLISHED,
+                ]
+            );
 
             // Add all Bunny CDN video lessons
             $sortOrder = 1;
             foreach ($videos as $vid) {
-                Lesson::create([
-                    'course_id' => $course->id,
-                    'course_section_id' => $section->id,
-                    'title' => $vid['title'],
-                    'lesson_type' => Lesson::TYPE_VIDEO,
-                    'content' => 'Nội dung video bài giảng thực tế: ' . $vid['title'],
-                    'video_url' => null,
-                    'video_id' => $vid['video_id'],
-                    'video_duration_seconds' => 900,
-                    'is_preview' => $sortOrder <= 2,
-                    'status' => Lesson::STATUS_PUBLISHED,
-                    'sort_order' => $sortOrder,
-                ]);
+                Lesson::updateOrCreate(
+                    ['video_id' => $vid['video_id']],
+                    [
+                        'course_id' => $course->id,
+                        'course_section_id' => $section->id,
+                        'title' => $vid['title'],
+                        'lesson_type' => Lesson::TYPE_VIDEO,
+                        'content' => 'Nội dung video bài giảng thực tế: ' . $vid['title'],
+                        'video_url' => null,
+                        'video_duration_seconds' => 900,
+                        'is_preview' => $sortOrder <= 2,
+                        'status' => Lesson::STATUS_PUBLISHED,
+                        'sort_order' => $sortOrder,
+                    ]
+                );
                 $sortOrder++;
                 $totalVideosCount++;
             }
