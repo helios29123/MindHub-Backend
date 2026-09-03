@@ -215,7 +215,11 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
             if ($catId) {
                 DB::table('course_categories')->updateOrInsert(
                     ['course_id' => $course->id, 'category_id' => $catId],
+<<<<<<< HEAD
                     []
+=======
+                    ['course_id' => $course->id, 'category_id' => $catId]
+>>>>>>> b10a67b (fix(seeders): ensure compatibility with MariaDB STORED GENERATED sale_price column)
                 );
             }
 
@@ -224,6 +228,7 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
             CourseSection::where('course_id', $course->id)->delete();
 
             // Create main section
+<<<<<<< HEAD
             $section = CourseSection::firstOrCreate(
                 [
                     'course_id' => $course->id,
@@ -232,28 +237,53 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
                 [
                     'description' => 'Danh sách video bài giảng thực hành của khóa học.',
                     'sort_order' => 1,
-                    'status' => 'published',
+                    'status' => CourseSection::STATUS_PUBLISHED,
                 ]
             );
+=======
+            $section = CourseSection::create([
+                'course_id' => $course->id,
+                'title' => 'Chương trình giảng dạy chi tiết',
+                'description' => 'Danh sách video bài giảng thực hành của khóa học.',
+                'sort_order' => 1,
+                'status' => 'published',
+            ]);
+>>>>>>> b10a67b (fix(seeders): ensure compatibility with MariaDB STORED GENERATED sale_price column)
 
             // Add all Bunny CDN video lessons
             $sortOrder = 1;
             foreach ($videos as $vid) {
+<<<<<<< HEAD
                 Lesson::updateOrCreate(
                     ['video_id' => $vid['video_id']],
                     [
                         'course_id' => $course->id,
                         'course_section_id' => $section->id,
                         'title' => $vid['title'],
-                        'lesson_type' => 'video',
+                        'lesson_type' => Lesson::TYPE_VIDEO,
                         'content' => 'Nội dung video bài giảng thực tế: ' . $vid['title'],
                         'video_url' => null,
-                        'video_duration_seconds' => $vid['duration'] ?? 600,
+                        'video_duration_seconds' => 900,
                         'is_preview' => $sortOrder <= 2,
-                        'status' => 'published',
+                        'status' => Lesson::STATUS_PUBLISHED,
                         'sort_order' => $sortOrder,
                     ]
                 );
+=======
+                Lesson::create([
+                    'course_id' => $course->id,
+                    'course_section_id' => $section->id,
+                    'title' => $vid['title'],
+                    'lesson_type' => 'video',
+                    'content' => 'Nội dung video bài giảng thực tế: ' . $vid['title'],
+                    'video_url' => null,
+                    'video_id' => $vid['video_id'],
+                    'video_duration_seconds' => $vid['duration'] ?? 600,
+                    'is_preview' => $sortOrder <= 2,
+                    'status' => 'published',
+                    'sort_order' => $sortOrder,
+                ]);
+>>>>>>> b10a67b (fix(seeders): ensure compatibility with MariaDB STORED GENERATED sale_price column)
                 $sortOrder++;
                 $totalVideosCount++;
             }

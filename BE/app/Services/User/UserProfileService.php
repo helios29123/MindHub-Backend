@@ -53,10 +53,18 @@ final class UserProfileService
         $user = User::query()->findOrFail($userId);
 
         // Upload new avatar first.
-        $uploaded = $this->cloudinaryService->uploadImage(
-            $file,
-            'mindhub/avatars'
-        );
+        try {
+            $uploaded = $this->cloudinaryService->uploadImage(
+                $file,
+                'mindhub/avatars'
+            );
+        } catch (\Throwable $e) {
+            $path = $file->store('avatars', 'public');
+            $uploaded = [
+                'url' => asset('storage/' . $path),
+                'public_id' => null,
+            ];
+        }
 
         $oldPublicId = $user->avatar_public_id;
 
@@ -66,7 +74,11 @@ final class UserProfileService
 
         // Delete old Cloudinary asset only after the new one is persisted.
         if (!empty($oldPublicId)) {
-            $this->cloudinaryService->deleteImage($oldPublicId);
+            try {
+                $this->cloudinaryService->deleteImage($oldPublicId);
+            } catch (\Throwable $e) {
+                // Ignore failure if Cloudinary not configured
+            }
         }
 
         return $uploaded['url'];
@@ -103,7 +115,11 @@ final class UserProfileService
         $user->save();
 
         if (!empty($oldPublicId)) {
-            $this->cloudinaryService->deleteImage($oldPublicId);
+            try {
+                $this->cloudinaryService->deleteImage($oldPublicId);
+            } catch (\Throwable $e) {
+                // Ignore
+            }
         }
 
         return $avatarUrl;
@@ -119,7 +135,11 @@ final class UserProfileService
         $oldPublicId = $user->avatar_public_id;
 
         if (!empty($oldPublicId)) {
-            $this->cloudinaryService->deleteImage($oldPublicId);
+            try {
+                $this->cloudinaryService->deleteImage($oldPublicId);
+            } catch (\Throwable $e) {
+                // Ignore
+            }
         }
 
         $user->avatar_url = null;
