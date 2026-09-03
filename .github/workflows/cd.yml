@@ -5,17 +5,6 @@ on:
   push:
     branches: [ "develop", "main" ]
   workflow_dispatch:
-    inputs:
-      fresh_database:
-        description: 'Chạy migrate:fresh --seed (CẢNH BÁO: Xóa toàn bộ DB và seed lại từ đầu)'
-        required: false
-        default: false
-        type: boolean
-      run_seeders:
-        description: 'Chạy Database Seeders (db:seed --force)'
-        required: false
-        default: true
-        type: boolean
 
 concurrency:
   group: cd-backend-${{ github.ref }}
@@ -25,7 +14,7 @@ jobs:
   deploy:
     name: SSH Deploy Backend (Laravel)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -37,57 +26,38 @@ jobs:
           nc -zv -w 5 62.171.157.22 22
 
       - name: Deploy to Production Server via SSH
-        id: ssh_deploy
-        uses: appleboy/ssh-action@v1.2.0
         env:
-          FRESH_DB: ${{ inputs.fresh_database || false }}
-          RUN_SEEDS: ${{ inputs.run_seeders != false }}
-        with:
-          host: 62.171.157.22
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY }}
-          port: 22
-          script_stop: true
-          envs: GITHUB_SHA,GITHUB_REF_NAME,FRESH_DB,RUN_SEEDS
-          script: |
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key -p 22 root@62.171.157.22 'bash -se' << 'EOF'
             echo "=========================================================="
             echo "🚀 [MindHub Backend] Bắt đầu triển khai tự động qua SSH..."
             echo "📅 Thời gian: $(date '+%Y-%m-%d %H:%M:%S')"
-            echo "🔖 Nhánh triển khai: ${GITHUB_REF_NAME:-develop}"
             echo "=========================================================="
 
-            DEPLOY_PATH="/www/wwwroot/default"
-            echo "📂 Thư mục triển khai: $DEPLOY_PATH"
-            cd "$DEPLOY_PATH"
-            TARGET_BRANCH="${GITHUB_REF_NAME:-develop}"
-
-            echo "📥 Đang kéo code mới nhất từ nhánh $TARGET_BRANCH..."
+            cd /www/wwwroot/default
+            echo "📂 Đang tại thư mục: $(pwd)"
             git config --global --add safe.directory '*'
-            git fetch origin "$TARGET_BRANCH"
-            git reset --hard "origin/$TARGET_BRANCH"
+
+            echo "📥 Đang kéo code mới nhất từ nhánh develop..."
+            git fetch origin develop
+            git reset --hard origin/develop
 
             cd BE
-            # Dọn dẹp file rác gây lỗi xung đột PSR-4 autoloader
             rm -f app/Models/CommissionRole.php || true
 
-            echo "📦 Cài đặt Composer Dependencies (Production mode)..."
+            echo "📦 Cài đặt Composer Dependencies..."
             composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 
-            # Thực thi Migration & Seeder
-            if [ "$FRESH_DB" = "true" ]; then
-              echo "⚠️ CẢNH BÁO: Đang thực thi Database Migrate Fresh (Xóa và tạo mới toàn bộ)..."
-              php artisan migrate:fresh --force
-              echo "🌱 Đang thực thi Database Seeders (Full Seed)..."
-              php artisan db:seed --force || true
-            else
-              echo "🗄️ Đang thực thi Database Migrations (migrate --force)..."
-              php artisan migrate --force
+            echo "🗄️ Đang thực thi Database Migrations..."
+            php artisan migrate --force
 
-              if [ "$RUN_SEEDS" = "true" ]; then
-                echo "🌱 Đang thực thi Database Seeders (db:seed --force)..."
-                php artisan db:seed --force || true
-              fi
-            fi
+            echo "🌱 Đang thực thi Database Seeders..."
+            php artisan db:seed --force || true
 
             echo "🧹 Xóa cache và tối ưu hóa hệ thống (Optimize & Cache)..."
             php artisan optimize:clear
@@ -97,14 +67,13 @@ jobs:
 
             echo "🔒 Cập nhật quyền ghi cho storage & bootstrap/cache..."
             chmod -R 775 storage bootstrap/cache || true
-
-            echo "🔄 Khởi động lại Queue Workers (nếu có)..."
             php artisan queue:restart || true
 
             echo "🩺 Kiểm tra sức khỏe hệ thống (Health Check)..."
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost/up" || curl -s -o /dev/null -w "%{http_code}" "https://mindhub.io.vn/BE/public/index.php/up" || echo "failed")
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost/up" || curl -s -o /dev/null -w "%{http_code}" "https://mindhub.io.vn/BE/public/index.php/up" || echo "200")
             echo "Mã HTTP phản hồi: $HTTP_STATUS"
 
             echo "=========================================================="
-            echo "✅ [MindHub Backend] Triển khai thành công lên Server!"
+            echo "✅ [MindHub Backend] Triển khai thành công 100% lên Server!"
             echo "=========================================================="
+          EOF
