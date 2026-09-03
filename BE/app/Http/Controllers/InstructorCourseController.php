@@ -650,6 +650,9 @@ final class InstructorCourseController extends Controller
         $isVideo = in_array($ext, ['mp4', 'mov', 'webm'], true);
         $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
 
+        $url = '';
+        $path = '';
+
         if ($isVideo) {
             $bunnyService = app(\App\Services\Bunny\BunnyStreamService::class);
             $instructor = $request->user();
@@ -676,11 +679,25 @@ final class InstructorCourseController extends Controller
             $path = $url;
         } elseif ($isImage) {
             $cloudinaryService = app(\App\Services\Storage\CloudinaryService::class);
-            $result = $cloudinaryService->uploadImage($file, 'course_media');
-            $url = $result['url'];
-            $path = $url;
+            $uploaded = false;
+
+            if ($cloudinaryService->isConfigured()) {
+                try {
+                    $result = $cloudinaryService->uploadImage($file, 'course_media');
+                    $url = $result['url'];
+                    $path = $url;
+                    $uploaded = true;
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Cloudinary upload failed, falling back to local storage: ' . $e->getMessage());
+                }
+            }
+
+            if (!$uploaded) {
+                $path = (string) $file->store('instructor/uploads/' . $type, 'public');
+                $url = Storage::url($path);
+            }
         } else {
-            $path = $file->store('instructor/uploads/' . $type, 'public');
+            $path = (string) $file->store('instructor/uploads/' . $type, 'public');
             $url = Storage::url($path);
         }
 

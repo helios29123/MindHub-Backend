@@ -15,6 +15,13 @@ class CloudinaryService
     {
     }
 
+    public function isConfigured(): bool
+    {
+        return !empty(config('cloudinary.cloud_name')) &&
+               !empty(config('cloudinary.api_key')) &&
+               !empty(config('cloudinary.api_secret'));
+    }
+
     private function getCloudinary(): Cloudinary
     {
         if ($this->cloudinary !== null) {
