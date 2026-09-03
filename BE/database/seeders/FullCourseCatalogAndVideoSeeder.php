@@ -184,6 +184,11 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
                 $catId = $category->id;
             }
 
+            $discountPercent = 0;
+            if (!empty($cfg['price']) && !empty($cfg['sale_price']) && $cfg['price'] > $cfg['sale_price']) {
+                $discountPercent = round((($cfg['price'] - $cfg['sale_price']) / $cfg['price']) * 100, 2);
+            }
+
             // Create or update course
             $course = Course::updateOrCreate(
                 ['slug' => $cfg['slug']],
@@ -195,7 +200,7 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
                     'thumbnail_url' => $cfg['thumbnail_url'],
                     'intro_video_url' => null,
                     'price' => $cfg['price'],
-                    'sale_price' => $cfg['sale_price'],
+                    'discount_percent' => $discountPercent,
                     'course_level' => $cfg['course_level'],
                     'language' => 'vi',
                     'requirements' => json_encode(['Máy tính kết nối Internet', 'Tinh thần học hỏi']),
@@ -227,7 +232,7 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
                 [
                     'description' => 'Danh sách video bài giảng thực hành của khóa học.',
                     'sort_order' => 1,
-                    'status' => CourseSection::STATUS_PUBLISHED,
+                    'status' => 'published',
                 ]
             );
 
@@ -240,12 +245,12 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
                         'course_id' => $course->id,
                         'course_section_id' => $section->id,
                         'title' => $vid['title'],
-                        'lesson_type' => Lesson::TYPE_VIDEO,
+                        'lesson_type' => 'video',
                         'content' => 'Nội dung video bài giảng thực tế: ' . $vid['title'],
                         'video_url' => null,
-                        'video_duration_seconds' => 900,
+                        'video_duration_seconds' => $vid['duration'] ?? 600,
                         'is_preview' => $sortOrder <= 2,
-                        'status' => Lesson::STATUS_PUBLISHED,
+                        'status' => 'published',
                         'sort_order' => $sortOrder,
                     ]
                 );
@@ -253,9 +258,9 @@ class FullCourseCatalogAndVideoSeeder extends Seeder
                 $totalVideosCount++;
             }
 
-            $this->command->info("Đã tạo khóa học [{$course->id}] {$cfg['title']} với " . count($videos) . " video Bunny CDN.");
+            $this->command?->info("Đã tạo khóa học [{$course->id}] {$cfg['title']} với " . count($videos) . " video Bunny CDN.");
         }
 
-        $this->command->info("🎉 Đã hoàn tất nạp 10 khóa học với tổng cộng $totalVideosCount bài giảng video Bunny CDN!");
+        $this->command?->info("🎉 Đã hoàn tất nạp 10 khóa học với tổng cộng $totalVideosCount bài giảng video Bunny CDN!");
     }
 }

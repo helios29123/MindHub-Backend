@@ -54,7 +54,7 @@ class HomepageCourseDataSeeder extends Seeder
             'short_description' => 'Khóa học thực chiến thiết kế kiến trúc Clean Architecture, Repository Pattern và bảo mật API.',
             'thumbnail_url' => 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&q=80',
             'price' => 1200000,
-            'sale_price' => 900000, // Giảm -25%
+            'discount_percent' => 25, // Giảm -25%
             'is_featured' => true,
             'status' => 'published',
             'published_at' => $now->copy()->subDays(12),
@@ -65,7 +65,7 @@ class HomepageCourseDataSeeder extends Seeder
             'short_description' => 'Nắm vững tư duy lập trình backend, mô hình MVC, tối ưu truy vấn cơ sở dữ liệu lớn.',
             'thumbnail_url' => 'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=800&q=80',
             'price' => 1000000,
-            'sale_price' => 600000, // Giảm -40%
+            'discount_percent' => 40, // Giảm -40%
             'is_featured' => true,
             'status' => 'published',
             'published_at' => $now->copy()->subDays(18),
@@ -76,7 +76,7 @@ class HomepageCourseDataSeeder extends Seeder
             'short_description' => 'Xây dựng ứng dụng Web quy mô lớn với Server Components, TypeScript và Tailwind CSS.',
             'thumbnail_url' => 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&q=80',
             'price' => 1600000,
-            'sale_price' => 1200000, // Giảm -25%
+            'discount_percent' => 25, // Giảm -25%
             'is_featured' => true,
             'status' => 'published',
             'published_at' => $now->copy()->subDays(2),
@@ -87,7 +87,7 @@ class HomepageCourseDataSeeder extends Seeder
             'short_description' => 'Khóa học nền tảng miễn phí giúp bạn làm quen với tư duy thiết kế sản phẩm số hiện đại.',
             'thumbnail_url' => 'https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?w=800&q=80',
             'price' => 0,
-            'sale_price' => null,
+            'discount_percent' => 0,
             'is_featured' => true,
             'status' => 'published',
             'published_at' => $now->copy()->subDays(4),
@@ -227,7 +227,10 @@ class HomepageCourseDataSeeder extends Seeder
             $catId = $item['category_id'] ?? 1;
             unset($item['category_id']);
 
-            $existingCourse = DB::table('courses')->where('slug', $item['slug'])->first();
+            if (isset($item['sale_price']) && !empty($item['price'])) {
+                $item['discount_percent'] = round((($item['price'] - $item['sale_price']) / $item['price']) * 100, 2);
+            }
+            unset($item['sale_price']);
 
             if ($existingCourse) {
                 DB::table('courses')->where('id', $existingCourse->id)->update(array_merge($item, [
