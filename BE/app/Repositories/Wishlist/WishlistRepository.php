@@ -30,7 +30,7 @@ final class WishlistRepository
                     ->where('status', 'published');
             })
             ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->orderByDesc('course_id')
             ->paginate($perPage);
     }
     public function findCourse(int $courseId): ?Course
